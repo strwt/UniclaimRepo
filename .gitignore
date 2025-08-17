@@ -1,0 +1,73 @@
+# Node.js / npm
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production.local
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Build artifacts
+dist/
+build/
+out/
+target/
+
+# Dependency directories
+bower_components/
+vendor/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+*.lcov
+test-results/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# Sensitive data
+secrets/
+*.key
+*.pem
+*.crt
+*.cert
+*.p12
+*.pfx
+
+# Local development databases
+*.sqlite
+*.db
+*.sql

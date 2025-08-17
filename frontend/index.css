@@ -1,0 +1,48 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Manrope:wght@200..800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Albert+Sans:ital,wght@0,100..900;1,100..900&display=swap");
+@import "tailwindcss";
+
+body {
+  font-family: "Manrope", sans-serif;
+}
+
+@layer utilities {
+  .h-screen-fix {
+    height: calc(var(--vh, 1vh) * 100);
+  }
+}
+
+@layer utilities {
+  @keyframes soft-blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .animate-soft-blink {
+    animation: soft-blink 1.6s ease-in-out infinite;
+  }
+}
+
+@theme {
+  /* fonts */
+  --font-manrope: "Manrope", sans-serif;
+  --font-inter: "Inter", sans-serif;
+  --font-albert-sans: "Albert Sans", sans-serif;
+
+  /* - brand color */
+  --color-brand: #12c3b4;
+  --color-success-green: #39b54a;
+  --color-navyblue: #0a193a;
+
+  /* - background colors */
+  --color-primary-bg: #ebebeb;
+  --color-ashgray: #d9d9d9;
+
+  /* - secondary colors */
+  /* - neutral colors */
+}
