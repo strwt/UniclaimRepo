@@ -7,6 +7,12 @@
 VITE_CLOUDINARY_CLOUD_NAME=demo
 VITE_CLOUDINARY_UPLOAD_PRESET=ml_default
 
+# NEW: Cloudinary Admin API credentials for image deletion
+# Get these from your Cloudinary Dashboard > Settings > Access Keys
+# WARNING: Keep these secret - they have admin privileges
+VITE_CLOUDINARY_API_KEY=your_cloudinary_api_key_here
+VITE_CLOUDINARY_API_SECRET=your_cloudinary_api_secret_here
+
 # Your existing Firebase configuration (keep these as they are)
 VITE_FIREBASE_API_KEY=AIzaSyCgN70CTX2wQpcgoSZF6AK0fuq7ikcQgNs
 VITE_FIREBASE_AUTH_DOMAIN=uniclaim2.firebaseapp.com

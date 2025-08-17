@@ -1,50 +1,84 @@
-# Welcome to your Expo app 👋
+# Mobile App - Lost and Found Ticket System
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This is a [React Native](https://reactnative.dev) app built with [Expo](https://expo.dev) for managing lost and found tickets.
 
-## Get started
+## Features
 
-1. Install dependencies
+- ✅ **Ticket Creation** - Create lost/found item tickets
+- ✅ **Image Upload** - Upload images for tickets using Cloudinary
+- ✅ **Ticket Management** - View, edit, and delete your tickets
+- ✅ **Real-time Updates** - Live updates using Firebase
+- ✅ **Image Deletion** - Images are properly deleted from Cloudinary when tickets are deleted
+- ✅ **User Authentication** - Secure user login and registration
+- ✅ **Responsive Design** - Works on both Android and iOS
 
-   ```bash
-   npm install
-   ```
+## Setup Instructions
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Install Dependencies
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Environment Configuration
 
-## Learn more
+Copy `env_template.txt` to `.env` and configure:
 
-To learn more about developing your project with Expo, look at the following resources:
+#### Cloudinary Configuration
+- `EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME` - Your Cloudinary cloud name
+- `EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET` - Upload preset for image uploads
+- `EXPO_PUBLIC_CLOUDINARY_API_KEY` - **NEW**: Admin API key for image deletion
+- `EXPO_PUBLIC_CLOUDINARY_API_SECRET` - **NEW**: Admin API secret for image deletion
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+#### Firebase Configuration
+- `EXPO_PUBLIC_FIREBASE_API_KEY`
+- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+- `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `EXPO_PUBLIC_FIREBASE_APP_ID`
+- `EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID`
 
-## Join the community
+### 3. Cloudinary Admin Setup (Required for Delete Functionality)
 
-Join our community of developers creating universal apps.
+To enable image deletion when deleting tickets:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+1. **Sign up/Login** to [Cloudinary](https://cloudinary.com)
+2. **Go to Dashboard** > **Settings** > **Access Keys**
+3. **Copy your API Key and API Secret**
+4. **Add them to your `.env` file**:
+   ```
+   EXPO_PUBLIC_CLOUDINARY_API_KEY=your_api_key_here
+   EXPO_PUBLIC_CLOUDINARY_API_SECRET=your_api_secret_here
+   ```
+
+**⚠️ Security Note:** These credentials have admin privileges. Keep them secret and never commit them to version control.
+
+## Delete Functionality
+
+The delete ticket feature now properly:
+- Removes tickets from Firebase Firestore
+- Deletes associated images from Cloudinary storage
+- Updates the UI immediately
+- Shows confirmation dialog before deletion
+- Shows success/error feedback
+- Prevents multiple delete clicks during operation
+
+## Start the App
+
+```bash
+npx expo start
+```
+
+## Build
+
+```bash
+npx expo build:android  # For Android
+npx expo build:ios      # For iOS
+```
+
+## Learn More
+
+- [Expo documentation](https://docs.expo.dev/)
+- [React Native documentation](https://reactnative.dev/)
+- [Expo Router](https://expo.github.io/router/)

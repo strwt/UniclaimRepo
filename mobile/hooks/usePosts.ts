@@ -108,3 +108,32 @@ export const useUserPosts = (userEmail: string) => {
 
     return { posts, loading };
 };
+
+// Custom hook for user's posts with setPosts functionality
+export const useUserPostsWithSet = (userEmail: string) => {
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!userEmail) {
+            setPosts([]);
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+
+        const unsubscribe = postService.getUserPosts(userEmail, (fetchedPosts) => {
+            setPosts(fetchedPosts);
+            setLoading(false);
+        });
+
+        return () => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+    }, [userEmail]);
+
+    return { posts, setPosts, loading };
+};

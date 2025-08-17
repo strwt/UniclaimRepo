@@ -7,6 +7,7 @@ interface TicketModalProps {
   onClose: () => void;
   onDelete: (id: string) => void;
   onUpdatePost: (updatedPost: Post) => void;
+  isDeleting?: boolean;
 }
 
 const TicketModal = ({
@@ -14,6 +15,7 @@ const TicketModal = ({
   onClose,
   onDelete,
   onUpdatePost,
+  isDeleting,
 }: TicketModalProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showImgModal, setShowImgModal] = useState(false);
@@ -147,9 +149,10 @@ const TicketModal = ({
                 </button>
                 <button
                   onClick={() => onDelete(post.id)}
-                  className="bg-[#FD8E74] text-white text-xs px-3 p-2 rounded hover:bg-[#c07c6d]"
+                  disabled={isDeleting}
+                  className="bg-[#FD8E74] text-white text-xs px-3 p-2 rounded hover:bg-[#c07c6d] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Delete Ticket
+                  {isDeleting ? "Deleting..." : "Delete Ticket"}
                 </button>
               </>
             )}

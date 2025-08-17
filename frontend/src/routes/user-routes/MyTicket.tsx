@@ -5,14 +5,18 @@ import TicketCard from "@/components/TicketCard";
 import TicketModal from "@/components/TicketModal";
 import { useAuth } from "../../context/AuthContext";
 import { useUserPostsWithSet } from "../../hooks/usePosts";
+import { postService } from "../../utils/firebase";
+import { useToast } from "../../context/ToastContext";
 
 export default function MyTicket() {
   const { userData, loading: authLoading } = useAuth();
   const { posts, setPosts, loading: postsLoading } = useUserPostsWithSet(userData?.email || "");
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<
     "all_tickets" | "active_tickets" | "completed_tickets"
   >("all_tickets");
   const [searchText, setSearchText] = useState("");
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
 
   // Show loading state while checking auth
   if (authLoading) {
@@ -39,9 +43,27 @@ export default function MyTicket() {
 
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
-  const handleDeletePost = (id: string) => {
-    setPosts((prevPosts: Post[]) => prevPosts.filter((p: Post) => p.id !== id));
-    setSelectedPost(null); // close modal after delete
+  const handleDeletePost = async (id: string) => {
+    try {
+      setDeletingPostId(id); // Show loading state
+      
+      // Call Firebase service to actually delete the post
+      await postService.deletePost(id);
+      
+      // Update local state after successful deletion
+      setPosts((prevPosts: Post[]) => prevPosts.filter((p: Post) => p.id !== id));
+      setSelectedPost(null); // close modal after delete
+      
+      // Show success message
+      showToast("success", "Ticket Deleted", "Your ticket has been successfully deleted.");
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      // Show error message to user
+      showToast("error", "Delete Failed", "Failed to delete ticket. Please try again.");
+      // Keep the post in local state if deletion fails
+    } finally {
+      setDeletingPostId(null); // Hide loading state
+    }
   };
 
   // Filter posts based on selected tab
@@ -143,6 +165,7 @@ export default function MyTicket() {
             post={selectedPost}
             onClose={() => setSelectedPost(null)}
             onDelete={handleDeletePost}
+            isDeleting={deletingPostId === selectedPost.id}
             onUpdatePost={(updatedPost) => {
               setPosts((prevPosts: Post[]) =>
                 prevPosts.map((p: Post) =>

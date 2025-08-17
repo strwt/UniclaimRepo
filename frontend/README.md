@@ -1,54 +1,69 @@
-# React + TypeScript + Vite
+# Frontend README
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Setup Instructions
 
-Currently, two official plugins are available:
+### Environment Variables
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Copy `env_temp.txt` to `.env` and configure the following:
 
-## Expanding the ESLint configuration
+#### Firebase Configuration
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_MEASUREMENT_ID`
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+#### Cloudinary Configuration
+- `VITE_CLOUDINARY_CLOUD_NAME` - Your Cloudinary cloud name
+- `VITE_CLOUDINARY_UPLOAD_PRESET` - Upload preset for image uploads
+- `VITE_CLOUDINARY_API_KEY` - **NEW**: Admin API key for image deletion
+- `VITE_CLOUDINARY_API_SECRET` - **NEW**: Admin API secret for image deletion
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+### Cloudinary Admin Setup (Required for Delete Functionality)
+
+To enable image deletion when deleting tickets, you need to set up Cloudinary admin credentials:
+
+1. **Sign up/Login** to [Cloudinary](https://cloudinary.com)
+2. **Go to Dashboard** > **Settings** > **Access Keys**
+3. **Copy your API Key and API Secret**
+4. **Add them to your `.env` file**:
+   ```
+   VITE_CLOUDINARY_API_KEY=your_api_key_here
+   VITE_CLOUDINARY_API_SECRET=your_api_secret_here
+   ```
+
+**⚠️ Security Note:** These credentials have admin privileges. Keep them secret and never commit them to version control.
+
+### Features
+
+- ✅ **Ticket Creation** - Create lost/found item tickets
+- ✅ **Image Upload** - Upload up to 3 images per ticket
+- ✅ **Ticket Management** - View, edit, and delete your tickets
+- ✅ **Real-time Updates** - Live updates using Firebase
+- ✅ **Image Deletion** - Images are properly deleted from Cloudinary when tickets are deleted
+- ✅ **User Authentication** - Secure user login and registration
+- ✅ **Responsive Design** - Works on desktop and mobile
+
+### Delete Functionality
+
+The delete ticket feature now properly:
+- Removes tickets from Firebase Firestore
+- Deletes associated images from Cloudinary storage
+- Updates the UI immediately
+- Shows success/error feedback
+- Prevents multiple delete clicks during operation
+
+## Installation
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Build
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```bash
+npm run build
 ```

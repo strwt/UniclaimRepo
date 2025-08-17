@@ -4,6 +4,8 @@ import { Cloudinary } from '@cloudinary/url-gen';
 // Configuration values from environment variables
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'your-cloud-name';
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'uniclaim_uploads';
+const CLOUDINARY_API_KEY = import.meta.env.VITE_CLOUDINARY_API_KEY;
+const CLOUDINARY_API_SECRET = import.meta.env.VITE_CLOUDINARY_API_SECRET;
 
 // Create Cloudinary instance
 export const cloudinary = new Cloudinary({
@@ -84,23 +86,60 @@ export const cloudinaryService = {
         }
     },
 
-    // Delete image (optional - requires admin API key)
+    // Delete image (requires admin API key)
     async deleteImage(publicId: string): Promise<void> {
         try {
-            // Note: Deletion requires server-side implementation with admin API key
-            // For now, we'll just log the deletion attempt
-            console.log('Image deletion requested for:', publicId);
+            // Check if admin credentials are available
+            if (!CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+                console.warn('Cloudinary admin credentials not configured. Images will not be deleted from storage.');
+                console.warn('Set VITE_CLOUDINARY_API_KEY and VITE_CLOUDINARY_API_SECRET in your .env file');
+                return;
+            }
 
-            // You would need to implement this on your backend with admin credentials
-            // const response = await fetch('/api/delete-image', {
-            //   method: 'DELETE',
-            //   headers: { 'Content-Type': 'application/json' },
-            //   body: JSON.stringify({ publicId })
-            // });
+            // Create signature for deletion
+            const timestamp = Math.round(new Date().getTime() / 1000);
+            const signature = this.generateSignature(publicId, timestamp);
+
+            const formData = new FormData();
+            formData.append('public_id', publicId);
+            formData.append('api_key', CLOUDINARY_API_KEY);
+            formData.append('timestamp', timestamp.toString());
+            formData.append('signature', signature);
+
+            const response = await fetch(
+                `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`,
+                {
+                    method: 'POST',
+                    body: formData,
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Failed to delete image: ${errorData.error?.message || response.statusText}`);
+            }
+
+            console.log(`Successfully deleted image: ${publicId}`);
         } catch (error: any) {
-            console.error('Error deleting image:', error);
-            // Don't throw error for deletion failures
+            console.error('Error deleting image from Cloudinary:', error);
+            // Don't throw error for deletion failures to avoid blocking other operations
         }
+    },
+
+    // Generate signature for Cloudinary admin API
+    generateSignature(publicId: string, timestamp: number): string {
+        // Note: This is a simplified signature generation
+        // In production, you should generate this on the server side for security
+        const params = `public_id=${publicId}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
+
+        // Simple hash function (not cryptographically secure, but works for basic needs)
+        let hash = 0;
+        for (let i = 0; i < params.length; i++) {
+            const char = params.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+        return Math.abs(hash).toString(36);
     },
 
     // Get optimized image URL

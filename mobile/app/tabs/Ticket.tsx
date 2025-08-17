@@ -1,16 +1,18 @@
 import PageLayout from "@/layout/PageLayout";
 import React, { useState } from "react";
-import { Text, TextInput, TouchableOpacity, View, ScrollView, ActivityIndicator, Image } from "react-native";
+import { Text, TextInput, TouchableOpacity, View, ScrollView, ActivityIndicator, Image, Alert } from "react-native";
 import { useAuth } from "@/context/AuthContext";
-import { useUserPosts } from "@/hooks/usePosts";
+import { useUserPostsWithSet } from "@/hooks/usePosts";
 import type { Post } from "@/types/type";
 import { auth } from "@/utils/firebase";
+import { postService } from "@/utils/firebase";
 
 export default function Ticket() {
   const { userData, loading: authLoading } = useAuth();
-  const { posts, loading: postsLoading } = useUserPosts(userData?.email || "");
+  const { posts, setPosts, loading: postsLoading } = useUserPostsWithSet(userData?.email || "");
   const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
   const [searchText, setSearchText] = useState("");
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
 
   // Filter posts based on selected tab and search
   const filteredPosts = posts.filter((post) => {
@@ -22,6 +24,44 @@ export default function Ticket() {
 
   const handleClearSearch = () => {
     setSearchText("");
+  };
+
+  const handleDeletePost = async (id: string) => {
+    // Show confirmation dialog
+    Alert.alert(
+      "Delete Ticket",
+      "Are you sure you want to delete this ticket? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setDeletingPostId(id); // Show loading state
+              
+              // Call Firebase service to actually delete the post
+              await postService.deletePost(id);
+              
+              // Update local state after successful deletion
+              setPosts((prevPosts: Post[]) => prevPosts.filter((p: Post) => p.id !== id));
+              
+              // Show success message
+              Alert.alert("Success", "Ticket deleted successfully!");
+            } catch (error) {
+              console.error('Error deleting post:', error);
+              // Show error message to user
+              Alert.alert("Error", "Failed to delete ticket. Please try again.");
+            } finally {
+              setDeletingPostId(null); // Hide loading state
+            }
+          }
+        }
+      ]
+    );
   };
 
   // Show loading state while checking auth
@@ -139,7 +179,12 @@ export default function Ticket() {
           ) : (
             <View className="space-y-4 pb-4">
               {filteredPosts.map((post) => (
-                <TicketCard key={post.id} post={post} />
+                <TicketCard 
+                  key={post.id} 
+                  post={post} 
+                  onDelete={handleDeletePost}
+                  isDeleting={deletingPostId === post.id}
+                />
               ))}
             </View>
           )}
@@ -150,7 +195,15 @@ export default function Ticket() {
 }
 
 // Ticket Card Component
-const TicketCard = ({ post }: { post: Post }) => {
+const TicketCard = ({ 
+  post, 
+  onDelete, 
+  isDeleting 
+}: { 
+  post: Post; 
+  onDelete: (id: string) => void;
+  isDeleting: boolean;
+}) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "resolved":
@@ -266,6 +319,21 @@ const TicketCard = ({ post }: { post: Post }) => {
             </Text>
           </View>
         </View>
+
+        {/* Delete Button */}
+        <TouchableOpacity
+          onPress={() => onDelete(post.id)}
+          className="mt-4 bg-red-500 rounded-md h-[3.3rem] px-4 justify-center items-center"
+          disabled={isDeleting}
+        >
+          {isDeleting ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Text className="text-white font-manrope-medium text-base">
+              Delete Ticket
+            </Text>
+          )}
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
