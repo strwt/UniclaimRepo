@@ -10,11 +10,16 @@ import {
   Platform,
   Alert
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from "@expo/vector-icons";
 import { useMessage } from "@/context/MessageContext";
 import { useAuth } from "@/context/AuthContext";
 import type { Message } from "@/types/type";
+import type { RootStackParamList } from "@/types/type";
+
+type ChatRouteProp = RouteProp<RootStackParamList, 'Chat'>;
+type ChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Chat'>;
 
 const MessageBubble = ({ message, isOwnMessage }: { message: Message; isOwnMessage: boolean }) => {
   const formatTime = (timestamp: any) => {
@@ -48,20 +53,16 @@ const MessageBubble = ({ message, isOwnMessage }: { message: Message; isOwnMessa
 };
 
 export default function Chat() {
-  const router = useRouter();
-  const params = useLocalSearchParams<{
-    conversationId?: string;
-    postTitle: string;
-    postId?: string;
-    postOwnerId?: string;
-  }>();
+  const navigation = useNavigation<ChatNavigationProp>();
+  const route = useRoute<ChatRouteProp>();
+  const { conversationId: initialConversationId, postTitle, postId, postOwnerId } = route.params;
   
   const { sendMessage, createConversation, getConversationMessages } = useMessage();
   const { user, userData } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [conversationId, setConversationId] = useState(params.conversationId || '');
+  const [conversationId, setConversationId] = useState(initialConversationId || '');
   const flatListRef = useRef<FlatList>(null);
   
   if (!user || !userData) {
@@ -90,7 +91,7 @@ export default function Chat() {
   };
 
   const handleCreateConversation = async () => {
-    if (!params.postId || !params.postOwnerId) {
+    if (!postId || !postOwnerId) {
       Alert.alert('Error', 'Missing post information');
       return;
     }
@@ -98,9 +99,9 @@ export default function Chat() {
     try {
       setLoading(true);
       const newConversationId = await createConversation(
-        params.postId,
-        params.postTitle,
-        params.postOwnerId,
+        postId,
+        postTitle,
+        postOwnerId,
         user.uid,
         userData
       );
@@ -139,14 +140,14 @@ export default function Chat() {
       {/* Header */}
       <View className="bg-white border-b border-gray-200 p-4 flex-row items-center">
         <TouchableOpacity 
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           className="mr-3"
         >
           <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
         <View className="flex-1">
           <Text className="font-semibold text-lg text-gray-800" numberOfLines={1}>
-            {params.postTitle}
+            {postTitle}
           </Text>
           <Text className="text-sm text-gray-500">
             About this lost/found item
@@ -167,7 +168,7 @@ export default function Chat() {
           <View className="flex-1 items-center justify-center p-6">
             <Ionicons name="chatbubbles-outline" size={64} color="#9CA3AF" />
             <Text className="text-gray-500 text-center mt-4">
-              Start the conversation about "{params.postTitle}"
+              Start the conversation about "{postTitle}"
             </Text>
           </View>
         ) : (

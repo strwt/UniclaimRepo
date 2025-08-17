@@ -18,7 +18,7 @@ import type { Post } from "../../types/type";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function Report() {
-  const { userData } = useAuth();
+  const { user, userData } = useAuth();
   
   // Form state
   const [activeTab, setActiveTab] = useState<"item" | "contact">("item");
@@ -61,6 +61,7 @@ export default function Report() {
     if (!selectedDate) errors.push("Please select date and time");
     if (images.length === 0) errors.push("Please add at least one image");
     if (!userData) errors.push("User information not available");
+    if (!user) errors.push("User authentication not available");
 
     return errors;
   };
@@ -77,11 +78,19 @@ export default function Report() {
       return;
     }
 
-    if (!userData || !reportType) return;
+    if (!userData || !reportType || !user) return;
 
     setIsSubmitting(true);
 
     try {
+      // Debug: Log user information
+      console.log('Creating post with user data:', {
+        uid: user.uid,
+        userDataUid: userData.uid,
+        firstName: userData.firstName,
+        lastName: userData.lastName
+      });
+
       // Build post data conditionally to avoid undefined values in Firebase
       const postData: Omit<Post, 'id' | 'createdAt'> = {
         title: title.trim(),
@@ -96,7 +105,9 @@ export default function Report() {
           lastName: userData.lastName,
           email: userData.email,
           contactNum: userData.contactNum,
+          studentId: userData.studentId,
         },
+        postedById: user.uid, // Use Firebase user ID for messaging
         status: "pending",
       };
 

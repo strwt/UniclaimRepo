@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import type { RootStackParamList } from "../types/type";
 
 // Screens
+import Chat from "@/app/Chat";
 import ForgotPassword from "@/app/tabs/ForgotPassword";
 import Home from "../app/tabs/Home";
 import Index from "../app/tabs/index";
@@ -85,6 +86,7 @@ export default function Navigation({
         name="PostDetails"
         component={withScreenWrapper(PostDetails)}
       />
+      <Stack.Screen name="Chat" component={withScreenWrapper(Chat)} />
 
       {/* ✅ FIXED: Pass props using render function */}
       <Stack.Screen name="ItemDetails">

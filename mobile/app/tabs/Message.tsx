@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { SafeAreaView, Text, FlatList, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import PageLayout from "@/layout/PageLayout";
 import { useMessage } from "@/context/MessageContext";
 import type { Conversation } from "@/types/type";
+import type { RootStackParamList } from "@/types/type";
+
+type MessageNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Message'>;
 
 const ConversationItem = ({ conversation, onPress }: { conversation: Conversation; onPress: () => void }) => {
   const formatTime = (timestamp: any) => {
@@ -44,16 +48,13 @@ const ConversationItem = ({ conversation, onPress }: { conversation: Conversatio
 };
 
 export default function Message() {
-  const router = useRouter();
+  const navigation = useNavigation<MessageNavigationProp>();
   const { conversations, loading } = useMessage();
 
   const handleConversationPress = (conversation: Conversation) => {
-    router.push({
-      pathname: '/Chat',
-      params: { 
-        conversationId: conversation.id, 
-        postTitle: conversation.postTitle 
-      }
+    navigation.navigate('Chat', {
+      conversationId: conversation.id,
+      postTitle: conversation.postTitle
     });
   };
 

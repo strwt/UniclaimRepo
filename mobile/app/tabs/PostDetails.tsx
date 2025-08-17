@@ -8,7 +8,7 @@ import type { RouteProp } from "@react-navigation/native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { RootStackParamList } from "../../types/type";
 import LocationMapView from '../../components/LocationMapView';
@@ -55,7 +55,46 @@ export default function PostDetailsScreen() {
           <ImageCarousel images={post.images as string[]} />
         </View>
 
-        <TouchableOpacity className="bg-brand h-[3.5rem] mb-5 w-full items-center justify-center rounded-md">
+        <TouchableOpacity 
+          className="bg-brand h-[3.5rem] mb-5 w-full items-center justify-center rounded-md"
+          onPress={() => {
+            // Debug: Log post data to see what's available
+            console.log('PostDetails - Post data for messaging:', {
+              id: post.id,
+              title: post.title,
+              postedById: post.postedById,
+              user: post.user,
+              hasPostedById: !!post.postedById,
+              userKeys: Object.keys(post.user || {})
+            });
+
+            // Try to get postOwnerId from multiple sources
+            let postOwnerId = post.postedById;
+            
+            // Fallback: if postedById is missing, try to get it from the user object
+            if (!postOwnerId && post.user) {
+              // For now, we'll show an alert, but in the future we could implement
+              // a way to get the user ID from the user object or other means
+              console.warn('PostDetails - postedById missing, cannot start conversation');
+            }
+
+            // Navigate to Chat screen with post details
+            if (postOwnerId) {
+              (navigation as any).navigate('Chat', {
+                postTitle: post.title,
+                postId: post.id,
+                postOwnerId: postOwnerId
+              });
+            } else {
+              // Fallback: show alert that messaging is not available
+              Alert.alert(
+                'Messaging Unavailable',
+                'Unable to start conversation. Post owner information is missing. This post was created before messaging was enabled.',
+                [{ text: 'OK' }]
+              );
+            }
+          }}
+        >
           <Text className="text-white font-manrope-medium text-base">
             Send Message to {post.user.firstName}
           </Text>
