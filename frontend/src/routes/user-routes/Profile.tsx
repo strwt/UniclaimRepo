@@ -1,32 +1,42 @@
 import MobileNavInfo from "@/components/NavHeadComp";
 import EmptyProfile from "@/assets/empty_profile.jpg";
-import type { User } from "@/types/User";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/context/ToastContext";
+import { useAuth } from "@/context/AuthContext";
+import { authService } from "@/utils/firebase";
 
-interface ProfileProps {
-  user: User;
-}
-
-const Profile = ({ user }: ProfileProps) => {
+const Profile = () => {
+  const { userData, loading } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
-  // const [userInfo, setUserInfo] = useState<User>(user);
+
+  // Use Firebase user data or fallback to empty strings
+  const [userInfo, setUserInfo] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    contact: "",
+  });
+
+  const [initialUserInfo, setInitialUserInfo] = useState(userInfo);
+
+  // Update local state when Firebase data loads
+  useEffect(() => {
+    if (userData) {
+      const updatedInfo = {
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        contact: userData.contactNum,
+      };
+      setUserInfo(updatedInfo);
+      setInitialUserInfo(updatedInfo);
+    }
+  }, [userData]);
 
   const handleCancel = () => {
     setUserInfo(initialUserInfo);
     setIsEdit(false);
   };
-
-  // for testing purposes
-  const [userInfo, setUserInfo] = useState({
-    firstName: "Nino",
-    lastName: "Salaan",
-    email: "ninosalaan@gmail.com",
-    contact: "09194871553",
-  });
-
-  const [initialUserInfo, setInitialUserInfo] = useState(userInfo);
 
   const handleEdit = () => {
     setInitialUserInfo(userInfo); // snapshot of current state
@@ -39,7 +49,7 @@ const Profile = ({ user }: ProfileProps) => {
 
   const { showToast } = useToast();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const { firstName, lastName, email, contact } = userInfo;
 
     // Check if any field is empty
@@ -70,18 +80,56 @@ const Profile = ({ user }: ProfileProps) => {
         "No Changes Made",
         "Your profile is already up to date."
       );
-      setIsEdit(false); // <-- make sure to still exit edit mode!
+      setIsEdit(false);
       return;
     }
 
-    // Proceed with update
-    showToast(
-      "success",
-      "Profile Updated",
-      "You have updated your profile successfully!"
-    );
-    setIsEdit(false);
+    // Update Firebase with new data
+    try {
+      if (userData?.uid) {
+        await authService.updateUserData(userData.uid, {
+          firstName,
+          lastName,
+          email,
+          contactNum: contact,
+        });
+
+        // Update local state
+        setInitialUserInfo(userInfo);
+        
+        showToast(
+          "success",
+          "Profile Updated",
+          "You have updated your profile successfully!"
+        );
+        setIsEdit(false);
+      }
+    } catch (error: any) {
+      showToast(
+        "error",
+        "Update Failed",
+        error.message || "Failed to update profile. Please try again."
+      );
+    }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-gray-500">Loading profile...</p>
+      </div>
+    );
+  }
+
+  // Show error if no user data
+  if (!userData) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-red-500">Unable to load profile data</p>
+      </div>
+    );
+  }
 
   return (
     <>

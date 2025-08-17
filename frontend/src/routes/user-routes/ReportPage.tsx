@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { FiX } from "react-icons/fi";
 import MobileNavText from "@/components/NavHeadComp";
 import { useToast } from "@/context/ToastContext";
+import { useAuth } from "@/context/AuthContext";
 import ItemInfoForm from "@/components/ItemInfoForm";
 import SuccessPic from "@/assets/success.png";
 // import { useNavigate } from "react-router-dom";
@@ -12,16 +13,15 @@ import type { Post } from "@/types/Post";
 import LocationForm from "@/routes/user-routes/LocationReport";
 import ContactDetails from "@/routes/user-routes/ContactDetails";
 import useToastFormHelper from "@/components/ToastFormHelper";
-import type { User } from "@/types/User";
 
 interface ReportProp {
   setPosts: React.Dispatch<React.SetStateAction<Post[]>>;
-  currentUser: User;
 }
 
 const categories = ["Student Essentials", "Gadgets", "Personal Belongings"];
 
-export default function ReportPage({ setPosts, currentUser }: ReportProp) {
+export default function ReportPage({ setPosts }: ReportProp) {
+  const { userData, loading } = useAuth();
   const [selectedReport, setSelectedReport] = useState<"lost" | "found" | null>(
     null
   );
@@ -107,7 +107,7 @@ export default function ReportPage({ setPosts, currentUser }: ReportProp) {
     if (title || description) setWasSubmitted(false);
   }, [title, description]);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setWasSubmitted(true);
@@ -152,10 +152,10 @@ export default function ReportPage({ setPosts, currentUser }: ReportProp) {
         images: selectedFiles,
         dateTime: selectedDateTime,
         user: {
-          firstName: currentUser.firstName,
-          lastName: currentUser.lastName,
-          email: currentUser.email,
-          contactNum: currentUser.contactNum,
+          firstName: userData?.firstName || "",
+          lastName: userData?.lastName || "",
+          email: userData?.email || "",
+          contactNum: userData?.contactNum || "",
         },
         status: "pending",
       };
@@ -191,6 +191,24 @@ export default function ReportPage({ setPosts, currentUser }: ReportProp) {
   const showDateTimeError = wasSubmitted && !selectedDateTime.trim();
   const showImageError = wasSubmitted && selectedFiles.length === 0;
   const showLocationError = wasSubmitted && !selectedLocation.trim();
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  // Show error if no user data
+  if (!userData) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-red-500">Please log in to report an item</p>
+      </div>
+    );
+  }
 
   return (
     <section>
@@ -308,7 +326,7 @@ export default function ReportPage({ setPosts, currentUser }: ReportProp) {
             }}
           />
 
-          <ContactDetails setUser={() => {}} user={currentUser} />
+          <ContactDetails />
         </div>
 
         <div className="mx-4 mt-5">
