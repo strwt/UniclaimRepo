@@ -104,10 +104,19 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
           {post.title}
         </h1>
 
+        {/* Display the user who created the post */}
+        <p className="text-xs text-blue-800 mb-2 font-medium">
+          Posted by {post.user?.firstName && post.user?.lastName 
+            ? `${post.user.firstName} ${post.user.lastName}` 
+            : post.user?.email 
+            ? post.user.email.split('@')[0] 
+            : 'Unknown User'}
+        </p>
+
         <div className="text-sm lg:text-xs flex gap-2">
           {post.location && (
             <p className="font-medium text-black">
-              <span className="font-medium">Last seen: </span>
+              <span className="font-medium">Last seen at </span>
               {post.location}
             </p>
           )}

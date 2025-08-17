@@ -6,7 +6,6 @@ import PostCard from "@/components/PostCard";
 import PostModal from "@/components/PostModal";
 import MobileNavText from "@/components/NavHeadComp";
 import SearchBar from "../../components/SearchBar";
-import LoadingSpinner from "@/components/LoadingSpinner";
 
 // hooks
 import { usePosts } from "@/hooks/usePosts";
@@ -151,8 +150,7 @@ export default function HomePage() {
         {/* ✅ Handle Firebase loading state */}
         {loading || isLoading ? (
           <div className="col-span-full flex items-center justify-center h-80">
-            <LoadingSpinner />
-            <span className="ml-3 text-gray-400">Loading {viewType} report items...</span>
+            <span className="text-gray-400">Loading {viewType} report items...</span>
           </div>
         ) : error ? (
           <div className="col-span-full flex items-center justify-center h-80 text-red-500">
