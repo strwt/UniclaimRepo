@@ -75,6 +75,8 @@ export interface UserData {
     firstName: string;
     lastName: string;
     contactNum: string;
+    studentId?: string; // Optional field for student ID
+    profileImageUrl?: string; // Optional field for profile image URL
     createdAt: any;
     updatedAt: any;
 }
@@ -87,7 +89,8 @@ export const authService = {
         password: string,
         firstName: string,
         lastName: string,
-        contactNum: string
+        contactNum: string,
+        studentId?: string
     ): Promise<{ user: FirebaseUser; userData: UserData }> {
         try {
             const userCredential: UserCredential = await createUserWithEmailAndPassword(
@@ -108,6 +111,7 @@ export const authService = {
                 firstName,
                 lastName,
                 contactNum,
+                studentId,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             };
@@ -151,6 +155,21 @@ export const authService = {
         } catch (error: any) {
             console.error('Error fetching user data:', error);
             return null;
+        }
+    },
+
+    // Update user data in Firestore
+    async updateUserData(uid: string, updates: Partial<Omit<UserData, 'uid' | 'email' | 'createdAt'>>): Promise<void> {
+        try {
+            const updateData = {
+                ...updates,
+                updatedAt: serverTimestamp()
+            };
+
+            await updateDoc(doc(db, 'users', uid), updateData);
+        } catch (error: any) {
+            console.error('Error updating user data:', error);
+            throw new Error(error.message || 'Failed to update user data');
         }
     }
 };
@@ -338,6 +357,20 @@ export const postService = {
                 ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
+
+            // ✅ Debug: Log the first post to see the data structure
+            if (posts.length > 0) {
+                console.log('Mobile Firebase - First post data structure:', {
+                    id: posts[0].id,
+                    title: posts[0].title,
+                    user: posts[0].user,
+                    postedBy: posts[0].postedBy,
+                    postedById: posts[0].postedById,
+                    hasUserObject: !!posts[0].user,
+                    userKeys: posts[0].user ? Object.keys(posts[0].user) : []
+                });
+            }
+
             callback(posts);
         }, (error) => {
             console.error('Error fetching posts:', error);

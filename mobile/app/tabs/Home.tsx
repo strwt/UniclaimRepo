@@ -1,81 +1,41 @@
 import React, { useState } from "react";
-import { FlatList, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import SearchWithToggle from "../../components/Input";
 import PostCard from "../../components/PostCard";
 import Layout from "../../layout/HomeLayout";
 import type { Post } from "../../types/type";
 
-// ✅ Your dummy data (KEEP THIS)
-const posts: Post[] = [
-  {
-    id: "1",
-    type: "lost",
-    category: "Personal Belongings",
-    images: [
-      require("../../assets/images/squarepic.jpg"),
-      require("../../assets/images/dummypostrec.jpg"),
-      require("../../assets/images/squarepic.jpg"),
-    ],
-    title: "Lost Black Wallet",
-    location: "Entrance Hallway",
-    datetime: "August 2, 2025 - 3:45 PM",
-    description:
-      "A black leather wallet with multiple cards and cash inside. Has a visible scratch at the front.",
-    postedBy: "Juan Dela Cruz",
-  },
-  {
-    id: "2",
-    type: "lost",
-    category: "Gadgets",
-    images: [require("../../assets/images/squarepic.jpg")],
-    title: "iPhone 12 Pro",
-    location: "Admin Building",
-    datetime: "August 2, 2025 - 1:00 PM",
-    description: "Silver iPhone 12 Pro with blue case. Has sticker of Batman.",
-    postedBy: "Maria Santos",
-  },
-  {
-    id: "3",
-    type: "found",
-    category: "Student Essentials",
-    status: "turnover",
-    images: [
-      require("../../assets/images/squarepic.jpg"),
-      require("../../assets/images/squarepic.jpg"),
-      require("../../assets/images/squarepic.jpg"),
-    ],
-    title: "USTP ID Lace",
-    location: "Library",
-    datetime: "August 1, 2025 - 10:30 AM",
-    description: "Blue ID lace labeled USTP with no ID.",
-    postedBy: "Mark Reyes",
-  },
-  {
-    id: "4",
-    type: "found",
-    category: "Student Essentials",
-    status: "keep",
-    images: [
-      require("../../assets/images/squarepic.jpg"),
-      require("../../assets/images/squarepic.jpg"),
-      require("../../assets/images/squarepic.jpg"),
-    ],
-    title: "USTP ID Lace",
-    location: "Library",
-    datetime: "August 1, 2025 - 10:30 AM",
-    description: "Blue ID lace labeled USTP with ID.",
-    postedBy: "Mark Reyes",
-  },
-];
+// hooks
+import { usePosts } from "../../hooks/usePosts";
 
 export default function Home() {
+  // ✅ Use the custom hook for real-time posts
+  const { posts, loading, error } = usePosts();
+  
+  // ✅ Debug: Log posts to see the data structure
+  console.log('Mobile Home - Posts received:', posts?.length || 0);
+  if (posts && posts.length > 0) {
+    console.log('Mobile Home - First post structure:', {
+      id: posts[0].id,
+      title: posts[0].title,
+      user: posts[0].user,
+      postedBy: posts[0].postedBy,
+      postedById: posts[0].postedById
+    });
+  }
   const [activeButton, setActiveButton] = useState<"lost" | "found">("lost");
   const [query, setQuery] = useState("");
   const [categorySearch, setCategorySearch] = useState("");
   const [locationSearch, setLocationSearch] = useState("");
   const [descriptionSearch, setDescriptionSearch] = useState("");
 
-  const filteredPosts = posts.filter((post) => {
+  const filteredPosts = (posts || []).filter((post) => {
+    // ✅ Add data validation to prevent crashes
+    if (!post || !post.title || !post.description || !post.category || !post.location) {
+      console.warn('PostCard - Invalid post data:', post);
+      return false;
+    }
+    
     const queryWords = query.toLowerCase().trim().split(/\s+/);
 
     const titleMatch = queryWords.every((word) =>
@@ -151,23 +111,44 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
-        {/* 📄 Filtered Post List */}
-        <FlatList
-          data={filteredPosts}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <PostCard post={item} descriptionSearch={descriptionSearch} />
-          )}
-          ListEmptyComponent={
-            <View className="items-center justify-center mt-10">
-              <Text className="text-gray-500 text-base font-manrope-medium">
-                No posts/report found.
-              </Text>
-            </View>
-          }
-          showsVerticalScrollIndicator={false}
-          className="mt-4"
-        />
+        {/* 📄 Filtered Post List with Loading & Error States */}
+        {loading ? (
+          <View className="items-center justify-center mt-10">
+            <ActivityIndicator size="large" color="#1e3a8a" />
+            <Text className="text-gray-500 text-base font-manrope-medium mt-3">
+              Loading posts...
+            </Text>
+          </View>
+        ) : error ? (
+          <View className="items-center justify-center mt-10">
+            <Text className="text-red-500 text-base font-manrope-medium">
+              Error loading posts: {error}
+            </Text>
+            <TouchableOpacity 
+              onPress={() => {/* Add retry functionality if needed */}}
+              className="mt-3 px-4 py-2 bg-navyblue rounded"
+            >
+              <Text className="text-white font-manrope-medium">Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredPosts}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <PostCard post={item} descriptionSearch={descriptionSearch} />
+            )}
+            ListEmptyComponent={
+              <View className="items-center justify-center mt-10">
+                <Text className="text-gray-500 text-base font-manrope-medium">
+                  No posts/report found.
+                </Text>
+              </View>
+            }
+            showsVerticalScrollIndicator={false}
+            className="mt-4"
+          />
+        )}
       </View>
     </Layout>
   );

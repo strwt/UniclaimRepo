@@ -42,7 +42,7 @@ export default function PostDetailsScreen() {
           <Ionicons name="arrow-back-outline" size={28} color="#333" />
         </TouchableOpacity>
         <Text className="text-xl font-manrope-bold text-gray-800">
-          Name of the poster here
+          {post.user.firstName} {post.user.lastName}
         </Text>
       </View>
       <ScrollView

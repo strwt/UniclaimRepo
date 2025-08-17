@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -21,38 +22,103 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import PageLayout from "../../layout/PageLayout";
 import type { RootStackParamList } from "../../types/type";
 import { useAuth } from "../../context/AuthContext";
+import { authService } from "../../utils/firebase";
+import { cloudinaryService } from "../../utils/cloudinary";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Profile">;
 
 export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation<NavigationProp>();
-  const { logout } = useAuth();
+  const { logout, userData, user } = useAuth();
 
   const [profile, setProfile] = useState({
-    firstName: "Juan",
-    lastName: "Batumbakal",
-    email: "juanbatumbakal@gmail.com",
-    contactNumber: "0912345678",
-    studentId: "2022123456",
-    imageUri: require("../../assets/images/squarepic.jpg"), // default local asset
+    firstName: userData?.firstName || "",
+    lastName: userData?.lastName || "",
+    email: userData?.email || "",
+    contactNumber: userData?.contactNum || "",
+    studentId: userData?.studentId || "",
+    imageUri: userData?.profileImageUrl 
+      ? { uri: userData.profileImageUrl }
+      : require("../../assets/images/squarepic.jpg"), // default local asset
   });
+  const [hasImageChanged, setHasImageChanged] = useState(false);
 
-  const handleSave = () => {
-    console.log("Saved profile:", profile);
-    setIsEditing(false);
+  // Update profile when userData changes
+  React.useEffect(() => {
+    if (userData) {
+      setProfile({
+        firstName: userData.firstName || "",
+        lastName: userData.lastName || "",
+        email: userData.email || "",
+        contactNumber: userData.contactNum || "",
+        studentId: userData.studentId || "",
+        imageUri: userData.profileImageUrl 
+          ? { uri: userData.profileImageUrl }
+          : require("../../assets/images/squarepic.jpg"),
+      });
+      setHasImageChanged(false);
+    }
+  }, [userData]);
+
+  const handleSave = async () => {
+    if (!userData || !user) {
+      Alert.alert("Error", "User data not available");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      let profileImageUrl = userData.profileImageUrl;
+
+      // Upload image to Cloudinary if it has changed
+      if (hasImageChanged && profile.imageUri && typeof profile.imageUri === 'object' && 'uri' in profile.imageUri) {
+        try {
+          const uploadedUrls = await cloudinaryService.uploadImages([profile.imageUri.uri], 'profiles');
+          profileImageUrl = uploadedUrls[0];
+        } catch (imageError: any) {
+          console.error('Error uploading profile image:', imageError);
+          Alert.alert("Warning", "Failed to upload profile image, but other changes will be saved.");
+        }
+      }
+      
+      // Update user data in Firestore
+      await authService.updateUserData(user.uid, {
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        contactNum: profile.contactNumber,
+        studentId: profile.studentId,
+        profileImageUrl,
+      });
+
+      Alert.alert("Success", "Profile updated successfully!");
+      setIsEditing(false);
+      setHasImageChanged(false);
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to update profile");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
-    setProfile({
-      firstName: "Juan",
-      lastName: "Batumbakal",
-      email: "juanbatumbakal@gmail.com",
-      contactNumber: "0912345678",
-      studentId: "2022123456",
-      imageUri: require("../../assets/images/squarepic.jpg"),
-    });
+    // Revert to original userData
+    if (userData) {
+      setProfile({
+        firstName: userData.firstName || "",
+        lastName: userData.lastName || "",
+        email: userData.email || "",
+        contactNumber: userData.contactNum || "",
+        studentId: userData.studentId || "",
+        imageUri: userData.profileImageUrl 
+          ? { uri: userData.profileImageUrl }
+          : require("../../assets/images/squarepic.jpg"),
+      });
+    }
     setIsEditing(false);
+    setHasImageChanged(false);
   };
 
   const handleLogout = async () => {
@@ -106,6 +172,7 @@ export default function Profile() {
         ...prev,
         imageUri: { uri: result.assets[0].uri },
       }));
+      setHasImageChanged(true);
     }
   };
 
@@ -114,9 +181,10 @@ export default function Profile() {
     label: string,
     value: string,
     fieldKey: keyof typeof profile,
-    IconComponent: typeof AntDesign | typeof Ionicons
+    IconComponent: typeof AntDesign | typeof Ionicons,
+    isReadOnly = false
   ) => {
-    if (isEditing && typeof value === "string") {
+    if (isEditing && typeof value === "string" && !isReadOnly) {
       return (
         <View className="w-full">
           <Text className="text-base font-manrope-medium mb-1">{label}</Text>
@@ -142,6 +210,20 @@ export default function Profile() {
       </View>
     );
   };
+
+  // Show loading if userData is not available yet
+  if (!userData) {
+    return (
+      <PageLayout>
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#1e3a8a" />
+          <Text className="text-gray-500 text-base font-manrope-medium mt-3">
+            Loading profile...
+          </Text>
+        </View>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout>
@@ -207,12 +289,22 @@ export default function Profile() {
               ) : (
                 <>
                   <TouchableOpacity
-                    className="bg-green-600 rounded-md py-3 px-4"
+                    className={`rounded-md py-3 px-4 flex-row items-center justify-center ${isLoading ? 'bg-gray-400' : 'bg-green-600'}`}
                     onPress={handleSave}
+                    disabled={isLoading}
                   >
-                    <Text className="text-white text-sm font-manrope-medium">
-                      Save Changes
-                    </Text>
+                    {isLoading ? (
+                      <>
+                        <ActivityIndicator size="small" color="white" />
+                        <Text className="text-white text-sm font-manrope-medium ml-2">
+                          Saving...
+                        </Text>
+                      </>
+                    ) : (
+                      <Text className="text-white text-sm font-manrope-medium">
+                        Save Changes
+                      </Text>
+                    )}
                   </TouchableOpacity>
                   <TouchableOpacity
                     className="bg-red-600 rounded-md py-3 px-4"
@@ -248,7 +340,8 @@ export default function Profile() {
               "Email",
               profile.email,
               "email",
-              Ionicons
+              Ionicons,
+              true // Email is read-only
             )}
             {renderField(
               "contacts",

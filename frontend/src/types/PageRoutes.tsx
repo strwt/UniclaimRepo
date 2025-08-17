@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState } from "react";
 
 // screens
 import AdminLogin from "../routes/admin-routes/AdminLogin";
@@ -21,11 +20,10 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import { ToastProvider } from "@/context/ToastContext";
 import { AuthProvider } from "@/context/AuthContext";
 import PageWrapper from "@/components/PageWrapper";
-import type { Post } from "@/types/Post";
 import ScrollToTop from "@/context/ScrollTop";
 
 export default function PageRoutes() {
-  const [posts, setPosts] = useState<Post[]>([]);
+  // ✅ No need for local posts state anymore - using custom hooks
 
   return (
     <AuthProvider>
@@ -72,7 +70,7 @@ export default function PageRoutes() {
               index
               element={
                 <PageWrapper title="Home">
-                  <HomePage posts={posts} setPosts={setPosts} />
+                  <HomePage />
                 </PageWrapper>
               }
             />
@@ -80,7 +78,7 @@ export default function PageRoutes() {
               path="report"
               element={
                 <PageWrapper title="Report ">
-                  <Report setPosts={setPosts} />
+                  <Report />
                 </PageWrapper>
               }
             />
@@ -88,10 +86,7 @@ export default function PageRoutes() {
               path="ticket"
               element={
                 <PageWrapper title="My Ticket">
-                  <MyTicket
-                    posts={posts}
-                    setPosts={setPosts}
-                  />
+                  <MyTicket />
                 </PageWrapper>
               }
             />

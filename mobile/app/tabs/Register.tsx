@@ -3,6 +3,8 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Pressable,
   Text,
@@ -13,6 +15,7 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { RootStackParamList } from "../../types/type";
+import { authService, getFirebaseErrorMessage } from "../../utils/firebase";
 
 const screenHeight = Dimensions.get("window").height;
 
@@ -68,7 +71,8 @@ export default function Register() {
           password,
           firstName,
           lastName,
-          contactNumber
+          contactNumber,
+          studentId
         );
 
         Alert.alert(

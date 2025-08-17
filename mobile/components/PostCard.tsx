@@ -23,6 +23,17 @@ type Props = {
 export default function PostCard({ post, descriptionSearch = "" }: Props) {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    
+  // ✅ Debug: Log the post data to see what we're receiving
+  console.log('PostCard - Post data:', {
+    id: post.id,
+    title: post.title,
+    user: post.user,
+    postedBy: post.postedBy,
+    postedById: post.postedById,
+    hasUserObject: !!post.user,
+    userKeys: post.user ? Object.keys(post.user) : []
+  });
 
   const getCategoryBadgeStyle = (category: string) => {
     switch (category.toLowerCase()) {
@@ -122,7 +133,18 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
           {post.title}
         </Text>
         <Text className="text-xs text-blue-800 mb-2 font-manrope-bold">
-          Posted by {post.postedBy}
+          Posted by {(() => {
+            // ✅ Handle multiple data structure scenarios
+            if (post.user?.firstName && post.user?.lastName) {
+              return `${post.user.firstName} ${post.user.lastName}`;
+            } else if (post.postedBy) {
+              return post.postedBy;
+            } else if (post.user?.email) {
+              return post.user.email.split('@')[0]; // Show username part of email
+            } else {
+              return 'Unknown User';
+            }
+          })()}
         </Text>
 
         <View className="flex-row flex-wrap items-center gap-2">
@@ -139,7 +161,13 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
           <View className="flex-row items-center gap-2">
             <Ionicons name="calendar-outline" size={14} color="#6B7280" />
             <Text className="text-sm font-inter text-zinc-700">
-              {post.datetime}
+              {post.dateTime || (post.createdAt ? new Date(post.createdAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) : 'Unknown date')}
             </Text>
           </View>
         </View>
@@ -158,7 +186,7 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
             navigation.navigate("Chat", { 
               postTitle: post.title,
               postId: post.id,
-              postOwnerId: post.postedById || "unknown"
+              postOwnerId: post.user?.email || "unknown"
             });
           }}
         >

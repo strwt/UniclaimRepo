@@ -6,11 +6,10 @@ import PostCard from "@/components/PostCard";
 import PostModal from "@/components/PostModal";
 import MobileNavText from "@/components/NavHeadComp";
 import SearchBar from "../../components/SearchBar";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
-interface HomePageProps {
-  posts: Post[];
-  setPosts: React.Dispatch<React.SetStateAction<Post[]>>;
-}
+// hooks
+import { usePosts } from "@/hooks/usePosts";
 
 function fuzzyMatch(text: string, query: string): boolean {
   const cleanedText = text.toLowerCase();
@@ -20,7 +19,9 @@ function fuzzyMatch(text: string, query: string): boolean {
   return queryWords.every((word) => cleanedText.includes(word));
 }
 
-export default function HomePage({ posts }: HomePageProps) {
+export default function HomePage() {
+  // ✅ Use the custom hook for real-time posts
+  const { posts, loading, error } = usePosts();
   const [viewType, setViewType] = useState<"all" | "lost" | "found">("all");
   const [lastDescriptionKeyword, setLastDescriptionKeyword] = useState("");
   const [rawResults, setRawResults] = useState<Post[] | null>(null); // store-search-result-without-viewType-filter
@@ -147,9 +148,21 @@ export default function HomePage({ posts }: HomePageProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-5 mx-6 mt-7 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-        {isLoading ? (
-          <div className="col-span-full flex items-center justify-center h-80 text-gray-400">
-            Loading {viewType} report items...
+        {/* ✅ Handle Firebase loading state */}
+        {loading || isLoading ? (
+          <div className="col-span-full flex items-center justify-center h-80">
+            <LoadingSpinner />
+            <span className="ml-3 text-gray-400">Loading {viewType} report items...</span>
+          </div>
+        ) : error ? (
+          <div className="col-span-full flex items-center justify-center h-80 text-red-500">
+            <p>Error loading posts: {error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="ml-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Retry
+            </button>
           </div>
         ) : postsToDisplay.length === 0 ? (
           <div className="col-span-full flex items-center justify-center h-80 text-gray-500">
