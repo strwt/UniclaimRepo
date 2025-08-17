@@ -90,7 +90,7 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
         source={
           typeof post.images[0] === "string"
             ? { uri: post.images[0] as string }
-            : post.images[0]
+            : (post.images[0] as any)
         }
         className="w-full h-80 rounded-t-md"
         resizeMode="cover"
@@ -116,15 +116,15 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
             {post.category}
           </Text>
 
-          {post.type === "found" && post.status && (
+          {post.type === "found" && post.foundAction && (
             <Text
               className={`px-3 py-1 mb-2 rounded-sm text-xs font-inter-medium ${
-                post.status === "keep"
+                post.foundAction === "keep"
                   ? "bg-amber-200 text-amber-700"
                   : "bg-fuchsia-200 text-fuchsia-700"
               }`}
             >
-              {post.status === "keep" ? "Kept by the Poster" : "Turned Over"}
+              {post.foundAction === "keep" ? "Kept by the Poster" : "Turned Over"}
             </Text>
           )}
         </View>
@@ -161,13 +161,42 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
           <View className="flex-row items-center gap-2">
             <Ionicons name="calendar-outline" size={14} color="#6B7280" />
             <Text className="text-sm font-inter text-zinc-700">
-              {post.dateTime || (post.createdAt ? new Date(post.createdAt).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              }) : 'Unknown date')}
+              {(() => {
+                // Priority: dateTime (when item was lost/found) > createdAt (when post was created)
+                let dateToShow: Date | null = null;
+                
+                if (post.dateTime) {
+                  dateToShow = new Date(post.dateTime);
+                } else if (post.createdAt) {
+                  dateToShow = new Date(post.createdAt);
+                }
+                
+                if (!dateToShow || isNaN(dateToShow.getTime())) {
+                  return 'Date not available';
+                }
+                
+                const now = new Date();
+                const diffInMs = now.getTime() - dateToShow.getTime();
+                const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+                const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+                const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+                
+                // Show relative time for recent posts, full date for older ones
+                if (diffInMinutes < 60) {
+                  return `${diffInMinutes} min ago`;
+                } else if (diffInHours < 24) {
+                  return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+                } else if (diffInDays < 7) {
+                  return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+                } else {
+                  // For older posts, show the actual date
+                  return dateToShow.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  });
+                }
+              })()}
             </Text>
           </View>
         </View>
@@ -178,21 +207,6 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
         >
           {highlightText(post.description, descriptionSearch)}
         </Text>
-        
-        <TouchableOpacity 
-          className="bg-blue-500 rounded-lg py-3 px-4 mt-4 flex-row items-center justify-center"
-          onPress={(e) => {
-            e.stopPropagation();
-            navigation.navigate("Chat", { 
-              postTitle: post.title,
-              postId: post.id,
-              postOwnerId: post.user?.email || "unknown"
-            });
-          }}
-        >
-          <Ionicons name="chatbubble-outline" size={16} color="white" />
-          <Text className="text-white font-semibold ml-2">Contact About This Item</Text>
-        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );

@@ -56,7 +56,7 @@ export default function PostDetailsScreen() {
 
         <TouchableOpacity className="bg-brand h-[3.5rem] mb-5 w-full items-center justify-center rounded-md">
           <Text className="text-white font-manrope-medium text-base">
-            Send Message to Juan
+            Send Message to {post.user.firstName}
           </Text>
         </TouchableOpacity>
 
@@ -111,22 +111,22 @@ export default function PostDetailsScreen() {
         </View>
 
         {/* Keep/Turnover Display for Found Items Only */}
-        {post.type === "found" && post.status && (
+        {post.type === "found" && post.foundAction && (
           <View className="mt-1 mb-3">
             <Text className="mb-2 font-manrope-semibold">Keep or Turnover</Text>
             <View
               className={`justify-center w-full p-3 h-[3.5rem] border rounded-md ${
-                post.status === "keep"
+                post.foundAction === "keep"
                   ? "bg-zinc-100 border-zinc-200"
                   : "bg-zinc-100 border-zinc-200"
               }`}
             >
               <Text
                 className={`text-base capitalize font-manrope-medium ${
-                  post.status === "keep" ? "text-black" : "text-black"
+                  post.foundAction === "keep" ? "text-black" : "text-black"
                 }`}
               >
-                {post.status === "keep" ? "Kept by Poster" : "Turned Over"}
+                {post.foundAction === "keep" ? "Kept by Poster" : "Turned Over"}
               </Text>
             </View>
           </View>
@@ -153,7 +153,30 @@ export default function PostDetailsScreen() {
           <Text className="mb-2 font-manrope-semibold">Date and Time</Text>
           <View className="bg-zinc-100 justify-center w-full p-3 h-[3.5rem] border border-zinc-200 rounded-md">
             <Text className="text-base capitalize font-manrope-medium text-black">
-              {post.datetime}
+              {(() => {
+                // Priority: dateTime (when item was lost/found) > createdAt (when post was created)
+                let dateToShow: Date | null = null;
+                
+                if (post.dateTime) {
+                  dateToShow = new Date(post.dateTime);
+                } else if (post.createdAt) {
+                  dateToShow = new Date(post.createdAt);
+                }
+                
+                if (!dateToShow || isNaN(dateToShow.getTime())) {
+                  return 'Date not available';
+                }
+                
+                // Show both date and time in a user-friendly format
+                return dateToShow.toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true
+                });
+              })()}
             </Text>
           </View>
         </View>
@@ -176,9 +199,33 @@ export default function PostDetailsScreen() {
         <View className="mt-1 mb-3">
           <Text className="mb-2 font-manrope-semibold">Location Map</Text>
           <View className="bg-zinc-100 w-full p-3 h-[20rem] border border-zinc-200 rounded-md">
-            <Text className="text-base capitalize italic font-manrope-medium text-black">
-              Display here at location map
-            </Text>
+            {post.coordinates ? (
+              <View className="flex-1 justify-center items-center">
+                <Ionicons name="location" size={48} color="#3B82F6" />
+                <Text className="text-base font-manrope-medium text-black mt-2 text-center">
+                  Coordinates Available
+                </Text>
+                <Text className="text-sm font-manrope-medium text-gray-600 mt-1 text-center">
+                  Latitude: {post.coordinates.lat.toFixed(6)}
+                </Text>
+                <Text className="text-sm font-manrope-medium text-gray-600 text-center">
+                  Longitude: {post.coordinates.lng.toFixed(6)}
+                </Text>
+                <Text className="text-xs font-manrope-medium text-gray-500 mt-2 text-center">
+                  Map integration coming soon
+                </Text>
+              </View>
+            ) : (
+              <View className="flex-1 justify-center items-center">
+                <Ionicons name="location-outline" size={48} color="#9CA3AF" />
+                <Text className="text-base font-manrope-medium text-gray-600 mt-2 text-center">
+                  No coordinates available
+                </Text>
+                <Text className="text-xs font-manrope-medium text-gray-500 mt-1 text-center">
+                  Location: {post.location}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -196,7 +243,7 @@ export default function PostDetailsScreen() {
           <Text className="mb-2 font-manrope-semibold">Name</Text>
           <View className="bg-zinc-100 justify-center w-full p-3 h-[3.5rem] border border-zinc-200 rounded-md">
             <Text className="text-base capitalize font-manrope-medium text-black">
-              Display dari ang name sa nag post
+              {post.user.firstName} {post.user.lastName}
             </Text>
           </View>
         </View>
@@ -205,7 +252,7 @@ export default function PostDetailsScreen() {
           <Text className="mb-2 font-manrope-semibold">Contact Number</Text>
           <View className="bg-zinc-100 justify-center w-full p-3 h-[3.5rem] border border-zinc-200 rounded-md">
             <Text className="text-base capitalize font-manrope-medium text-black">
-              Display dari ang contact number sa nag post
+              {post.user.contactNum || 'Not provided'}
             </Text>
           </View>
         </View>
@@ -214,7 +261,7 @@ export default function PostDetailsScreen() {
           <Text className="mb-2 font-manrope-semibold">Email</Text>
           <View className="bg-zinc-100 justify-center w-full p-3 h-[3.5rem] border border-zinc-200 rounded-md">
             <Text className="text-base capitalize font-manrope-medium text-black">
-              Display dari ang email sa nag post
+              {post.user.email}
             </Text>
           </View>
         </View>
