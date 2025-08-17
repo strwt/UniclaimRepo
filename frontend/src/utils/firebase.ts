@@ -1,5 +1,5 @@
 // Firebase configuration and initialization
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
     getAuth,
     createUserWithEmailAndPassword,
@@ -25,13 +25,14 @@ import {
     serverTimestamp,
     getDocs
 } from 'firebase/firestore';
-import {
-    getStorage,
-    ref,
-    uploadBytes,
-    getDownloadURL,
-    deleteObject
-} from 'firebase/storage';
+// Note: Firebase Storage imports removed - now using Cloudinary
+// import {
+//     getStorage,
+//     ref,
+//     uploadBytes,
+//     getDownloadURL,
+//     deleteObject
+// } from 'firebase/storage';
 
 // Firebase configuration from environment variables
 // Create a .env file in the frontend folder with your Firebase config:
@@ -47,17 +48,27 @@ const firebaseConfig = {
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "uniclaim2",
     storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "uniclaim2.appspot.com",
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "38339063459",
-    appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:38339063459:web:0000000000000000000000"
+    appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:38339063459:web:3b5650ebe6fabd352b1916",
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-E693CKMPSY"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase with duplicate check
+let app;
+if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+} else {
+    app = getApp(); // Use existing app
+}
+
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+// export const storage = getStorage(app); // Removed - using Cloudinary instead
 
 // Import Post interface
 import type { Post } from '../types/Post';
+
+// Import Cloudinary service
+import { cloudinaryService } from './cloudinary';
 
 // User data interface for Firestore
 export interface UserData {
@@ -251,28 +262,12 @@ export const messageService = {
     }
 };
 
-// Image upload service
+// Image upload service using Cloudinary
 export const imageService = {
     // Upload multiple images and return their URLs
-    async uploadImages(files: (File | string)[], postId: string): Promise<string[]> {
+    async uploadImages(files: (File | string)[]): Promise<string[]> {
         try {
-            const uploadPromises = files.map(async (file, index) => {
-                // Skip if already a URL string
-                if (typeof file === 'string' && file.startsWith('http')) {
-                    return file;
-                }
-
-                if (file instanceof File) {
-                    const fileName = `${postId}_${index}_${Date.now()}`;
-                    const storageRef = ref(storage, `posts/${fileName}`);
-                    const snapshot = await uploadBytes(storageRef, file);
-                    return await getDownloadURL(snapshot.ref);
-                }
-
-                throw new Error(`Invalid file type: ${typeof file}`);
-            });
-
-            return await Promise.all(uploadPromises);
+            return await cloudinaryService.uploadImages(files, 'posts');
         } catch (error: any) {
             console.error('Error uploading images:', error);
             throw new Error(error.message || 'Failed to upload images');
@@ -283,9 +278,15 @@ export const imageService = {
     async deleteImages(imageUrls: string[]): Promise<void> {
         try {
             const deletePromises = imageUrls.map(async (url) => {
-                if (url.includes('firebase')) {
-                    const imageRef = ref(storage, url);
-                    await deleteObject(imageRef);
+                if (url.includes('cloudinary.com')) {
+                    // Extract public ID from Cloudinary URL for deletion
+                    const urlParts = url.split('/');
+                    const uploadIndex = urlParts.findIndex(part => part === 'upload');
+                    if (uploadIndex !== -1) {
+                        const publicIdWithExtension = urlParts.slice(uploadIndex + 1).join('/');
+                        const publicId = publicIdWithExtension.replace(/\.[^/.]+$/, '');
+                        await cloudinaryService.deleteImage(publicId);
+                    }
                 }
             });
 
@@ -307,7 +308,7 @@ export const postService = {
 
             // Upload images if any
             const imageUrls = postData.images.length > 0
-                ? await imageService.uploadImages(postData.images, postId)
+                ? await imageService.uploadImages(postData.images)
                 : [];
 
             // Create post document
@@ -318,6 +319,12 @@ export const postService = {
                 createdAt: serverTimestamp(),
                 status: 'pending'
             };
+
+            // Debug: Log post data being sent to Firestore
+            console.log('Creating post with data:', {
+                ...post,
+                createdAt: 'serverTimestamp()' // Replace actual timestamp for logging
+            });
 
             await setDoc(doc(db, 'posts', postId), post);
             return postId;
@@ -443,7 +450,7 @@ export const postService = {
 
             // Handle image updates if needed
             if (updates.images) {
-                const imageUrls = await imageService.uploadImages(updates.images, postId);
+                const imageUrls = await imageService.uploadImages(updates.images);
                 updateData.images = imageUrls;
             }
 

@@ -10,10 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cloudinary/react": "^1.14.3",
+    "@cloudinary/url-gen": "^1.21.0",
     "@heroicons/react": "^2.2.0",
-    "@react-native-firebase/app": "^23.0.1",
-    "@react-native-firebase/auth": "^23.0.1",
-    "@react-native-firebase/firestore": "^23.0.1",
     "@tailwindcss/vite": "^4.1.8",
     "boxicons": "^2.1.4",
     "clsx": "^2.1.1",
