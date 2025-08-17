@@ -71,3 +71,8 @@ secrets/
 *.sqlite
 *.db
 *.sql
+
+uniclaim2-firebase-adminsdk-fbsvc-08654ce766.json
+
+firestore.rules
+storage.rules
