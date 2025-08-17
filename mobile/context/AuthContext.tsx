@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
-import { auth, authService, type UserData, getFirebaseErrorMessage } from "../utils/firebase";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth, authService, UserData } from '../utils/firebase';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -8,7 +8,6 @@ interface AuthContextType {
   userData: UserData | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, firstName: string, lastName: string, contactNum: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -48,24 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // onAuthStateChanged will handle updating the state
     } catch (error: any) {
       setLoading(false);
-      throw new Error(getFirebaseErrorMessage(error));
-    }
-  };
-
-  const register = async (
-    email: string, 
-    password: string, 
-    firstName: string, 
-    lastName: string, 
-    contactNum: string
-  ): Promise<void> => {
-    try {
-      setLoading(true);
-      await authService.register(email, password, firstName, lastName, contactNum);
-      // onAuthStateChanged will handle updating the state
-    } catch (error: any) {
-      setLoading(false);
-      throw new Error(getFirebaseErrorMessage(error));
+      throw new Error(error.message);
     }
   };
 
@@ -76,7 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // onAuthStateChanged will handle updating the state
     } catch (error: any) {
       setLoading(false);
-      throw new Error(getFirebaseErrorMessage(error));
+      throw new Error(error.message);
     }
   };
 
@@ -88,7 +70,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userData, 
         loading, 
         login, 
-        register, 
         logout 
       }}
     >
@@ -99,6 +80,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
   return context;
 };

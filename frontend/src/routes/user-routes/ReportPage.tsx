@@ -141,36 +141,48 @@ export default function ReportPage({ setPosts, currentUser }: ReportProp) {
     //   return;
     // }
 
-    const createdPost: Post = {
-      id: `${Date.now()}`,
-      title: title.trim(),
-      description: description.trim(),
-      category: activeCategory,
-      location: selectedLocation,
-      type: selectedReport,
-      coordinates: coordinates ?? undefined,
-      images: selectedFiles,
-      createdAt: new Date().toISOString(),
-      user: {
-        firstName: currentUser.firstName,
-        lastName: currentUser.lastName,
-        email: currentUser.email,
-        contactNum: currentUser.contactNum,
-      },
-      status: "pending",
-    };
+    try {
+      const createdPost: Omit<Post, 'id' | 'createdAt'> = {
+        title: title.trim(),
+        description: description.trim(),
+        category: activeCategory,
+        location: selectedLocation,
+        type: selectedReport,
+        coordinates: coordinates ?? undefined,
+        images: selectedFiles,
+        dateTime: selectedDateTime,
+        user: {
+          firstName: currentUser.firstName,
+          lastName: currentUser.lastName,
+          email: currentUser.email,
+          contactNum: currentUser.contactNum,
+        },
+        status: "pending",
+      };
 
-    setPosts((prev) => [...prev, createdPost]);
-    setTitle("");
-    setDescription("");
-    setSelectedReport(null);
-    setSelectedLocation("");
-    setCoordinates(null);
-    setActiveCategory("");
-    setSelectedDateTime("");
-    setSelectedFiles([]);
-    setWasSubmitted(false);
-    setShowSuccessModal(true);
+      // Use Firebase service to create post
+      const { postService } = await import('../../utils/firebase');
+      const postId = await postService.createPost(createdPost);
+
+      console.log('Post created successfully with ID:', postId);
+
+      // Clear form
+      setTitle("");
+      setDescription("");
+      setSelectedReport(null);
+      setSelectedLocation("");
+      setCoordinates(null);
+      setActiveCategory("");
+      setSelectedDateTime("");
+      setSelectedFiles([]);
+      setWasSubmitted(false);
+      setShowSuccessModal(true);
+      
+      showToast("success", "Post Created", "Your report has been submitted successfully!");
+    } catch (error: any) {
+      console.error('Error creating post:', error);
+      showToast("error", "Submission Failed", error.message || "Failed to submit report. Please try again.");
+    }
   };
 
   // compute errors during render

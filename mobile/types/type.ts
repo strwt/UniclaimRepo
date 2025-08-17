@@ -10,6 +10,7 @@ export type RootStackParamList = {
   Profile: undefined;
   MyTicket: undefined;
   Message: undefined;
+  Chat: { conversationId?: string; postTitle: string; postId?: string; postOwnerId?: string };
   RootBottomTabs: undefined;
   InitialRouter: undefined;
   ItemDetails: undefined;
@@ -18,15 +19,57 @@ export type RootStackParamList = {
     setCoordinatesFromMap: (coords: { lat: number; lng: number }) => void;
   };
 };
-export type Post = {
+export interface Post {
   id: string;
-  type: "lost" | "found";
-  category: string;
-  status?: "keep" | "turnover";
-  images: (string | number)[]; // ✅ Must be a URI string, not an imported image or number
   title: string;
-  location: string;
-  datetime: string;
   description: string;
-  postedBy: string;
-};
+  category: string;
+  location: string;
+  type: "lost" | "found";
+  coordinates?: { lat: number; lng: number };
+  images: (string | File)[];
+  user: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    contactNum: string;
+  };
+  createdAt?: string | Date | any; // Firebase timestamp or Date
+  updatedAt?: string | Date | any; // Firebase timestamp or Date
+  status?: "pending" | "resolved" | "rejected";
+  foundAction?: "keep" | "turnover to OSA" | "turnover to Campus Security"; // For found items
+  dateTime?: string; // When the item was lost/found
+  postedBy?: string; // For backward compatibility
+  postedById?: string; // User ID of the poster for messaging
+}
+
+// Message Types
+export interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: any; // Firebase timestamp
+  readBy: string[];
+}
+
+export interface Conversation {
+  id: string;
+  postId: string;
+  postTitle: string;
+  participants: {
+    [userId: string]: {
+      uid: string;
+      firstName: string;
+      lastName: string;
+      joinedAt: any;
+    };
+  };
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    timestamp: any;
+  };
+  createdAt: any;
+  unreadCount?: number;
+}

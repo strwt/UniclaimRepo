@@ -150,6 +150,21 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
         >
           {highlightText(post.description, descriptionSearch)}
         </Text>
+        
+        <TouchableOpacity 
+          className="bg-blue-500 rounded-lg py-3 px-4 mt-4 flex-row items-center justify-center"
+          onPress={(e) => {
+            e.stopPropagation();
+            navigation.navigate("Chat", { 
+              postTitle: post.title,
+              postId: post.id,
+              postOwnerId: post.postedById || "unknown"
+            });
+          }}
+        >
+          <Ionicons name="chatbubble-outline" size={16} color="white" />
+          <Text className="text-white font-semibold ml-2">Contact About This Item</Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );

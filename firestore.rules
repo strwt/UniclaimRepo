@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Posts collection rules
+    match /posts/{postId} {
+      // Anyone can read posts (for browsing lost and found items)
+      allow read: if request.auth != null;
+      
+      // Only authenticated users can create posts
+      allow create: if request.auth != null 
+        && request.auth.uid != null
+        && isValidPost(resource.data);
+      
+      // Users can update their own posts
+      allow update: if request.auth != null 
+        && request.auth.uid != null
+        && resource.data.user.email == request.auth.token.email;
+      
+      // Users can delete their own posts, or admins can delete any post
+      allow delete: if request.auth != null 
+        && (resource.data.user.email == request.auth.token.email || isAdmin());
+    }
+    
+    // Conversations collection for messaging
+    match /conversations/{conversationId} {
+      // Users can read conversations they participate in
+      allow read: if request.auth != null 
+        && request.auth.uid in resource.data.participants;
+      
+      // Users can create conversations
+      allow create: if request.auth != null 
+        && request.auth.uid in resource.data.participants;
+      
+      // Users can update conversations they participate in
+      allow update: if request.auth != null 
+        && request.auth.uid in resource.data.participants;
+        
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Users can read messages in conversations they participate in
+        allow read: if request.auth != null 
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        
+        // Users can create messages in conversations they participate in
+        allow create: if request.auth != null 
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
+          && request.auth.uid == resource.data.senderId;
+      }
+    }
+    
+    // Helper functions
+    function isValidPost(data) {
+      return data.keys().hasAll(['title', 'description', 'category', 'location', 'type', 'user', 'status'])
+        && data.type in ['lost', 'found']
+        && data.status in ['pending', 'resolved', 'rejected']
+        && data.title is string && data.title.size() > 0
+        && data.description is string && data.description.size() > 0
+        && data.category is string && data.category.size() > 0
+        && data.location is string && data.location.size() > 0
+        && data.user.email == request.auth.token.email;
+    }
+    
+    function isAdmin() {
+      // You can implement admin logic here
+      // For example, check if user email is in admin list
+      return request.auth.token.email in ['admin@ustp.edu.ph'];
+    }
+  }
+}

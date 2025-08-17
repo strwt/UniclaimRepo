@@ -6,10 +6,6 @@ export interface Post {
   location: string;
   type: "lost" | "found";
   coordinates?: { lat: number; lng: number };
-  // coordinates: {
-  //   lat: number;
-  //   lng: number;
-  // };
   images: (string | File)[];
   user: {
     firstName: string;
@@ -17,8 +13,40 @@ export interface Post {
     email: string;
     contactNum: string;
   };
-  createdAt?: string | Date;
-
-  // for tickets show
+  createdAt?: string | Date | any; // Firebase timestamp or Date
+  updatedAt?: string | Date | any; // Firebase timestamp or Date
   status?: "pending" | "resolved" | "rejected";
+  foundAction?: "keep" | "turnover to OSA" | "turnover to Campus Security"; // For found items
+  dateTime?: string; // When the item was lost/found
+}
+
+// Message Types
+export interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: any; // Firebase timestamp
+  readBy: string[];
+}
+
+export interface Conversation {
+  id: string;
+  postId: string;
+  postTitle: string;
+  participants: {
+    [userId: string]: {
+      uid: string;
+      firstName: string;
+      lastName: string;
+      joinedAt: any;
+    };
+  };
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    timestamp: any;
+  };
+  createdAt: any;
+  unreadCount?: number;
 }

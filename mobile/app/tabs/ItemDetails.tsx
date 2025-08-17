@@ -3,7 +3,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import React, { useState } from "react";
-import { Modal, Pressable, Text, TouchableOpacity, View } from "react-native";
+import { Modal, Pressable, Text, TouchableOpacity, View, TextInput } from "react-native";
 import CustomDropdown from "../../components/Dropdown";
 import CustomDropdownWithSearch from "../../components/DropdownWithSearch";
 import ImageUpload from "../../components/ImageUpload";
@@ -21,6 +21,22 @@ type ItemDetailsProps = {
   showFoundInfo: boolean;
   setShowLostInfo: React.Dispatch<React.SetStateAction<boolean>>;
   setShowFoundInfo: React.Dispatch<React.SetStateAction<boolean>>;
+  title: string;
+  setTitle: React.Dispatch<React.SetStateAction<string>>;
+  description: string;
+  setDescription: React.Dispatch<React.SetStateAction<string>>;
+  reportType: "lost" | "found" | null;
+  setReportType: React.Dispatch<React.SetStateAction<"lost" | "found" | null>>;
+  foundAction: "keep" | "turnover to OSA" | "turnover to Campus Security" | null;
+  setFoundAction: React.Dispatch<React.SetStateAction<"keep" | "turnover to OSA" | "turnover to Campus Security" | null>>;
+  selectedDate: Date | null;
+  setSelectedDate: React.Dispatch<React.SetStateAction<Date | null>>;
+  selectedLocation: string | null;
+  setSelectedLocation: React.Dispatch<React.SetStateAction<string | null>>;
+  selectedCategory: string | null;
+  setSelectedCategory: React.Dispatch<React.SetStateAction<string | null>>;
+  coordinates: { lat: number; lng: number } | null;
+  setCoordinates: React.Dispatch<React.SetStateAction<{ lat: number; lng: number } | null>>;
 };
 
 type NavigationProps = NativeStackNavigationProp<
@@ -35,22 +51,27 @@ export default function ItemDetails({
   showFoundInfo,
   setShowLostInfo,
   setShowFoundInfo,
+  title,
+  setTitle,
+  description,
+  setDescription,
+  reportType,
+  setReportType,
+  foundAction,
+  setFoundAction,
+  selectedDate,
+  setSelectedDate,
+  selectedLocation,
+  setSelectedLocation,
+  selectedCategory,
+  setSelectedCategory,
+  coordinates,
+  setCoordinates,
 }: ItemDetailsProps) {
   const navigation = useNavigation<NavigationProps>();
-  const [reportType, setReportType] = useState<"lost" | "found" | null>(null);
-  const [foundAction, setFoundAction] = useState<
-    "keep" | "turnover to OSA" | "turnover to Campus Security" | null
-  >(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [coordinates, setCoordinates] = useState<null | {
-    lat: number;
-    lng: number;
-  }>(null);
 
   const itemCategory = ["Student Essentials", "Gadgets", "Personal Belongings"];
 
@@ -96,6 +117,31 @@ export default function ItemDetails({
       </View>
 
       <ImageUpload images={images} setImages={setImages} />
+
+      {/* Title Input */}
+      <View className="mb-4">
+        <Text className="text-base font-manrope-semibold mb-2">Item Title</Text>
+        <TextInput
+          className="bg-white border border-gray-300 rounded-md px-3 py-3 text-base font-manrope"
+          placeholder="Enter item title (e.g., Blue Jansport Backpack)"
+          value={title}
+          onChangeText={setTitle}
+          multiline={false}
+        />
+      </View>
+
+      {/* Description Input */}
+      <View className="mb-4">
+        <Text className="text-base font-manrope-semibold mb-2">Description</Text>
+        <TextInput
+          className="bg-white border border-gray-300 rounded-md px-3 py-3 text-base font-manrope h-24"
+          placeholder="Describe the item in detail..."
+          value={description}
+          onChangeText={setDescription}
+          multiline={true}
+          textAlignVertical="top"
+        />
+      </View>
 
       {/* Report Type */}
       <View className="space-y-3 mt-4">

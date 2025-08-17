@@ -6,16 +6,32 @@ import {
     signInWithEmailAndPassword,
     signOut,
     updateProfile,
-    User as FirebaseUser,
-    UserCredential
+    type User as FirebaseUser,
+    type UserCredential
 } from 'firebase/auth';
 import {
     getFirestore,
     doc,
     setDoc,
     getDoc,
-    serverTimestamp
+    collection,
+    addDoc,
+    query,
+    orderBy,
+    onSnapshot,
+    where,
+    updateDoc,
+    deleteDoc,
+    serverTimestamp,
+    getDocs
 } from 'firebase/firestore';
+import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL,
+    deleteObject
+} from 'firebase/storage';
 
 // Firebase configuration from environment variables
 // Create a .env file in the frontend folder with your Firebase config:
@@ -38,6 +54,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
+
+// Import Post interface
+import type { Post } from '../types/Post';
 
 // User data interface for Firestore
 export interface UserData {
@@ -138,6 +158,360 @@ export const authService = {
         } catch (error: any) {
             throw new Error(error.message || 'Failed to update user data');
         }
+    }
+};
+
+// Message service functions
+export const messageService = {
+    // Create a new conversation
+    async createConversation(postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: UserData): Promise<string> {
+        try {
+            const conversationRef = await addDoc(collection(db, 'conversations'), {
+                postId,
+                postTitle,
+                participants: {
+                    [currentUserId]: {
+                        uid: currentUserId,
+                        firstName: currentUserData.firstName,
+                        lastName: currentUserData.lastName,
+                        joinedAt: serverTimestamp()
+                    },
+                    [postOwnerId]: {
+                        uid: postOwnerId,
+                        firstName: '',
+                        lastName: '',
+                        joinedAt: serverTimestamp()
+                    }
+                },
+                createdAt: serverTimestamp()
+            });
+
+            return conversationRef.id;
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to create conversation');
+        }
+    },
+
+    // Send a message
+    async sendMessage(conversationId: string, senderId: string, senderName: string, text: string): Promise<void> {
+        try {
+            const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+            await addDoc(messagesRef, {
+                senderId,
+                senderName,
+                text,
+                timestamp: serverTimestamp(),
+                readBy: [senderId]
+            });
+
+            // Update last message in conversation
+            await updateDoc(doc(db, 'conversations', conversationId), {
+                lastMessage: {
+                    text,
+                    senderId,
+                    timestamp: serverTimestamp()
+                }
+            });
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to send message');
+        }
+    },
+
+    // Get user's conversations
+    getUserConversations(userId: string, callback: (conversations: any[]) => void) {
+        const q = query(
+            collection(db, 'conversations'),
+            where(`participants.${userId}`, '!=', null),
+            orderBy('createdAt', 'desc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const conversations = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            callback(conversations);
+        });
+    },
+
+    // Get messages for a conversation
+    getConversationMessages(conversationId: string, callback: (messages: any[]) => void) {
+        const q = query(
+            collection(db, 'conversations', conversationId, 'messages'),
+            orderBy('timestamp', 'asc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const messages = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            callback(messages);
+        });
+    }
+};
+
+// Image upload service
+export const imageService = {
+    // Upload multiple images and return their URLs
+    async uploadImages(files: (File | string)[], postId: string): Promise<string[]> {
+        try {
+            const uploadPromises = files.map(async (file, index) => {
+                // Skip if already a URL string
+                if (typeof file === 'string' && file.startsWith('http')) {
+                    return file;
+                }
+
+                if (file instanceof File) {
+                    const fileName = `${postId}_${index}_${Date.now()}`;
+                    const storageRef = ref(storage, `posts/${fileName}`);
+                    const snapshot = await uploadBytes(storageRef, file);
+                    return await getDownloadURL(snapshot.ref);
+                }
+
+                throw new Error(`Invalid file type: ${typeof file}`);
+            });
+
+            return await Promise.all(uploadPromises);
+        } catch (error: any) {
+            console.error('Error uploading images:', error);
+            throw new Error(error.message || 'Failed to upload images');
+        }
+    },
+
+    // Delete images from storage
+    async deleteImages(imageUrls: string[]): Promise<void> {
+        try {
+            const deletePromises = imageUrls.map(async (url) => {
+                if (url.includes('firebase')) {
+                    const imageRef = ref(storage, url);
+                    await deleteObject(imageRef);
+                }
+            });
+
+            await Promise.all(deletePromises);
+        } catch (error: any) {
+            console.error('Error deleting images:', error);
+            // Don't throw error for deletion failures to avoid blocking other operations
+        }
+    }
+};
+
+// Post service functions
+export const postService = {
+    // Create a new post
+    async createPost(postData: Omit<Post, 'id' | 'createdAt'>): Promise<string> {
+        try {
+            // Generate a unique post ID
+            const postId = `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            // Upload images if any
+            const imageUrls = postData.images.length > 0
+                ? await imageService.uploadImages(postData.images, postId)
+                : [];
+
+            // Create post document
+            const post: Post = {
+                ...postData,
+                id: postId,
+                images: imageUrls,
+                createdAt: serverTimestamp(),
+                status: 'pending'
+            };
+
+            await setDoc(doc(db, 'posts', postId), post);
+            return postId;
+        } catch (error: any) {
+            console.error('Error creating post:', error);
+            throw new Error(error.message || 'Failed to create post');
+        }
+    },
+
+    // Get all posts with real-time updates
+    getAllPosts(callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts'),
+            orderBy('createdAt', 'desc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+            callback(posts);
+        }, (error) => {
+            console.error('Error fetching posts:', error);
+            callback([]);
+        });
+    },
+
+    // Get posts by type (lost/found)
+    getPostsByType(type: 'lost' | 'found', callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts'),
+            where('type', '==', type),
+            orderBy('createdAt', 'desc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+            callback(posts);
+        });
+    },
+
+    // Get posts by category
+    getPostsByCategory(category: string, callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts'),
+            where('category', '==', category),
+            orderBy('createdAt', 'desc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+            callback(posts);
+        });
+    },
+
+    // Get posts by user ID
+    getUserPosts(userId: string, callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts'),
+            where('user.email', '==', userId), // Assuming you store user email
+            orderBy('createdAt', 'desc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+            callback(posts);
+        });
+    },
+
+    // Get a single post by ID
+    async getPostById(postId: string): Promise<Post | null> {
+        try {
+            const postDoc = await getDoc(doc(db, 'posts', postId));
+            if (postDoc.exists()) {
+                const data = postDoc.data();
+                return {
+                    id: postDoc.id,
+                    ...data,
+                    createdAt: data.createdAt?.toDate?.() || data.createdAt
+                } as Post;
+            }
+            return null;
+        } catch (error: any) {
+            console.error('Error fetching post:', error);
+            throw new Error(error.message || 'Failed to fetch post');
+        }
+    },
+
+    // Update post status
+    async updatePostStatus(postId: string, status: 'pending' | 'resolved' | 'rejected'): Promise<void> {
+        try {
+            await updateDoc(doc(db, 'posts', postId), {
+                status,
+                updatedAt: serverTimestamp()
+            });
+        } catch (error: any) {
+            console.error('Error updating post status:', error);
+            throw new Error(error.message || 'Failed to update post status');
+        }
+    },
+
+    // Update post
+    async updatePost(postId: string, updates: Partial<Post>): Promise<void> {
+        try {
+            const updateData = {
+                ...updates,
+                updatedAt: serverTimestamp()
+            };
+
+            // Handle image updates if needed
+            if (updates.images) {
+                const imageUrls = await imageService.uploadImages(updates.images, postId);
+                updateData.images = imageUrls;
+            }
+
+            await updateDoc(doc(db, 'posts', postId), updateData);
+        } catch (error: any) {
+            console.error('Error updating post:', error);
+            throw new Error(error.message || 'Failed to update post');
+        }
+    },
+
+    // Delete post
+    async deletePost(postId: string): Promise<void> {
+        try {
+            // Get post data to delete associated images
+            const post = await this.getPostById(postId);
+
+            if (post && post.images.length > 0) {
+                await imageService.deleteImages(post.images as string[]);
+            }
+
+            await deleteDoc(doc(db, 'posts', postId));
+        } catch (error: any) {
+            console.error('Error deleting post:', error);
+            throw new Error(error.message || 'Failed to delete post');
+        }
+    },
+
+    // Search posts by title or description
+    async searchPosts(searchTerm: string): Promise<Post[]> {
+        try {
+            // Note: This is a simple implementation. For better search,
+            // consider using Algolia or implement a more sophisticated search
+            const postsSnapshot = await getDocs(collection(db, 'posts'));
+            const posts = postsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            const searchTermLower = searchTerm.toLowerCase();
+            return posts.filter(post =>
+                post.title.toLowerCase().includes(searchTermLower) ||
+                post.description.toLowerCase().includes(searchTermLower) ||
+                post.category.toLowerCase().includes(searchTermLower) ||
+                post.location.toLowerCase().includes(searchTermLower)
+            );
+        } catch (error: any) {
+            console.error('Error searching posts:', error);
+            throw new Error(error.message || 'Failed to search posts');
+        }
+    },
+
+    // Get posts by location
+    getPostsByLocation(location: string, callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts'),
+            where('location', '==', location),
+            orderBy('createdAt', 'desc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+            callback(posts);
+        });
     }
 };
 
