@@ -15,6 +15,7 @@ const Profile = () => {
     lastName: "",
     email: "",
     contact: "",
+    studentId: "",
   });
 
   const [initialUserInfo, setInitialUserInfo] = useState(userInfo);
@@ -23,10 +24,11 @@ const Profile = () => {
   useEffect(() => {
     if (userData) {
       const updatedInfo = {
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        email: userData.email,
-        contact: userData.contactNum,
+        firstName: userData.firstName || "",
+        lastName: userData.lastName || "",
+        email: userData.email || "",
+        contact: userData.contactNum || "",
+        studentId: userData.studentId || "",
       };
       setUserInfo(updatedInfo);
       setInitialUserInfo(updatedInfo);
@@ -50,14 +52,15 @@ const Profile = () => {
   const { showToast } = useToast();
 
   const handleSave = async () => {
-    const { firstName, lastName, email, contact } = userInfo;
+    const { firstName, lastName, email, contact, studentId } = userInfo;
 
     // Check if any field is empty
     if (
       !firstName.trim() ||
       !lastName.trim() ||
       !email.trim() ||
-      !contact.trim()
+      !contact.trim() ||
+      !studentId.trim()
     ) {
       showToast(
         "warning",
@@ -72,7 +75,8 @@ const Profile = () => {
       firstName !== initialUserInfo.firstName ||
       lastName !== initialUserInfo.lastName ||
       email !== initialUserInfo.email ||
-      contact !== initialUserInfo.contact;
+      contact !== initialUserInfo.contact ||
+      studentId !== initialUserInfo.studentId;
 
     if (!isChanged) {
       showToast(
@@ -92,6 +96,7 @@ const Profile = () => {
           lastName,
           email,
           contactNum: contact,
+          studentId,
         });
 
         // Update local state
@@ -151,7 +156,7 @@ const Profile = () => {
               <h1 className="text-2xl font-semibold md:text-xl lg:text-2xl">
                 {userInfo.firstName} <span></span> {userInfo.lastName}
               </h1>
-              <p className="text-gray-600">{userInfo.email}</p>
+              <p className="text-gray-600">Student ID: {userInfo.studentId}</p>
             </div>
           </div>
         </div>
@@ -187,7 +192,7 @@ const Profile = () => {
           <h1 className="text-xl font-semibold">
             {userInfo.firstName} {userInfo.lastName}
           </h1>
-          <p className="text-sm text-gray-600">{userInfo.email}</p>
+          <p className="text-sm text-gray-600">Student ID: {userInfo.studentId}</p>
         </div>
 
         {/* account details */}
@@ -262,6 +267,24 @@ const Profile = () => {
                 ) : (
                   <span className="text-gray-800 text-sm">
                     {userInfo.contact}
+                  </span>
+                )}
+              </div>
+
+              {/* Student ID */}
+              <div className="bg-gray-100 border border-gray-700 flex items-center justify-between  rounded px-4 py-2.5">
+                <h1 className="text-sm text-gray-600">Student ID</h1>
+                {isEdit ? (
+                  <input
+                    type="text"
+                    value={userInfo.studentId}
+                    onChange={(e) => handleChange("studentId", e.target.value)}
+                    className="w-60 max-w-sm bg-white border border-gray-300 rounded px-3 py-1.5 text-sm"
+                    placeholder="10 digits"
+                  />
+                ) : (
+                  <span className="text-gray-800 text-sm">
+                    {userInfo.studentId}
                   </span>
                 )}
               </div>
