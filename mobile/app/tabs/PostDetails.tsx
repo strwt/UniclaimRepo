@@ -11,6 +11,7 @@ import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { RootStackParamList } from "../../types/type";
+import LocationMapView from '../../components/LocationMapView';
 
 type PostDetailsRouteProp = RouteProp<RootStackParamList, "PostDetails">;
 
@@ -198,35 +199,22 @@ export default function PostDetailsScreen() {
 
         <View className="mt-1 mb-3">
           <Text className="mb-2 font-manrope-semibold">Location Map</Text>
-          <View className="bg-zinc-100 w-full p-3 h-[20rem] border border-zinc-200 rounded-md">
-            {post.coordinates ? (
-              <View className="flex-1 justify-center items-center">
-                <Ionicons name="location" size={48} color="#3B82F6" />
-                <Text className="text-base font-manrope-medium text-black mt-2 text-center">
-                  Coordinates Available
-                </Text>
-                <Text className="text-sm font-manrope-medium text-gray-600 mt-1 text-center">
-                  Latitude: {post.coordinates.lat.toFixed(6)}
-                </Text>
-                <Text className="text-sm font-manrope-medium text-gray-600 text-center">
-                  Longitude: {post.coordinates.lng.toFixed(6)}
-                </Text>
-                <Text className="text-xs font-manrope-medium text-gray-500 mt-2 text-center">
-                  Map integration coming soon
-                </Text>
-              </View>
-            ) : (
-              <View className="flex-1 justify-center items-center">
-                <Ionicons name="location-outline" size={48} color="#9CA3AF" />
-                <Text className="text-base font-manrope-medium text-gray-600 mt-2 text-center">
-                  No coordinates available
-                </Text>
-                <Text className="text-xs font-manrope-medium text-gray-500 mt-1 text-center">
-                  Location: {post.location}
-                </Text>
-              </View>
-            )}
-          </View>
+          {post.coordinates ? (
+            <LocationMapView 
+              coordinates={post.coordinates} 
+              location={post.location} 
+            />
+          ) : (
+            <View className="bg-zinc-100 w-full p-3 h-[20rem] border border-zinc-200 rounded-md justify-center items-center">
+              <Ionicons name="location-outline" size={48} color="#9CA3AF" />
+              <Text className="text-base font-manrope-medium text-gray-600 mt-2 text-center">
+                No coordinates available
+              </Text>
+              <Text className="text-xs font-manrope-medium text-gray-500 mt-1 text-center">
+                Location: {post.location}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* contact-details */}
