@@ -41,6 +41,7 @@ export default function ReportPage() {
   const [selectedLocation, setSelectedLocation] = useState("");
   const { showToast } = useToast();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (showSuccessModal) {
@@ -106,6 +107,13 @@ export default function ReportPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    // Prevent duplicate submissions
+    if (isSubmitting) {
+      console.log('Form submission already in progress, ignoring duplicate submit');
+      return;
+    }
+
+    setIsSubmitting(true);
     setWasSubmitted(true);
 
     const errors = {
@@ -184,6 +192,8 @@ export default function ReportPage() {
     } catch (error: any) {
       console.error('Error creating post:', error);
       showToast("error", "Submission Failed", error.message || "Failed to submit report. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -340,9 +350,14 @@ export default function ReportPage() {
           </div>
           <button
             type="submit"
-            className="w-full text-white rounded bg-brand p-3 block cursor-pointer hover:bg-teal-600"
+            disabled={isSubmitting}
+            className={`w-full text-white rounded p-3 block cursor-pointer transition-colors ${
+              isSubmitting 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-brand hover:bg-teal-600'
+            }`}
           >
-            Submit report
+            {isSubmitting ? 'Submitting...' : 'Submit report'}
           </button>
         </div>
       </form>

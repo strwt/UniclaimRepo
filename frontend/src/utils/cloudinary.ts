@@ -17,6 +17,9 @@ export const cloudinaryService = {
     // Upload single image
     async uploadImage(file: File, folder: string = 'posts'): Promise<string> {
         try {
+            // Add logging to track uploads
+            console.log(`Starting upload for file: ${file.name} (${file.size} bytes) to folder: ${folder}`);
+
             // Cloudinary configuration is working correctly
 
             // Check if required environment variables are set
@@ -45,6 +48,7 @@ export const cloudinaryService = {
             }
 
             const data = await response.json();
+            console.log(`Successfully uploaded ${file.name} to Cloudinary: ${data.secure_url}`);
             return data.secure_url;
         } catch (error: any) {
             console.error('Error uploading image to Cloudinary:', error);
@@ -55,9 +59,12 @@ export const cloudinaryService = {
     // Upload multiple images
     async uploadImages(files: (File | string)[], folder: string = 'posts'): Promise<string[]> {
         try {
+            console.log(`Starting batch upload of ${files.length} files to folder: ${folder}`);
+
             const uploadPromises = files.map(async (file) => {
                 // Skip if already a URL string
                 if (typeof file === 'string' && file.startsWith('http')) {
+                    console.log(`Skipping already uploaded file: ${file}`);
                     return file;
                 }
 
@@ -68,7 +75,9 @@ export const cloudinaryService = {
                 throw new Error(`Invalid file type: ${typeof file}`);
             });
 
-            return await Promise.all(uploadPromises);
+            const results = await Promise.all(uploadPromises);
+            console.log(`Batch upload completed successfully. ${results.length} files uploaded.`);
+            return results;
         } catch (error: any) {
             console.error('Error uploading images:', error);
             throw new Error(error.message || 'Failed to upload images');

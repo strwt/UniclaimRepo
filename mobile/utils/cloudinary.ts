@@ -10,6 +10,9 @@ export const cloudinaryService = {
     // Upload single image from React Native
     async uploadImage(uri: string, folder: string = 'posts'): Promise<string> {
         try {
+            // Add logging to track uploads
+            console.log(`Starting mobile upload for image to folder: ${folder}`);
+
             // Check if required environment variables are set
             if (!CLOUDINARY_CLOUD_NAME || CLOUDINARY_CLOUD_NAME === 'your-cloud-name') {
                 throw new Error(`Cloudinary cloud name not configured. Current value: "${CLOUDINARY_CLOUD_NAME}". Please set EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME in your .env file`);
@@ -49,6 +52,7 @@ export const cloudinaryService = {
             }
 
             const data = await response.json();
+            console.log(`Successfully uploaded mobile image to Cloudinary: ${data.secure_url}`);
             return data.secure_url;
         } catch (error: any) {
             console.error('Error uploading image to Cloudinary:', error);
@@ -59,16 +63,21 @@ export const cloudinaryService = {
     // Upload multiple images from React Native
     async uploadImages(imageUris: string[], folder: string = 'posts'): Promise<string[]> {
         try {
+            console.log(`Starting mobile batch upload of ${imageUris.length} images to folder: ${folder}`);
+
             const uploadPromises = imageUris.map(async (uri) => {
                 // Skip if already a URL string
                 if (uri.startsWith('http')) {
+                    console.log(`Skipping already uploaded mobile image: ${uri}`);
                     return uri;
                 }
 
                 return await this.uploadImage(uri, folder);
             });
 
-            return await Promise.all(uploadPromises);
+            const results = await Promise.all(uploadPromises);
+            console.log(`Mobile batch upload completed successfully. ${results.length} images uploaded.`);
+            return results;
         } catch (error: any) {
             console.error('Error uploading images to Cloudinary:', error);
             throw new Error(error.message || 'Failed to upload images');
