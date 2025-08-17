@@ -9,12 +9,16 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
 import type { RootStackParamList } from "../../types/type";
+import { useAuth } from "../../context/AuthContext";
+import { getFirebaseErrorMessage } from "../../utils/firebase";
 
 export default function Login() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { login, loading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,7 +26,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [alertVisible, setAlertVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -31,7 +35,7 @@ export default function Login() {
   const validateEmail = (value: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     let valid = true;
     setEmailError("");
     setPasswordError("");
@@ -48,23 +52,23 @@ export default function Login() {
     if (!password) {
       setPasswordError("Password is required.");
       valid = false;
-    } else if (password.length < 8) {
-      setPasswordError("Password must be at least 8 characters.");
+    } else if (password.length < 6) {
+      setPasswordError("Password must be at least 6 characters.");
       valid = false;
     }
 
     if (!valid) return;
 
-    // simulated credentials
-    const dummyEmail = "test@gmail.com";
-    const dummyPassword = "password";
-
-    if (email !== dummyEmail || password !== dummyPassword) {
-      setGeneralError("Incorrect email or password.");
-      return;
+    try {
+      setIsLoading(true);
+      await login(email, password);
+      // Navigation will be handled by AuthContext/navigation logic
+      navigation.navigate("RootBottomTabs");
+    } catch (error: any) {
+      setGeneralError(getFirebaseErrorMessage(error));
+    } finally {
+      setIsLoading(false);
     }
-
-    navigation.navigate("RootBottomTabs");
   };
 
   return (
@@ -181,12 +185,19 @@ export default function Login() {
 
       {/* Login Button */}
       <TouchableOpacity
-        className="bg-brand flex items-center justify-center py-4 rounded-xl mb-3 mt-6"
+        className={`flex items-center justify-center py-4 rounded-xl mb-3 mt-6 ${
+          isLoading || loading ? "bg-gray-400" : "bg-brand"
+        }`}
         onPress={handleLogin}
+        disabled={isLoading || loading}
       >
-        <Text className="text-white text-lg font-semibold font-manrope-medium">
-          Login
-        </Text>
+        {isLoading || loading ? (
+          <ActivityIndicator color="white" size="small" />
+        ) : (
+          <Text className="text-white text-lg font-semibold font-manrope-medium">
+            Login
+          </Text>
+        )}
       </TouchableOpacity>
 
       {/* Divider */}

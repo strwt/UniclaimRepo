@@ -10,6 +10,34 @@ import Navigation from "@/navigation/Navigation";
 // components
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import ScreenWrapper from "../components/ScreenWrapper";
+import { AuthProvider, useAuth } from "../context/AuthContext";
+import { MessageProvider } from "../context/MessageContext";
+
+// Separate component to access auth context
+const AppContent = ({ 
+  hasSeenOnBoarding, 
+  setHasSeenOnBoarding, 
+  hasPassedIndex, 
+  setHasPassedIndex 
+}: {
+  hasSeenOnBoarding: boolean;
+  setHasSeenOnBoarding: (value: boolean) => void;
+  hasPassedIndex: boolean;
+  setHasPassedIndex: (value: boolean) => void;
+}) => {
+  const { user } = useAuth();
+
+  return (
+    <MessageProvider userId={user?.uid || null}>
+      <Navigation
+        hasSeenOnBoarding={hasSeenOnBoarding}
+        setHasSeenOnBoarding={setHasSeenOnBoarding}
+        hasPassedIndex={hasPassedIndex}
+        setHasPassedIndex={setHasPassedIndex}
+      />
+    </MessageProvider>
+  );
+};
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -58,12 +86,14 @@ export default function RootLayout() {
   }
   return (
     <SafeAreaProvider>
-      <Navigation
-        hasSeenOnBoarding={hasSeenOnBoarding}
-        setHasSeenOnBoarding={setHasSeenOnBoarding}
-        hasPassedIndex={hasPassedIndex}
-        setHasPassedIndex={setHasPassedIndex}
-      />
+      <AuthProvider>
+        <AppContent
+          hasSeenOnBoarding={hasSeenOnBoarding}
+          setHasSeenOnBoarding={setHasSeenOnBoarding}
+          hasPassedIndex={hasPassedIndex}
+          setHasPassedIndex={setHasPassedIndex}
+        />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

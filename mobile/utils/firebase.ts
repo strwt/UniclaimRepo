@@ -214,15 +214,21 @@ export const messageService = {
     getUserConversations(userId: string, callback: (conversations: any[]) => void) {
         const q = query(
             collection(db, 'conversations'),
-            where(`participants.${userId}`, '!=', null),
-            orderBy('createdAt', 'desc')
+            where(`participants.${userId}`, '!=', null)
         );
 
         return onSnapshot(q, (snapshot) => {
-            const conversations = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            const conversations = snapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }))
+                .sort((a: any, b: any) => {
+                    // Sort by createdAt in descending order (newest first)
+                    const aTime = a.createdAt?.toDate?.() || a.createdAt || new Date(0);
+                    const bTime = b.createdAt?.toDate?.() || b.createdAt || new Date(0);
+                    return bTime.getTime() - aTime.getTime();
+                });
             callback(conversations);
         });
     },

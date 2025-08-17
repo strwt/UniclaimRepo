@@ -23,6 +23,7 @@ export default function Register() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [contactNumber, setContactNumber] = useState("");
+  const [studentId, setStudentId] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,23 +32,25 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isLoading, setIsLoading] = useState(false);
 
   const validateEmail = (value: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     const newErrors: { [key: string]: string } = {};
 
     if (!firstName.trim()) newErrors.firstName = "First name is required";
     if (!lastName.trim()) newErrors.lastName = "Last name is required";
     if (!contactNumber.trim())
       newErrors.contactNumber = "Contact number is required";
+    if (!studentId.trim()) newErrors.studentId = "Student ID is required";
     if (!email.trim()) newErrors.email = "Email is required";
     else if (!validateEmail(email)) newErrors.email = "Invalid email address";
 
     if (!password) newErrors.password = "Password is required";
-    else if (password.length < 8)
-      newErrors.password = "Password must be at least 8 characters";
+    else if (password.length < 6)
+      newErrors.password = "Password must be at least 6 characters";
 
     if (!confirmPassword) newErrors.confirmPassword = "Please confirm password";
     else if (confirmPassword !== password)
@@ -56,7 +59,34 @@ export default function Register() {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      console.log("Form is valid. Submitting...");
+      try {
+        setIsLoading(true);
+        
+        // Register user with Firebase
+        const result = await authService.register(
+          email,
+          password,
+          firstName,
+          lastName,
+          contactNumber
+        );
+
+        Alert.alert(
+          "Registration Successful",
+          "Your account has been created successfully! You can now log in.",
+          [
+            {
+              text: "OK",
+              onPress: () => navigation.navigate("Login")
+            }
+          ]
+        );
+      } catch (error: any) {
+        const errorMessage = getFirebaseErrorMessage(error);
+        Alert.alert("Registration Failed", errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -182,21 +212,21 @@ export default function Register() {
               Student ID
             </Text>
             <TextInput
-              value={contactNumber}
-              onChangeText={setContactNumber}
+              value={studentId}
+              onChangeText={setStudentId}
               onFocus={() => {
-                setFocusedInput("contactNumber");
-                setErrors((prev) => ({ ...prev, contactNumber: "" }));
+                setFocusedInput("studentId");
+                setErrors((prev) => ({ ...prev, studentId: "" }));
               }}
               onBlur={() => setFocusedInput(null)}
               placeholder="Ex. 2022123456"
               placeholderTextColor="#747476"
               style={{ fontFamily: "ManropeRegular", fontSize: 15 }}
-              className={inputClass("contactNumber")}
+              className={inputClass("studentId")}
             />
-            {errors.contactNumber && (
+            {errors.studentId && (
               <Text className="text-red-500 font-manrope text-sm mt-2">
-                {errors.contactNumber}
+                {errors.studentId}
               </Text>
             )}
           </View>
@@ -298,12 +328,19 @@ export default function Register() {
 
           {/* Register Button */}
           <TouchableOpacity
-            className="bg-brand flex items-center justify-center py-4 rounded-xl mt-6"
+            className={`flex items-center justify-center py-4 rounded-xl mt-6 ${
+              isLoading ? "bg-gray-400" : "bg-brand"
+            }`}
             onPress={handleRegister}
+            disabled={isLoading}
           >
-            <Text className="text-white text-lg font-semibold font-manrope-medium">
-              Register
-            </Text>
+            {isLoading ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text className="text-white text-lg font-semibold font-manrope-medium">
+                Register
+              </Text>
+            )}
           </TouchableOpacity>
 
           {/* Already have an account */}

@@ -20,12 +20,14 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import PageLayout from "../../layout/PageLayout";
 import type { RootStackParamList } from "../../types/type";
+import { useAuth } from "../../context/AuthContext";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Profile">;
 
 export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const navigation = useNavigation<NavigationProp>();
+  const { logout } = useAuth();
 
   const [profile, setProfile] = useState({
     firstName: "Juan",
@@ -53,12 +55,32 @@ export default function Profile() {
     setIsEditing(false);
   };
 
-  const handleLogout = () => {
-    console.log("Log Out pressed");
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Index" }],
-    });
+  const handleLogout = async () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await logout();
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Index" }],
+              });
+            } catch (error: any) {
+              Alert.alert("Logout Failed", error.message);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const pickImage = async () => {
