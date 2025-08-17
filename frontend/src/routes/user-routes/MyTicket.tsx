@@ -55,12 +55,34 @@ export default function MyTicket() {
       setSelectedPost(null); // close modal after delete
       
       // Show success message
-      showToast("success", "Ticket Deleted", "Your ticket has been successfully deleted.");
-    } catch (error) {
+      showToast("success", "Ticket Deleted", "Your ticket and all associated images have been successfully deleted.");
+    } catch (error: any) {
       console.error('Error deleting post:', error);
+      
+      // Provide more specific error messages based on the error type
+      let errorMessage = "Failed to delete ticket. Please try again.";
+      let errorTitle = "Delete Failed";
+      
+      if (error.message?.includes('Cloudinary API credentials not configured')) {
+        errorTitle = "Configuration Error";
+        errorMessage = "⚠️ Cloudinary API credentials are not configured. Images cannot be deleted from storage. Please contact your administrator.";
+      } else if (error.message?.includes('permissions insufficient') || error.message?.includes('401')) {
+        errorTitle = "Partial Delete Success";
+        errorMessage = "✅ Ticket deleted from database successfully! ⚠️ Images remain in Cloudinary storage due to account permission limitations. This won't affect your app functionality.";
+      } else if (error.message?.includes('Cloudinary')) {
+        errorTitle = "Image Deletion Failed";
+        errorMessage = "✅ Ticket deleted from database successfully! ⚠️ Some images may remain in Cloudinary storage. This won't affect your app functionality.";
+      }
+      
       // Show error message to user
-      showToast("error", "Delete Failed", "Failed to delete ticket. Please try again.");
-      // Keep the post in local state if deletion fails
+      showToast("error", errorTitle, errorMessage);
+      
+      // If the post was partially deleted (database but not images), we should still remove it from local state
+      // since the user expects it to be gone
+      if (error.message?.includes('Ticket deleted') || error.message?.includes('permissions insufficient')) {
+        setPosts((prevPosts: Post[]) => prevPosts.filter((p: Post) => p.id !== id));
+        setSelectedPost(null);
+      }
     } finally {
       setDeletingPostId(null); // Hide loading state
     }

@@ -1,5 +1,5 @@
 import { FiX } from "react-icons/fi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Post } from "@/types/Post";
 
 interface TicketModalProps {
@@ -151,6 +151,7 @@ const TicketModal = ({
                   onClick={() => onDelete(post.id)}
                   disabled={isDeleting}
                   className="bg-[#FD8E74] text-white text-xs px-3 p-2 rounded hover:bg-[#c07c6d] disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={`Delete ticket "${post.title}" and ${post.images.length} associated image${post.images.length !== 1 ? 's' : ''}`}
                 >
                   {isDeleting ? "Deleting..." : "Delete Ticket"}
                 </button>
