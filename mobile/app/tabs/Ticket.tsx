@@ -4,6 +4,7 @@ import { Text, TextInput, TouchableOpacity, View, ScrollView, ActivityIndicator,
 import { useAuth } from "@/context/AuthContext";
 import { useUserPosts } from "@/hooks/usePosts";
 import type { Post } from "@/types/type";
+import { auth } from "@/utils/firebase";
 
 export default function Ticket() {
   const { userData, loading: authLoading } = useAuth();

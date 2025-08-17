@@ -151,9 +151,14 @@ export const authService = {
     async getUserData(uid: string): Promise<UserData | null> {
         try {
             const userDoc = await getDoc(doc(db, 'users', uid));
-            return userDoc.exists() ? userDoc.data() as UserData : null;
+            if (userDoc.exists()) {
+                const userData = userDoc.data() as UserData;
+                return userData;
+            } else {
+                return null;
+            }
         } catch (error: any) {
-            console.error('Error fetching user data:', error);
+            console.error('🔥 Firebase: Error fetching user data:', error);
             return null;
         }
     },
@@ -453,6 +458,9 @@ export const postService = {
             });
 
             callback(sortedPosts);
+        }, (error) => {
+            console.error('Error fetching user posts:', error);
+            callback([]);
         });
     },
 

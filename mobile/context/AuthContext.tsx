@@ -27,17 +27,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
         
         // Fetch user data from Firestore
-        const fetchedUserData = await authService.getUserData(firebaseUser.uid);
-        setUserData(fetchedUserData);
+        try {
+          const fetchedUserData = await authService.getUserData(firebaseUser.uid);
+          setUserData(fetchedUserData);
+        } catch (error: any) {
+          console.error('Error fetching user data:', error);
+          setUserData(null);
+        }
       } else {
         setUser(null);
         setUserData(null);
         setIsAuthenticated(false);
       }
+      
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
