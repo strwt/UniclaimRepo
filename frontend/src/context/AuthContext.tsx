@@ -8,7 +8,7 @@ interface AuthContextType {
   userData: UserData | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, firstName: string, lastName: string, contactNum: string) => Promise<void>;
+  register: (email: string, password: string, firstName: string, lastName: string, contactNum: string, studentId: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -57,11 +57,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     password: string, 
     firstName: string, 
     lastName: string, 
-    contactNum: string
+    contactNum: string,
+    studentId: string
   ): Promise<void> => {
     try {
       setLoading(true);
-      await authService.register(email, password, firstName, lastName, contactNum);
+      await authService.register(email, password, firstName, lastName, contactNum, studentId);
       // onAuthStateChanged will handle updating the state
     } catch (error: any) {
       setLoading(false);

@@ -4,6 +4,7 @@ export interface User {
   lastName: string;
   email: string;
   contactNum: string;
+  studentId: string;
   createdAt?: any;
   updatedAt?: any;
 }

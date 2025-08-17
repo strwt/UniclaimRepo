@@ -33,6 +33,7 @@ export interface Post {
     lastName: string;
     email: string;
     contactNum: string;
+    studentId: string;
   };
   createdAt?: string | Date | any; // Firebase timestamp or Date
   updatedAt?: string | Date | any; // Firebase timestamp or Date

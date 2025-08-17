@@ -77,6 +77,7 @@ export interface UserData {
     firstName: string;
     lastName: string;
     contactNum: string;
+    studentId: string;
     createdAt: any;
     updatedAt: any;
 }
@@ -89,7 +90,8 @@ export const authService = {
         password: string,
         firstName: string,
         lastName: string,
-        contactNum: string
+        contactNum: string,
+        studentId: string
     ): Promise<{ user: FirebaseUser; userData: UserData }> {
         try {
             // Create user with email and password
@@ -113,6 +115,7 @@ export const authService = {
                 firstName,
                 lastName,
                 contactNum,
+                studentId,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             };
@@ -232,8 +235,8 @@ export const messageService = {
     getUserConversations(userId: string, callback: (conversations: any[]) => void) {
         const q = query(
             collection(db, 'conversations'),
-            where(`participants.${userId}`, '!=', null),
-            orderBy('createdAt', 'desc')
+            where(`participants.${userId}`, '!=', null)
+            // Removed orderBy to avoid composite index requirement
         );
 
         return onSnapshot(q, (snapshot) => {
@@ -241,7 +244,15 @@ export const messageService = {
                 id: doc.id,
                 ...doc.data()
             }));
-            callback(conversations);
+
+            // Sort conversations by createdAt in JavaScript instead
+            const sortedConversations = conversations.sort((a: any, b: any) => {
+                const dateA = a.createdAt ? (a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)) : new Date(0);
+                const dateB = b.createdAt ? (b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)) : new Date(0);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedConversations);
         });
     },
 
@@ -358,8 +369,8 @@ export const postService = {
     getPostsByType(type: 'lost' | 'found', callback: (posts: Post[]) => void) {
         const q = query(
             collection(db, 'posts'),
-            where('type', '==', type),
-            orderBy('createdAt', 'desc')
+            where('type', '==', type)
+            // Removed orderBy to avoid composite index requirement
         );
 
         return onSnapshot(q, (snapshot) => {
@@ -368,7 +379,15 @@ export const postService = {
                 ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
-            callback(posts);
+
+            // Sort posts by createdAt in JavaScript instead
+            const sortedPosts = posts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
         });
     },
 
@@ -376,8 +395,8 @@ export const postService = {
     getPostsByCategory(category: string, callback: (posts: Post[]) => void) {
         const q = query(
             collection(db, 'posts'),
-            where('category', '==', category),
-            orderBy('createdAt', 'desc')
+            where('category', '==', category)
+            // Removed orderBy to avoid composite index requirement
         );
 
         return onSnapshot(q, (snapshot) => {
@@ -386,16 +405,24 @@ export const postService = {
                 ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
-            callback(posts);
+
+            // Sort posts by createdAt in JavaScript instead
+            const sortedPosts = posts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
         });
     },
 
-    // Get posts by user ID
-    getUserPosts(userId: string, callback: (posts: Post[]) => void) {
+    // Get posts by user email
+    getUserPosts(userEmail: string, callback: (posts: Post[]) => void) {
         const q = query(
             collection(db, 'posts'),
-            where('user.email', '==', userId), // Assuming you store user email
-            orderBy('createdAt', 'desc')
+            where('user.email', '==', userEmail)
+            // Removed orderBy to avoid composite index requirement
         );
 
         return onSnapshot(q, (snapshot) => {
@@ -404,7 +431,15 @@ export const postService = {
                 ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
-            callback(posts);
+
+            // Sort posts by createdAt in JavaScript instead
+            const sortedPosts = posts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
         });
     },
 
@@ -507,8 +542,8 @@ export const postService = {
     getPostsByLocation(location: string, callback: (posts: Post[]) => void) {
         const q = query(
             collection(db, 'posts'),
-            where('location', '==', location),
-            orderBy('createdAt', 'desc')
+            where('location', '==', location)
+            // Removed orderBy to avoid composite index requirement
         );
 
         return onSnapshot(q, (snapshot) => {
@@ -517,7 +552,15 @@ export const postService = {
                 ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
-            callback(posts);
+
+            // Sort posts by createdAt in JavaScript instead
+            const sortedPosts = posts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
         });
     }
 };

@@ -14,13 +14,9 @@ import LocationForm from "@/routes/user-routes/LocationReport";
 import ContactDetails from "@/routes/user-routes/ContactDetails";
 import useToastFormHelper from "@/components/ToastFormHelper";
 
-interface ReportProp {
-  setPosts: React.Dispatch<React.SetStateAction<Post[]>>;
-}
-
 const categories = ["Student Essentials", "Gadgets", "Personal Belongings"];
 
-export default function ReportPage({ setPosts }: ReportProp) {
+export default function ReportPage() {
   const { userData, loading } = useAuth();
   const [selectedReport, setSelectedReport] = useState<"lost" | "found" | null>(
     null
@@ -156,6 +152,7 @@ export default function ReportPage({ setPosts }: ReportProp) {
           lastName: userData?.lastName || "",
           email: userData?.email || "",
           contactNum: userData?.contactNum || "",
+          studentId: userData?.studentId || "",
         },
         status: "pending",
       };

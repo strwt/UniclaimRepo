@@ -9,6 +9,7 @@ interface FormErrors {
   lastName?: string;
   email?: string;
   contactNum?: string;
+  studentId?: string;
   password?: string;
   confirmPassword?: string;
 }
@@ -19,6 +20,7 @@ export default function Register() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [contactNum, setContactNum] = useState("");
+  const [studentId, setStudentId] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -47,6 +49,10 @@ export default function Register() {
     else if (!/^\d{11}$/.test(contactNum))
       newErrors.contactNum = "Contact number must be 11 digits";
       
+    if (!studentId.trim()) newErrors.studentId = "Student ID is required";
+    else if (!/^\d{10}$/.test(studentId.trim()))
+      newErrors.studentId = "Student ID must be 10 digits";
+      
     if (!password.trim()) newErrors.password = "Password is required";
     else if (password.length < 6)
       newErrors.password = "Password must be at least 6 characters";
@@ -65,7 +71,8 @@ export default function Register() {
           password,
           firstName.trim(),
           lastName.trim(),
-          contactNum.trim()
+          contactNum.trim(),
+          studentId.trim()
         );
         navigate("/"); // Navigate to dashboard after successful registration
       } catch (error: any) {
@@ -185,6 +192,22 @@ export default function Register() {
               }}
               placeholder="Enter your contact number"
               error={regError.contactNum}
+            />
+
+            <InputField
+              label="Student ID"
+              name="studentId"
+              type="text"
+              value={studentId}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setStudentId(e.target.value);
+                setRegError((prev) => ({
+                  ...prev,
+                  studentId: "",
+                }));
+              }}
+              placeholder="Enter your student ID (10 digits)"
+              error={regError.studentId}
             />
 
             {/* Password */}

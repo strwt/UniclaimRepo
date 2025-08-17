@@ -3,32 +3,44 @@ import { useState } from "react";
 import type { Post } from "@/types/Post";
 import TicketCard from "@/components/TicketCard";
 import TicketModal from "@/components/TicketModal";
+import { useAuth } from "../../context/AuthContext";
+import { useUserPostsWithSet } from "../../hooks/usePosts";
 
-interface MyTicketProps {
-  posts: Post[];
-  setPosts: React.Dispatch<React.SetStateAction<Post[]>>;
-  currentUser: Post["user"];
-}
-
-export default function MyTicket({
-  posts,
-  setPosts,
-  currentUser,
-}: MyTicketProps) {
+export default function MyTicket() {
+  const { userData, loading: authLoading } = useAuth();
+  const { posts, setPosts, loading: postsLoading } = useUserPostsWithSet(userData?.email || "");
   const [activeTab, setActiveTab] = useState<
     "all_tickets" | "active_tickets" | "completed_tickets"
   >("all_tickets");
   const [searchText, setSearchText] = useState("");
 
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  // Show error if no user data
+  if (!userData) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-red-500">Please log in to view your tickets</p>
+      </div>
+    );
+  }
+
   // Filter posts owned by current user
   const rawUserPosts = posts.filter(
-    (post) => post.user.email === currentUser.email
+    (post) => post.user.email === userData.email
   );
 
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   const handleDeletePost = (id: string) => {
-    setPosts((prevPosts) => prevPosts.filter((p) => p.id !== id));
+    setPosts((prevPosts: Post[]) => prevPosts.filter((p: Post) => p.id !== id));
     setSelectedPost(null); // close modal after delete
   };
 
@@ -106,7 +118,11 @@ export default function MyTicket({
 
         {/* Posts Section */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {visiblePosts.length === 0 ? (
+          {postsLoading ? (
+            <div className="flex h-90 items-center justify-center col-span-full">
+              <p className="text-gray-500 text-sm">Loading tickets...</p>
+            </div>
+          ) : visiblePosts.length === 0 ? (
             <div className="flex h-90 items-center justify-center col-span-full">
               <p className="text-gray-500 text-sm">No tickets found.</p>
             </div>
@@ -128,8 +144,8 @@ export default function MyTicket({
             onClose={() => setSelectedPost(null)}
             onDelete={handleDeletePost}
             onUpdatePost={(updatedPost) => {
-              setPosts((prevPosts) =>
-                prevPosts.map((p) =>
+              setPosts((prevPosts: Post[]) =>
+                prevPosts.map((p: Post) =>
                   p.id === updatedPost.id ? updatedPost : p
                 )
               );

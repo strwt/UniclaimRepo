@@ -10,7 +10,7 @@ import GeoLocation from "../routes/user-routes/GeolocationWithMap";
 import SendEmail from "../routes/user-routes/SendEmail";
 import Success from "../routes/user-routes/Success";
 import MyTicket from "../routes/user-routes/MyTicket";
-import Report from "../routes/user-routes/ReportPage";
+import ReportPage from "../routes/user-routes/ReportPage";
 import Profile from "@/routes/user-routes/Profile";
 import ContactUs from "@/routes/user-routes/Contact";
 import AboutUniClaim from "@/routes/user-routes/AboutUniClaim";
@@ -78,7 +78,7 @@ export default function PageRoutes() {
               path="report"
               element={
                 <PageWrapper title="Report ">
-                  <Report />
+                  <ReportPage />
                 </PageWrapper>
               }
             />
