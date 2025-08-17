@@ -270,6 +270,38 @@ export const messageService = {
             }));
             callback(messages);
         });
+    },
+
+    // Mark conversation as read
+    async markConversationAsRead(conversationId: string, userId: string): Promise<void> {
+        try {
+            await updateDoc(doc(db, 'conversations', conversationId), {
+                unreadCount: 0
+            });
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to mark conversation as read');
+        }
+    },
+
+    // Mark message as read
+    async markMessageAsRead(conversationId: string, messageId: string, userId: string): Promise<void> {
+        try {
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+            const messageDoc = await getDoc(messageRef);
+
+            if (messageDoc.exists()) {
+                const messageData = messageDoc.data();
+                const readBy = messageData.readBy || [];
+
+                if (!readBy.includes(userId)) {
+                    await updateDoc(messageRef, {
+                        readBy: [...readBy, userId]
+                    });
+                }
+            }
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to mark message as read');
+        }
     }
 };
 

@@ -1,13 +1,16 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { messageService } from "../utils/firebase";
-import type { Conversation, Message } from "../types/Post";
+import type { Conversation, Message } from "@/types/Post";
 
 interface MessageContextType {
   conversations: Conversation[];
   loading: boolean;
+  totalUnreadCount: number;
   sendMessage: (conversationId: string, senderId: string, senderName: string, text: string) => Promise<void>;
   createConversation: (postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: any) => Promise<string>;
   getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void) => () => void;
+  markConversationAsRead: (conversationId: string) => Promise<void>;
+  markMessageAsRead: (conversationId: string, messageId: string) => Promise<void>;
 }
 
 const MessageContext = createContext<MessageContextType | undefined>(undefined);
@@ -15,6 +18,9 @@ const MessageContext = createContext<MessageContextType | undefined>(undefined);
 export const MessageProvider = ({ children, userId }: { children: ReactNode; userId: string | null }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Calculate total unread count
+  const totalUnreadCount = conversations.reduce((total, conv) => total + (conv.unreadCount || 0), 0);
 
   // Load user conversations
   useEffect(() => {
@@ -53,14 +59,33 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     return messageService.getConversationMessages(conversationId, callback);
   };
 
+  const markConversationAsRead = async (conversationId: string): Promise<void> => {
+    try {
+      await messageService.markConversationAsRead(conversationId, userId!);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to mark conversation as read');
+    }
+  };
+
+  const markMessageAsRead = async (conversationId: string, messageId: string): Promise<void> => {
+    try {
+      await messageService.markMessageAsRead(conversationId, messageId, userId!);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to mark message as read');
+    }
+  };
+
   return (
     <MessageContext.Provider
       value={{
         conversations,
         loading,
+        totalUnreadCount,
         sendMessage,
         createConversation,
         getConversationMessages,
+        markConversationAsRead,
+        markMessageAsRead,
       }}
     >
       {children}

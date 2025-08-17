@@ -12,6 +12,7 @@ import { IoIosInformationCircleOutline } from "react-icons/io";
 import Logo from "../assets/uniclaim_logo.png";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
+import { useMessage } from "../context/MessageContext";
 
 interface SideNavProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ export default function SideNav({
   isSideNavMobileOpen,
   onMobNavClose,
 }: SideNavProps) {
+  const { totalUnreadCount } = useMessage();
+  
   // ✅ Hook to detect mobile screen width
   function useIsMobile() {
     const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -105,18 +108,25 @@ export default function SideNav({
               tooltipTextClassName="text-navyblue text-base"
               hoverContainerBgClass="bg-gray-100"
             />
-            <NavText
-              icon={<TbMessage2 className="size-6 stroke-[1.5px]" />}
-              label="Messages"
-              to=""
-              isOpen={isOpen}
-              className="hover:bg-gray-100"
-              iconClassName="text-black"
-              textClassName="text-black"
-              tooltipIconClassName="text-navyblue text-xl"
-              tooltipTextClassName="text-navyblue text-base"
-              hoverContainerBgClass="bg-gray-100"
-            />
+            <div className="relative">
+              <NavText
+                icon={<TbMessage2 className="size-6 stroke-[1.5px]" />}
+                label="Messages"
+                to="/messages"
+                isOpen={isOpen}
+                className="hover:bg-gray-100"
+                iconClassName="text-black"
+                textClassName="text-black"
+                tooltipIconClassName="text-navyblue text-xl"
+                tooltipTextClassName="text-navyblue text-base"
+                hoverContainerBgClass="bg-gray-100"
+              />
+              {totalUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center z-10">
+                  {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                </span>
+              )}
+            </div>
             <NavText
               icon={<HiOutlineEnvelope className="size-6 stroke-[1.5px]" />}
               label="Contact Us"
@@ -203,16 +213,23 @@ export default function SideNav({
                   iconClassName="text-black"
                   textClassName="font-manrope"
                 />
-                <NavText
-                  icon={<TbMessage2 className="size-6 stroke-[1.5px]" />}
-                  label="Message"
-                  to=""
-                  isOpen={isOpen}
-                  onClick={onMobNavClose}
-                  className="hover:bg-gray-50 rounded pl-4 justify-start"
-                  iconClassName="text-black"
-                  textClassName="font-manrope"
-                />
+                <div className="relative">
+                  <NavText
+                    icon={<TbMessage2 className="size-6 stroke-[1.5px]" />}
+                    label="Messages"
+                    to="/messages"
+                    isOpen={isOpen}
+                    onClick={onMobNavClose}
+                    className="hover:bg-gray-50 rounded pl-4 justify-start"
+                    iconClassName="text-black"
+                    textClassName="font-manrope"
+                  />
+                  {totalUnreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center z-10">
+                      {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                    </span>
+                  )}
+                </div>
                 <NavText
                   icon={<HiOutlineEnvelope className="size-6 stroke-[1.5px]" />}
                   label="Contact Us"
