@@ -1,0 +1,22 @@
+# Cloudinary Configuration for Mobile App
+# Copy this file to .env and fill in your Cloudinary credentials
+
+# Get these values from your Cloudinary Dashboard: https://cloudinary.com/console
+EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=your-cloud-name
+EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=uniclaim_uploads
+
+# Firebase Configuration (already set)
+EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSyCgN70CTX2wQpcgoSZF6AK0fuq7ikcQgNs
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=uniclaim2.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=uniclaim2
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=uniclaim2.appspot.com
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=38339063459
+EXPO_PUBLIC_FIREBASE_APP_ID=1:38339063459:web:3b5650ebe6fabd352b1916
+EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=G-E693CKMPSY
+
+# Instructions:
+# 1. Create a Cloudinary account at https://cloudinary.com
+# 2. Go to your Dashboard to find your Cloud Name
+# 3. Go to Settings > Upload > Upload presets to create 'uniclaim_uploads' preset
+# 4. Make sure the upload preset is set to "Unsigned" mode
+# 5. Copy this file to .env and replace the placeholder values

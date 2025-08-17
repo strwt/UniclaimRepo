@@ -82,16 +82,15 @@ export default function Report() {
     setIsSubmitting(true);
 
     try {
+      // Build post data conditionally to avoid undefined values in Firebase
       const postData: Omit<Post, 'id' | 'createdAt'> = {
         title: title.trim(),
         description: description.trim(),
         category: selectedCategory!,
         location: selectedLocation!,
         type: reportType,
-        coordinates: coordinates || undefined,
         images: images,
         dateTime: selectedDate!.toISOString(),
-        foundAction: reportType === "found" ? foundAction || undefined : undefined,
         user: {
           firstName: userData.firstName,
           lastName: userData.lastName,
@@ -100,6 +99,16 @@ export default function Report() {
         },
         status: "pending",
       };
+
+      // Only add optional fields if they have valid values
+      if (coordinates) {
+        postData.coordinates = coordinates;
+      }
+      
+      // Only add foundAction for found items that have a selected action
+      if (reportType === "found" && foundAction) {
+        postData.foundAction = foundAction;
+      }
 
       const postId = await postService.createPost(postData);
 

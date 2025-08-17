@@ -25,13 +25,14 @@ import {
     serverTimestamp,
     getDocs
 } from 'firebase/firestore';
-import {
-    getStorage,
-    ref,
-    uploadBytes,
-    getDownloadURL,
-    deleteObject
-} from 'firebase/storage';
+// Firebase Storage removed - using Cloudinary instead
+// import {
+//     getStorage,
+//     ref,
+//     uploadBytes,
+//     getDownloadURL,
+//     deleteObject
+// } from 'firebase/storage';
 
 // Firebase configuration
 // Create a .env file in the mobile folder with your Firebase config:
@@ -61,10 +62,11 @@ if (getApps().length === 0) {
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+// export const storage = getStorage(app); // Removed - using Cloudinary instead
 
-// Import Post interface
+// Import Post interface and Cloudinary service
 import type { Post } from '../types/type';
+import { cloudinaryService } from './cloudinary';
 
 // User data interface for Firestore
 export interface UserData {
@@ -257,40 +259,31 @@ export const messageService = {
     }
 };
 
-// Image upload service for React Native
+// Image upload service using Cloudinary for React Native
 export const imageService = {
     // Upload multiple images and return their URLs
-    async uploadImages(imageUris: string[], postId: string): Promise<string[]> {
+    async uploadImages(imageUris: string[], postId?: string): Promise<string[]> {
         try {
-            const uploadPromises = imageUris.map(async (uri, index) => {
-                // Skip if already a URL string
-                if (uri.startsWith('http')) {
-                    return uri;
-                }
-
-                const response = await fetch(uri);
-                const blob = await response.blob();
-
-                const fileName = `${postId}_${index}_${Date.now()}`;
-                const storageRef = ref(storage, `posts/${fileName}`);
-                const snapshot = await uploadBytes(storageRef, blob);
-                return await getDownloadURL(snapshot.ref);
-            });
-
-            return await Promise.all(uploadPromises);
+            return await cloudinaryService.uploadImages(imageUris, 'posts');
         } catch (error: any) {
             console.error('Error uploading images:', error);
             throw new Error(error.message || 'Failed to upload images');
         }
     },
 
-    // Delete images from storage
+    // Delete images from Cloudinary
     async deleteImages(imageUrls: string[]): Promise<void> {
         try {
             const deletePromises = imageUrls.map(async (url) => {
-                if (url.includes('firebase')) {
-                    const imageRef = ref(storage, url);
-                    await deleteObject(imageRef);
+                if (url.includes('cloudinary.com')) {
+                    // Extract public ID from Cloudinary URL for deletion
+                    const urlParts = url.split('/');
+                    const uploadIndex = urlParts.findIndex(part => part === 'upload');
+                    if (uploadIndex !== -1) {
+                        const publicIdWithExtension = urlParts.slice(uploadIndex + 1).join('/');
+                        const publicId = publicIdWithExtension.replace(/\.[^/.]+$/, '');
+                        await cloudinaryService.deleteImage(publicId);
+                    }
                 }
             });
 
@@ -310,9 +303,9 @@ export const postService = {
             // Generate a unique post ID
             const postId = `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-            // Upload images if any (convert string URIs to Firebase URLs)
+            // Upload images if any (convert string URIs to Cloudinary URLs)
             const imageUrls = postData.images.length > 0
-                ? await imageService.uploadImages(postData.images as string[], postId)
+                ? await imageService.uploadImages(postData.images as string[])
                 : [];
 
             // Create post document
@@ -448,7 +441,7 @@ export const postService = {
 
             // Handle image updates if needed
             if (updates.images) {
-                const imageUrls = await imageService.uploadImages(updates.images as string[], postId);
+                const imageUrls = await imageService.uploadImages(updates.images as string[]);
                 updateData.images = imageUrls;
             }
 

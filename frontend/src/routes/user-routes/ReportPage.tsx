@@ -142,13 +142,13 @@ export default function ReportPage({ setPosts }: ReportProp) {
     // }
 
     try {
+      // Build post data conditionally to avoid undefined values in Firebase
       const createdPost: Omit<Post, 'id' | 'createdAt'> = {
         title: title.trim(),
         description: description.trim(),
         category: activeCategory,
         location: selectedLocation,
         type: selectedReport,
-        coordinates: coordinates ?? undefined,
         images: selectedFiles,
         dateTime: selectedDateTime,
         user: {
@@ -159,6 +159,11 @@ export default function ReportPage({ setPosts }: ReportProp) {
         },
         status: "pending",
       };
+
+      // Only add optional fields if they have valid values
+      if (coordinates) {
+        createdPost.coordinates = coordinates;
+      }
 
       // Use Firebase service to create post
       const { postService } = await import('../../utils/firebase');
