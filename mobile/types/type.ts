@@ -10,7 +10,7 @@ export type RootStackParamList = {
   Profile: undefined;
   MyTicket: undefined;
   Message: undefined;
-  Chat: { conversationId?: string; postTitle: string; postId?: string; postOwnerId?: string };
+  Chat: { conversationId?: string; postTitle: string; postId?: string; postOwnerId?: string; postOwnerUserData?: any };
   RootBottomTabs: undefined;
   InitialRouter: undefined;
   ItemDetails: undefined;
@@ -28,6 +28,7 @@ export interface Post {
   type: "lost" | "found";
   coordinates?: { lat: number; lng: number };
   images: (string | File)[];
+  creatorId: string; // Add this field to identify the post creator
   user: {
     firstName: string;
     lastName: string;

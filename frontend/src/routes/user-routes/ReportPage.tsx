@@ -146,6 +146,11 @@ export default function ReportPage() {
     // }
 
     try {
+      // Ensure userData is available
+      if (!userData) {
+        throw new Error("User data not available");
+      }
+      
       // Build post data conditionally to avoid undefined values in Firebase
       const createdPost: Omit<Post, 'id' | 'createdAt'> = {
         title: title.trim(),
@@ -155,6 +160,7 @@ export default function ReportPage() {
         type: selectedReport,
         images: selectedFiles,
         dateTime: selectedDateTime,
+        creatorId: userData.uid, // Add creator ID
         user: {
           firstName: userData?.firstName || "",
           lastName: userData?.lastName || "",
@@ -172,7 +178,7 @@ export default function ReportPage() {
 
       // Use Firebase service to create post
       const { postService } = await import('../../utils/firebase');
-      const postId = await postService.createPost(createdPost);
+      const postId = await postService.createPost(createdPost, userData.uid);
 
       console.log('Post created successfully with ID:', postId);
 

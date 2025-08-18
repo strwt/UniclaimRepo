@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { Conversation } from '@/types/Post';
 import ConversationList from '../../components/ConversationList';
 import ChatWindow from '../../components/ChatWindow';
@@ -6,13 +7,24 @@ import PageWrapper from '../../components/PageWrapper';
 
 const MessagesPage: React.FC = () => {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [searchParams] = useSearchParams();
 
   const handleSelectConversation = (conversation: Conversation) => {
     setSelectedConversation(conversation);
   };
 
+  // Auto-select conversation from URL parameter
+  useEffect(() => {
+    const conversationId = searchParams.get('conversation');
+    if (conversationId && !selectedConversation) {
+      // Find the conversation in the list and select it
+      // This will be handled by the ConversationList component
+      // We'll pass the conversationId as a prop to auto-select
+    }
+  }, [searchParams, selectedConversation]);
+
   return (
-    <PageWrapper>
+    <PageWrapper title="Messages">
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto">
           {/* Page Header */}
@@ -32,6 +44,7 @@ const MessagesPage: React.FC = () => {
               <ConversationList
                 onSelectConversation={handleSelectConversation}
                 selectedConversationId={selectedConversation?.id}
+                autoSelectConversationId={searchParams.get('conversation')}
               />
             </div>
 

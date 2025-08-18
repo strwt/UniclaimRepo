@@ -7,6 +7,8 @@ export interface Post {
   type: "lost" | "found";
   coordinates?: { lat: number; lng: number };
   images: (string | File)[];
+  creatorId: string; // Add this field to identify the post creator
+  postedById?: string; // User ID of the poster for messaging (for backward compatibility)
   user: {
     firstName: string;
     lastName: string;

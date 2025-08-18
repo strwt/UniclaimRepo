@@ -55,7 +55,7 @@ const MessageBubble = ({ message, isOwnMessage }: { message: Message; isOwnMessa
 export default function Chat() {
   const navigation = useNavigation<ChatNavigationProp>();
   const route = useRoute<ChatRouteProp>();
-  const { conversationId: initialConversationId, postTitle, postId, postOwnerId } = route.params;
+  const { conversationId: initialConversationId, postTitle, postId, postOwnerId, postOwnerUserData } = route.params;
   
   const { sendMessage, createConversation, getConversationMessages } = useMessage();
   const { user, userData } = useAuth();
@@ -103,7 +103,8 @@ export default function Chat() {
         postTitle,
         postOwnerId,
         user.uid,
-        userData
+        userData,
+        postOwnerUserData // Pass the post owner's user data
       );
       setConversationId(newConversationId);
     } catch (error: any) {
@@ -150,7 +151,10 @@ export default function Chat() {
             {postTitle}
           </Text>
           <Text className="text-sm text-gray-500">
-            About this lost/found item
+            {postOwnerId && userData ? 
+              (postOwnerId === userData.uid ? 'Your post' : 'Chat with post owner') : 
+              'About this lost/found item'
+            }
           </Text>
         </View>
       </View>

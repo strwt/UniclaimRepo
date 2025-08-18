@@ -1,6 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { FiX } from "react-icons/fi";
 import type { Post } from "@/types/Post";
+import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { useMessage } from "@/context/MessageContext";
 
 interface PostModalProps {
   post: Post;
@@ -16,11 +19,18 @@ function formatDateTime(datetime: string | Date) {
 }
 
 export default function PostModal({ post, onClose }: PostModalProps) {
+  const { userData } = useAuth(); // Get current user data
+  const navigate = useNavigate(); // Add navigation hook
+  const { createConversation } = useMessage(); // Add message context
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const inactivityIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastInteractionTimeRef = useRef<number>(Date.now());
+
+  // Check if current user is the creator of the post
+  const isCurrentUserCreator = userData?.uid === post.creatorId;
 
   const categoryStyles: Record<string, string> = {
     "Student Essentials": "bg-yellow-300 text-black",
@@ -84,6 +94,52 @@ export default function PostModal({ post, onClose }: PostModalProps) {
     setCurrentIndex((prev) => (prev + 1) % imageUrls.length);
   };
 
+  // Handle send message button click
+  const handleSendMessage = async () => {
+    if (!userData) {
+      // If user is not logged in, redirect to login
+      navigate('/login');
+      return;
+    }
+
+    if (isCurrentUserCreator) {
+      // If user is the creator, show message or redirect to their own posts
+      alert("You cannot send a message to yourself. This is your own post.");
+      return;
+    }
+
+    try {
+      setIsCreatingConversation(true);
+      
+      // Get the post owner ID - try multiple sources for compatibility
+      const postOwnerId = post.creatorId || post.postedById;
+      
+      if (!postOwnerId) {
+        throw new Error("Cannot identify post owner");
+      }
+
+      // Create conversation and get the conversation ID
+      const conversationId = await createConversation(
+        post.id,
+        post.title,
+        postOwnerId,
+        userData.uid,
+        userData,
+        post.user // Pass the post owner's user data
+      );
+
+      // Close modal and navigate to messages page with the specific conversation
+      onClose();
+      navigate(`/messages?conversation=${conversationId}`);
+      
+    } catch (error: any) {
+      console.error('Error creating conversation:', error);
+      alert(`Failed to start conversation: ${error.message}`);
+    } finally {
+      setIsCreatingConversation(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="bg-white rounded p-4 shadow w-[25rem] sm:w-[26rem] md:w-[32rem] lg:w-[42rem] xl:w-[60rem] max-w-full max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
@@ -97,9 +153,22 @@ export default function PostModal({ post, onClose }: PostModalProps) {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="text-[12px] bg-brand py-2 px-3 rounded cursor-pointer hover:bg-teal-600 text-white">
-              Send Message
-            </button>
+            {!isCurrentUserCreator && (
+              <button 
+                onClick={handleSendMessage}
+                disabled={isCreatingConversation}
+                className="text-[12px] bg-brand py-2 px-3 rounded cursor-pointer hover:bg-teal-600 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isCreatingConversation ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Starting...
+                  </>
+                ) : (
+                  'Send Message'
+                )}
+              </button>
+            )}
             <button className="" onClick={onClose}>
               <FiX className="size-5 stroke-[1.5px]" />
             </button>
@@ -215,6 +284,8 @@ export default function PostModal({ post, onClose }: PostModalProps) {
             )}
           </div>
         </div>
+
+
       </div>
     </div>
   );

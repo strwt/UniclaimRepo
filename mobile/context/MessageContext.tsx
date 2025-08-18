@@ -6,7 +6,7 @@ interface MessageContextType {
   conversations: Conversation[];
   loading: boolean;
   sendMessage: (conversationId: string, senderId: string, senderName: string, text: string) => Promise<void>;
-  createConversation: (postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: any) => Promise<string>;
+  createConversation: (postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: any, postOwnerUserData?: any) => Promise<string>;
   getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void) => () => void;
 }
 
@@ -41,9 +41,9 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
   };
 
-  const createConversation = async (postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: any): Promise<string> => {
+  const createConversation = async (postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: any, postOwnerUserData?: any): Promise<string> => {
     try {
-      return await messageService.createConversation(postId, postTitle, postOwnerId, currentUserId, currentUserData);
+      return await messageService.createConversation(postId, postTitle, postOwnerId, currentUserId, currentUserData, postOwnerUserData);
     } catch (error: any) {
       throw new Error(error.message || 'Failed to create conversation');
     }

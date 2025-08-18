@@ -83,14 +83,6 @@ export default function Report() {
     setIsSubmitting(true);
 
     try {
-      // Debug: Log user information
-      console.log('Creating post with user data:', {
-        uid: user.uid,
-        userDataUid: userData.uid,
-        firstName: userData.firstName,
-        lastName: userData.lastName
-      });
-
       // Build post data conditionally to avoid undefined values in Firebase
       const postData: Omit<Post, 'id' | 'createdAt'> = {
         title: title.trim(),
@@ -121,7 +113,7 @@ export default function Report() {
         postData.foundAction = foundAction;
       }
 
-      const postId = await postService.createPost(postData);
+      const postId = await postService.createPost(postData, user.uid);
 
       Alert.alert(
         "Success",
@@ -145,8 +137,6 @@ export default function Report() {
           },
         ]
       );
-
-      console.log('Post created successfully with ID:', postId);
     } catch (error: any) {
       console.error('Error creating post:', error);
       Alert.alert(

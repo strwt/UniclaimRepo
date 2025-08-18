@@ -234,13 +234,20 @@ export const messageService = {
     // Create a new conversation
     async createConversation(postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: UserData): Promise<string> {
         try {
-            // Check if conversation already exists
-            const existingQuery = query(
+            // Simple duplicate check: get all user conversations and filter in JavaScript
+            const userConversationsQuery = query(
                 collection(db, 'conversations'),
-                where('postId', '==', postId),
-                where(`participants.${currentUserId}`, '!=', null),
-                where(`participants.${postOwnerId}`, '!=', null)
+                where(`participants.${currentUserId}`, '!=', null)
             );
+            const userConversationsSnapshot = await getDocs(userConversationsQuery);
+            const existingConversation = userConversationsSnapshot.docs.find((docSnap) => {
+                const data: any = docSnap.data();
+                return data.postId === postId && data.participants && data.participants[postOwnerId];
+            });
+            if (existingConversation) {
+                console.log('Reusing existing conversation:', existingConversation.id);
+                return existingConversation.id;
+            }
 
             const conversationRef = await addDoc(collection(db, 'conversations'), {
                 postId,
@@ -358,54 +365,45 @@ export const imageService = {
                     const publicId = extractCloudinaryPublicId(url);
 
                     if (publicId) {
-                        console.log(`Deleting image with public ID: ${publicId} from URL: ${url}`);
                         try {
                             await cloudinaryService.deleteImage(publicId);
-                            console.log(`✅ Successfully deleted image: ${publicId}`);
                         } catch (deleteError: any) {
                             // Handle deletion errors gracefully without throwing
                             if (deleteError.message?.includes('permission') || deleteError.message?.includes('401')) {
-                                console.log(`ℹ️ Image ${publicId} could not be deleted due to permission limitations. It will remain in Cloudinary storage.`);
+                                // Silent handling for permission issues
                             } else if (deleteError.message?.includes('signature') || deleteError.message?.includes('CryptoJS')) {
-                                console.log(`ℹ️ Image ${publicId} could not be deleted due to signature generation issues. It will remain in Cloudinary storage.`);
+                                // Silent handling for signature issues
                             } else {
-                                console.log(`ℹ️ Image ${publicId} could not be deleted: ${deleteError.message}`);
+                                // Silent handling for other errors
                             }
                             // Don't throw error - just log it and continue
                         }
-                    } else {
-                        console.log(`Could not extract public ID from URL: ${url}`);
                     }
                 }
             });
 
             await Promise.all(deletePromises);
         } catch (error: any) {
-            console.error('Error in deleteImages function:', error);
-
             // Check if it's a Cloudinary configuration issue
             if (error.message?.includes('not configured') || error.message?.includes('credentials')) {
-                console.log('Cloudinary API credentials not configured. Images cannot be deleted from storage.');
-                // Don't throw error - just log it and continue
+                // Silent handling for configuration issues
                 return;
             }
 
             // Check if it's a permission issue
             if (error.message?.includes('401') || error.message?.includes('permission')) {
-                console.log('Cloudinary account permissions insufficient. Images cannot be deleted from storage.');
-                // Don't throw error - just log it and continue
+                // Silent handling for permission issues
                 return;
             }
 
             // Check if it's a signature generation issue
             if (error.message?.includes('signature') || error.message?.includes('CryptoJS')) {
-                console.log('Cloudinary signature generation failed. Images cannot be deleted from storage.');
-                // Don't throw error - just log it and continue
+                // Silent handling for signature issues
                 return;
             }
 
             // For other errors, just log them without throwing
-            console.log(`Image deletion encountered issues: ${error.message}`);
+            console.error('Image deletion encountered issues:', error.message);
         }
     }
 };
@@ -413,7 +411,7 @@ export const imageService = {
 // Post service functions
 export const postService = {
     // Create a new post
-    async createPost(postData: Omit<Post, 'id' | 'createdAt'>): Promise<string> {
+    async createPost(postData: Omit<Post, 'id' | 'createdAt' | 'creatorId'>, creatorId: string): Promise<string> {
         try {
             // Generate a unique post ID
             const postId = `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -427,6 +425,7 @@ export const postService = {
             const post: Post = {
                 ...postData,
                 id: postId,
+                creatorId: creatorId, // Add the creator ID
                 images: imageUrls,
                 createdAt: serverTimestamp(),
                 status: 'pending'
@@ -453,19 +452,6 @@ export const postService = {
                 ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
-
-            // ✅ Debug: Log the first post to see the data structure
-            if (posts.length > 0) {
-                console.log('Mobile Firebase - First post data structure:', {
-                    id: posts[0].id,
-                    title: posts[0].title,
-                    user: posts[0].user,
-                    postedBy: posts[0].postedBy,
-                    postedById: posts[0].postedById,
-                    hasUserObject: !!posts[0].user,
-                    userKeys: posts[0].user ? Object.keys(posts[0].user) : []
-                });
-            }
 
             callback(posts);
         }, (error) => {
@@ -619,12 +605,11 @@ export const postService = {
                     await imageService.deleteImages(post.images as string[]);
                 } catch (imageDeleteError: any) {
                     // Log image deletion errors but don't fail the post deletion
-                    console.log('Image deletion failed, but continuing with post deletion:', imageDeleteError.message);
+                    console.error('Image deletion failed, but continuing with post deletion:', imageDeleteError.message);
                 }
             }
 
             await deleteDoc(doc(db, 'posts', postId));
-            console.log(`✅ Successfully deleted post: ${postId}`);
         } catch (error: any) {
             console.error('Error deleting post:', error);
             throw new Error(error.message || 'Failed to delete post');

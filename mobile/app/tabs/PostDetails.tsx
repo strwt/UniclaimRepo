@@ -83,7 +83,8 @@ export default function PostDetailsScreen() {
               (navigation as any).navigate('Chat', {
                 postTitle: post.title,
                 postId: post.id,
-                postOwnerId: postOwnerId
+                postOwnerId: postOwnerId,
+                postOwnerUserData: post.user // Pass the post owner's user data
               });
             } else {
               // Fallback: show alert that messaging is not available

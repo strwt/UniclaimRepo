@@ -133,6 +133,8 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
             __html: highlightAndTruncate(post.description, highlightText),
           }}
         />
+
+
       </div>
     </div>
   );

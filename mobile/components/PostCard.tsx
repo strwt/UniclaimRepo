@@ -24,17 +24,6 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     
-  // ✅ Debug: Log the post data to see what we're receiving
-  console.log('PostCard - Post data:', {
-    id: post.id,
-    title: post.title,
-    user: post.user,
-    postedBy: post.postedBy,
-    postedById: post.postedById,
-    hasUserObject: !!post.user,
-    userKeys: post.user ? Object.keys(post.user) : []
-  });
-
   const getCategoryBadgeStyle = (category: string) => {
     switch (category.toLowerCase()) {
       case "student essentials":

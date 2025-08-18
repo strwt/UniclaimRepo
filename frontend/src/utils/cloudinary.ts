@@ -326,7 +326,7 @@ export const cloudinaryService = {
     },
 
     // Alternative deletion method for accounts with limited permissions
-    async deleteImageAlternative(publicId: string): Promise<void> {
+    async deleteImageAlternative(_publicId: string): Promise<void> {
         try {
             // For accounts with limited permissions, we can't actually delete images
             // The image will remain in storage but won't be accessible through your app

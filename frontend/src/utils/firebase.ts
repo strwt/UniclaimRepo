@@ -178,9 +178,48 @@ export const authService = {
 // Message service functions
 export const messageService = {
     // Create a new conversation
-    async createConversation(postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: UserData): Promise<string> {
+    async createConversation(postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: UserData, postOwnerUserData?: any): Promise<string> {
         try {
-            const conversationRef = await addDoc(collection(db, 'conversations'), {
+            // Use passed post owner user data or fallback to fetching from users collection
+            let postOwnerFirstName = '';
+            let postOwnerLastName = '';
+            // Note: contact number not used in conversation document
+
+            if (postOwnerUserData && postOwnerUserData.firstName && postOwnerUserData.lastName) {
+                // Use the passed user data from the post
+                postOwnerFirstName = postOwnerUserData.firstName;
+                postOwnerLastName = postOwnerUserData.lastName;
+            } else {
+                // Fallback: try to fetch from users collection
+                try {
+                    const postOwnerDoc = await getDoc(doc(db, 'users', postOwnerId));
+                    if (postOwnerDoc.exists()) {
+                        const postOwnerData = postOwnerDoc.data();
+                        postOwnerFirstName = postOwnerData.firstName || '';
+                        postOwnerLastName = postOwnerData.lastName || '';
+                    }
+                } catch (error) {
+                    console.warn('Could not fetch post owner data:', error);
+                    // Continue with empty values if fetch fails
+                }
+            }
+
+            // Simple duplicate check: get all user conversations and filter in JavaScript
+            const userConversationsQuery = query(
+                collection(db, 'conversations'),
+                where(`participants.${currentUserId}`, '!=', null)
+            );
+            const userConversationsSnapshot = await getDocs(userConversationsQuery);
+            const existingConversation = userConversationsSnapshot.docs.find((docSnap) => {
+                const data: any = docSnap.data();
+                return data.postId === postId && data.participants && data.participants[postOwnerId];
+            });
+            if (existingConversation) {
+                console.log('Reusing existing conversation:', existingConversation.id);
+                return existingConversation.id;
+            }
+
+            const conversationData = {
                 postId,
                 postTitle,
                 participants: {
@@ -192,13 +231,25 @@ export const messageService = {
                     },
                     [postOwnerId]: {
                         uid: postOwnerId,
-                        firstName: '',
-                        lastName: '',
+                        firstName: postOwnerFirstName,
+                        lastName: postOwnerLastName,
                         joinedAt: serverTimestamp()
                     }
                 },
                 createdAt: serverTimestamp()
+            };
+
+            // Debug logging
+            console.log('Creating conversation with data:', {
+                postId,
+                postTitle,
+                currentUserId,
+                postOwnerId,
+                participants: Object.keys(conversationData.participants),
+                participantNames: Object.values(conversationData.participants).map((p: any) => `${p.firstName} ${p.lastName}`)
             });
+
+            const conversationRef = await addDoc(collection(db, 'conversations'), conversationData);
 
             return conversationRef.id;
         } catch (error: any) {
@@ -245,11 +296,30 @@ export const messageService = {
                 ...doc.data()
             }));
 
+            // Filter out conversations where the user is the only participant
+            const validConversations = conversations.filter((conv: any) => {
+                const participantIds = Object.keys(conv.participants || {});
+                return participantIds.length > 1; // Must have at least 2 participants
+            });
+
             // Sort conversations by createdAt in JavaScript instead
-            const sortedConversations = conversations.sort((a: any, b: any) => {
+            const sortedConversations = validConversations.sort((a: any, b: any) => {
                 const dateA = a.createdAt ? (a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)) : new Date(0);
                 const dateB = b.createdAt ? (b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)) : new Date(0);
                 return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            // Debug logging
+            console.log('User conversations:', {
+                userId,
+                totalConversations: conversations.length,
+                validConversations: sortedConversations.length,
+                conversations: sortedConversations.map((conv: any) => ({
+                    id: conv.id,
+                    postTitle: conv.postTitle,
+                    participants: Object.keys(conv.participants || {}),
+                    participantNames: Object.values(conv.participants || {}).map((p: any) => `${p.firstName} ${p.lastName}`)
+                }))
             });
 
             callback(sortedConversations);
@@ -273,7 +343,7 @@ export const messageService = {
     },
 
     // Mark conversation as read
-    async markConversationAsRead(conversationId: string, userId: string): Promise<void> {
+    async markConversationAsRead(conversationId: string, _userId: string): Promise<void> {
         try {
             await updateDoc(doc(db, 'conversations', conversationId), {
                 unreadCount: 0
@@ -406,7 +476,7 @@ export const imageService = {
 // Post service functions
 export const postService = {
     // Create a new post
-    async createPost(postData: Omit<Post, 'id' | 'createdAt'>): Promise<string> {
+    async createPost(postData: Omit<Post, 'id' | 'createdAt' | 'creatorId'>, creatorId: string): Promise<string> {
         try {
             // Generate a unique post ID
             const postId = `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -420,6 +490,7 @@ export const postService = {
             const post: Post = {
                 ...postData,
                 id: postId,
+                creatorId: creatorId, // Add the creator ID
                 images: imageUrls,
                 createdAt: serverTimestamp(),
                 status: 'pending'

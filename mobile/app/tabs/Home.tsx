@@ -12,17 +12,6 @@ export default function Home() {
   // ✅ Use the custom hook for real-time posts
   const { posts, loading, error } = usePosts();
   
-  // ✅ Debug: Log posts to see the data structure
-  console.log('Mobile Home - Posts received:', posts?.length || 0);
-  if (posts && posts.length > 0) {
-    console.log('Mobile Home - First post structure:', {
-      id: posts[0].id,
-      title: posts[0].title,
-      user: posts[0].user,
-      postedBy: posts[0].postedBy,
-      postedById: posts[0].postedById
-    });
-  }
   const [activeButton, setActiveButton] = useState<"lost" | "found">("lost");
   const [query, setQuery] = useState("");
   const [categorySearch, setCategorySearch] = useState("");
@@ -32,7 +21,6 @@ export default function Home() {
   const filteredPosts = (posts || []).filter((post) => {
     // ✅ Add data validation to prevent crashes
     if (!post || !post.title || !post.description || !post.category || !post.location) {
-      console.warn('PostCard - Invalid post data:', post);
       return false;
     }
     

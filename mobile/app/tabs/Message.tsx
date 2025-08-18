@@ -4,16 +4,31 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import PageLayout from "@/layout/PageLayout";
 import { useMessage } from "@/context/MessageContext";
+import { useAuth } from "@/context/AuthContext";
 import type { Conversation } from "@/types/type";
 import type { RootStackParamList } from "@/types/type";
 
 type MessageNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Message'>;
 
 const ConversationItem = ({ conversation, onPress }: { conversation: Conversation; onPress: () => void }) => {
+  const { userData } = useAuth();
+  
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Get the other participant's name (exclude current user)
+  const getOtherParticipantName = () => {
+    if (!userData) return 'Unknown User';
+    
+    const otherParticipants = Object.entries(conversation.participants || {})
+      .filter(([uid]) => uid !== userData.uid) // Exclude current user
+      .map(([, participant]) => `${participant.firstName} ${participant.lastName}`.trim())
+      .filter(name => name.length > 0);
+    
+    return otherParticipants.length > 0 ? otherParticipants.join(', ') : 'Unknown User';
   };
 
   return (
@@ -25,6 +40,9 @@ const ConversationItem = ({ conversation, onPress }: { conversation: Conversatio
         <View className="flex-1">
           <Text className="font-semibold text-gray-800 text-base" numberOfLines={1}>
             {conversation.postTitle}
+          </Text>
+          <Text className="text-gray-500 text-xs mt-1" numberOfLines={1}>
+            {getOtherParticipantName()}
           </Text>
           <Text className="text-gray-600 text-sm mt-1" numberOfLines={2}>
             {conversation.lastMessage?.text || 'No messages yet'}

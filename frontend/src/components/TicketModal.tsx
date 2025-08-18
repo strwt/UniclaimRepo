@@ -1,5 +1,5 @@
 import { FiX } from "react-icons/fi";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { Post } from "@/types/Post";
 
 interface TicketModalProps {

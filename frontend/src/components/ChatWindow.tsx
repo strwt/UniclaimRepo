@@ -16,7 +16,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { sendMessage, getConversationMessages, markConversationAsRead } = useMessage();
-  const { user, userData } = useAuth();
+  const { userData } = useAuth();
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -70,9 +70,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     }
   };
 
-  const getParticipantNames = (conversation: Conversation) => {
-    const participants = Object.values(conversation.participants);
-    return participants.map(p => `${p.firstName} ${p.lastName}`).join(', ');
+  const getOtherParticipantName = (conversation: Conversation) => {
+    if (!userData) return 'Unknown User';
+    
+    const otherParticipants = Object.entries(conversation.participants)
+      .filter(([uid]) => uid !== userData.uid) // Exclude current user
+      .map(([, participant]) => `${participant.firstName} ${participant.lastName}`.trim())
+      .filter(name => name.length > 0);
+    
+    return otherParticipants.length > 0 ? otherParticipants.join(', ') : 'Unknown User';
   };
 
   if (!conversation) {
@@ -93,7 +99,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       <div className="p-4 border-b border-gray-200 bg-gray-50">
         <h3 className="font-semibold text-gray-900">{conversation.postTitle}</h3>
         <p className="text-sm text-gray-500">
-          {getParticipantNames(conversation)}
+          {getOtherParticipantName(conversation)}
         </p>
       </div>
 

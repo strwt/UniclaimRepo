@@ -1,18 +1,32 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useMessage } from '../context/MessageContext';
+import { useAuth } from '../context/AuthContext';
 import type { Conversation } from '../types/Post';
 import LoadingSpinner from './LoadingSpinner';
 
 interface ConversationListProps {
   onSelectConversation: (conversation: Conversation) => void;
   selectedConversationId?: string;
+  autoSelectConversationId?: string | null;
 }
 
 const ConversationList: React.FC<ConversationListProps> = ({
   onSelectConversation,
-  selectedConversationId
+  selectedConversationId,
+  autoSelectConversationId
 }) => {
   const { conversations, loading } = useMessage();
+  const { userData } = useAuth();
+
+  // Auto-select conversation when component mounts or conversations change
+  useEffect(() => {
+    if (autoSelectConversationId && conversations.length > 0 && !selectedConversationId) {
+      const conversationToSelect = conversations.find(conv => conv.id === autoSelectConversationId);
+      if (conversationToSelect) {
+        onSelectConversation(conversationToSelect);
+      }
+    }
+  }, [autoSelectConversationId, conversations, selectedConversationId, onSelectConversation]);
 
   if (loading) {
     return (
@@ -45,9 +59,14 @@ const ConversationList: React.FC<ConversationListProps> = ({
     return date.toLocaleDateString();
   };
 
-  const getParticipantNames = (conversation: Conversation) => {
-    const participants = Object.values(conversation.participants);
-    return participants.map(p => `${p.firstName} ${p.lastName}`).join(', ');
+  // Get the other participant's name (exclude current user)
+  const getOtherParticipantName = (conversation: Conversation, currentUserId: string) => {
+    const otherParticipants = Object.entries(conversation.participants)
+      .filter(([uid]) => uid !== currentUserId) // Exclude current user
+      .map(([, participant]) => `${participant.firstName} ${participant.lastName}`.trim())
+      .filter(name => name.length > 0);
+    
+    return otherParticipants.length > 0 ? otherParticipants.join(', ') : 'Unknown User';
   };
 
   return (
@@ -76,7 +95,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
                     {conversation.postTitle}
                   </h3>
                   <p className="text-sm text-gray-500 truncate">
-                    {getParticipantNames(conversation)}
+                    {userData ? getOtherParticipantName(conversation, userData.uid) : 'Unknown User'}
                   </p>
                 </div>
                 {hasUnread && (
