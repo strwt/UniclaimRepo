@@ -81,6 +81,56 @@ export interface UserData {
     updatedAt: any;
 }
 
+// Helper function to extract Cloudinary public ID from URL (same as web version)
+function extractCloudinaryPublicId(url: string): string | null {
+    try {
+        // Handle different Cloudinary URL formats
+        if (url.includes('res.cloudinary.com')) {
+            // Format: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/image_name.jpg
+            const urlParts = url.split('/');
+            const uploadIndex = urlParts.findIndex(part => part === 'upload');
+
+            if (uploadIndex !== -1) {
+                // Get everything after 'upload' but before any version number
+                let publicIdParts = urlParts.slice(uploadIndex + 1);
+
+                // Remove version number if present (starts with 'v' followed by numbers)
+                const versionIndex = publicIdParts.findIndex(part => /^v\d+$/.test(part));
+                if (versionIndex !== -1) {
+                    publicIdParts = publicIdParts.slice(versionIndex + 1);
+                }
+
+                // Remove file extension from the last part
+                if (publicIdParts.length > 0) {
+                    const lastPart = publicIdParts[publicIdParts.length - 1];
+                    const extensionIndex = lastPart.lastIndexOf('.');
+                    if (extensionIndex !== -1) {
+                        publicIdParts[publicIdParts.length - 1] = lastPart.substring(0, extensionIndex);
+                    }
+                }
+
+                const publicId = publicIdParts.join('/');
+                return publicId;
+            }
+        } else if (url.includes('api.cloudinary.com')) {
+            // Format: https://api.cloudinary.com/v1_1/cloud_name/image/upload/...
+            const urlParts = url.split('/');
+            const uploadIndex = urlParts.findIndex(part => part === 'upload');
+
+            if (uploadIndex !== -1) {
+                const publicIdParts = urlParts.slice(uploadIndex + 1);
+                const publicId = publicIdParts.join('/');
+                return publicId;
+            }
+        }
+
+        return null;
+
+    } catch (error) {
+        return null;
+    }
+}
+
 // Auth utility functions
 export const authService = {
     // Register new user
@@ -298,23 +348,64 @@ export const imageService = {
     // Delete images from Cloudinary
     async deleteImages(imageUrls: string[]): Promise<void> {
         try {
+            if (imageUrls.length === 0) {
+                return;
+            }
+
             const deletePromises = imageUrls.map(async (url) => {
                 if (url.includes('cloudinary.com')) {
-                    // Extract public ID from Cloudinary URL for deletion
-                    const urlParts = url.split('/');
-                    const uploadIndex = urlParts.findIndex(part => part === 'upload');
-                    if (uploadIndex !== -1) {
-                        const publicIdWithExtension = urlParts.slice(uploadIndex + 1).join('/');
-                        const publicId = publicIdWithExtension.replace(/\.[^/.]+$/, '');
-                        await cloudinaryService.deleteImage(publicId);
+                    // Extract public ID from Cloudinary URL for deletion using robust function
+                    const publicId = extractCloudinaryPublicId(url);
+
+                    if (publicId) {
+                        console.log(`Deleting image with public ID: ${publicId} from URL: ${url}`);
+                        try {
+                            await cloudinaryService.deleteImage(publicId);
+                            console.log(`✅ Successfully deleted image: ${publicId}`);
+                        } catch (deleteError: any) {
+                            // Handle deletion errors gracefully without throwing
+                            if (deleteError.message?.includes('permission') || deleteError.message?.includes('401')) {
+                                console.log(`ℹ️ Image ${publicId} could not be deleted due to permission limitations. It will remain in Cloudinary storage.`);
+                            } else if (deleteError.message?.includes('signature') || deleteError.message?.includes('CryptoJS')) {
+                                console.log(`ℹ️ Image ${publicId} could not be deleted due to signature generation issues. It will remain in Cloudinary storage.`);
+                            } else {
+                                console.log(`ℹ️ Image ${publicId} could not be deleted: ${deleteError.message}`);
+                            }
+                            // Don't throw error - just log it and continue
+                        }
+                    } else {
+                        console.log(`Could not extract public ID from URL: ${url}`);
                     }
                 }
             });
 
             await Promise.all(deletePromises);
         } catch (error: any) {
-            console.error('Error deleting images:', error);
-            // Don't throw error for deletion failures to avoid blocking other operations
+            console.error('Error in deleteImages function:', error);
+
+            // Check if it's a Cloudinary configuration issue
+            if (error.message?.includes('not configured') || error.message?.includes('credentials')) {
+                console.log('Cloudinary API credentials not configured. Images cannot be deleted from storage.');
+                // Don't throw error - just log it and continue
+                return;
+            }
+
+            // Check if it's a permission issue
+            if (error.message?.includes('401') || error.message?.includes('permission')) {
+                console.log('Cloudinary account permissions insufficient. Images cannot be deleted from storage.');
+                // Don't throw error - just log it and continue
+                return;
+            }
+
+            // Check if it's a signature generation issue
+            if (error.message?.includes('signature') || error.message?.includes('CryptoJS')) {
+                console.log('Cloudinary signature generation failed. Images cannot be deleted from storage.');
+                // Don't throw error - just log it and continue
+                return;
+            }
+
+            // For other errors, just log them without throwing
+            console.log(`Image deletion encountered issues: ${error.message}`);
         }
     }
 };
@@ -524,10 +615,16 @@ export const postService = {
             const post = await this.getPostById(postId);
 
             if (post && post.images.length > 0) {
-                await imageService.deleteImages(post.images as string[]);
+                try {
+                    await imageService.deleteImages(post.images as string[]);
+                } catch (imageDeleteError: any) {
+                    // Log image deletion errors but don't fail the post deletion
+                    console.log('Image deletion failed, but continuing with post deletion:', imageDeleteError.message);
+                }
             }
 
             await deleteDoc(doc(db, 'posts', postId));
+            console.log(`✅ Successfully deleted post: ${postId}`);
         } catch (error: any) {
             console.error('Error deleting post:', error);
             throw new Error(error.message || 'Failed to delete post');
