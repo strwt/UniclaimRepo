@@ -12,15 +12,20 @@ import { ScrollView, Text, TouchableOpacity, View, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { RootStackParamList } from "../../types/type";
 import LocationMapView from '../../components/LocationMapView';
+import { useAuth } from "../../context/AuthContext";
 
 type PostDetailsRouteProp = RouteProp<RootStackParamList, "PostDetails">;
 
 export default function PostDetailsScreen() {
   const route = useRoute<PostDetailsRouteProp>();
   const { post } = route.params;
+  const { userData } = useAuth();
 
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  // Check if current user is the creator of this post
+  const isCurrentUserCreator = userData?.uid === post.creatorId || userData?.uid === post.postedById;
 
   const getCategoryBadgeStyle = (category: string) => {
     switch (category.toLowerCase()) {
@@ -55,51 +60,63 @@ export default function PostDetailsScreen() {
           <ImageCarousel images={post.images as string[]} />
         </View>
 
-        <TouchableOpacity 
-          className="bg-brand h-[3.5rem] mb-5 w-full items-center justify-center rounded-md"
-          onPress={() => {
-            // Debug: Log post data to see what's available
-            console.log('PostDetails - Post data for messaging:', {
-              id: post.id,
-              title: post.title,
-              postedById: post.postedById,
-              user: post.user,
-              hasPostedById: !!post.postedById,
-              userKeys: Object.keys(post.user || {})
-            });
-
-            // Try to get postOwnerId from multiple sources
-            let postOwnerId = post.postedById;
-            
-            // Fallback: if postedById is missing, try to get it from the user object
-            if (!postOwnerId && post.user) {
-              // For now, we'll show an alert, but in the future we could implement
-              // a way to get the user ID from the user object or other means
-              console.warn('PostDetails - postedById missing, cannot start conversation');
-            }
-
-            // Navigate to Chat screen with post details
-            if (postOwnerId) {
-              (navigation as any).navigate('Chat', {
-                postTitle: post.title,
-                postId: post.id,
-                postOwnerId: postOwnerId,
-                postOwnerUserData: post.user // Pass the post owner's user data
+        {/* Send Message Button - Only show if user is NOT the creator */}
+        {!isCurrentUserCreator && (
+          <TouchableOpacity 
+            className="bg-brand h-[3.5rem] mb-5 w-full items-center justify-center rounded-md"
+            onPress={() => {
+              // Debug: Log post data to see what's available
+              console.log('PostDetails - Post data for messaging:', {
+                id: post.id,
+                title: post.title,
+                postedById: post.postedById,
+                user: post.user,
+                hasPostedById: !!post.postedById,
+                userKeys: Object.keys(post.user || {})
               });
-            } else {
-              // Fallback: show alert that messaging is not available
-              Alert.alert(
-                'Messaging Unavailable',
-                'Unable to start conversation. Post owner information is missing. This post was created before messaging was enabled.',
-                [{ text: 'OK' }]
-              );
-            }
-          }}
-        >
-          <Text className="text-white font-manrope-medium text-base">
-            Send Message to {post.user.firstName}
-          </Text>
-        </TouchableOpacity>
+
+              // Try to get postOwnerId from multiple sources
+              let postOwnerId = post.creatorId || post.postedById;
+              
+              // Fallback: if postedById is missing, try to get it from the user object
+              if (!postOwnerId && post.user) {
+                // For now, we'll show an alert, but in the future we could implement
+                // a way to get the user ID from the user object or other means
+                console.warn('PostDetails - postedById missing, cannot start conversation');
+              }
+
+              // Navigate to Chat screen with post details
+              if (postOwnerId) {
+                (navigation as any).navigate('Chat', {
+                  postTitle: post.title,
+                  postId: post.id,
+                  postOwnerId: postOwnerId,
+                  postOwnerUserData: post.user // Pass the post owner's user data
+                });
+              } else {
+                // Fallback: show alert that messaging is not available
+                Alert.alert(
+                  'Messaging Unavailable',
+                  'Unable to start conversation. Post owner information is missing. This post was created before messaging was enabled.',
+                  [{ text: 'OK' }]
+                );
+              }
+            }}
+          >
+            <Text className="text-white font-manrope-medium text-base">
+              Send Message to {post.user.firstName}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Show message for post creator */}
+        {isCurrentUserCreator && (
+          <View className="bg-gray-100 h-[3.5rem] mb-5 w-full items-center justify-center rounded-md border border-gray-300">
+            <Text className="text-gray-600 font-manrope-medium text-base">
+              This is your post - you cannot message yourself
+            </Text>
+          </View>
+        )}
 
         {post.type === "lost" ? (
           <View className="flex-row mb-5 bg-blue-50 rounded-md py-3 w-full items-center justify-center px-3">

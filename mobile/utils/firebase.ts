@@ -232,7 +232,7 @@ export const authService = {
 // Message service functions
 export const messageService = {
     // Create a new conversation
-    async createConversation(postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: UserData): Promise<string> {
+    async createConversation(postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: UserData, postOwnerUserData?: any): Promise<string> {
         try {
             // Simple duplicate check: get all user conversations and filter in JavaScript
             const userConversationsQuery = query(
@@ -261,8 +261,8 @@ export const messageService = {
                     },
                     [postOwnerId]: {
                         uid: postOwnerId,
-                        firstName: '',
-                        lastName: '',
+                        firstName: postOwnerUserData?.firstName || 'Post Owner',
+                        lastName: postOwnerUserData?.lastName || '',
                         joinedAt: serverTimestamp()
                     }
                 },
