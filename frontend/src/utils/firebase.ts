@@ -643,6 +643,12 @@ export const postService = {
     // Update post
     async updatePost(postId: string, updates: Partial<Post>): Promise<void> {
         try {
+            // Get the original post data first to compare images
+            const originalPost = await this.getPostById(postId);
+            if (!originalPost) {
+                throw new Error('Post not found');
+            }
+
             const updateData = {
                 ...updates,
                 updatedAt: serverTimestamp()
@@ -650,7 +656,40 @@ export const postService = {
 
             // Handle image updates if needed
             if (updates.images) {
-                const imageUrls = await imageService.uploadImages(updates.images);
+                // Compare original images with new images to find deleted ones
+                const originalImages = originalPost.images || [];
+                const newImages = updates.images;
+
+                // Find images that were deleted (exist in original but not in new)
+                const deletedImages: string[] = [];
+                originalImages.forEach((originalImg: string | File) => {
+                    // Only process string URLs (Cloudinary URLs) for deletion
+                    if (typeof originalImg === 'string') {
+                        // Check if this original image is still in the new list
+                        const stillExists = newImages.some((newImg: any) => {
+                            // If newImg is a string (URL), compare directly
+                            if (typeof newImg === 'string') {
+                                return newImg === originalImg;
+                            }
+                            // If newImg is a File, it's a new upload, so original was deleted
+                            return false;
+                        });
+
+                        if (!stillExists) {
+                            deletedImages.push(originalImg);
+                        }
+                    }
+                    // Skip File objects as they can't be deleted from Cloudinary
+                });
+
+                // Delete removed images from Cloudinary first
+                if (deletedImages.length > 0) {
+                    console.log(`Deleting ${deletedImages.length} removed images from Cloudinary:`, deletedImages);
+                    await imageService.deleteImages(deletedImages);
+                }
+
+                // Upload new images and get URLs
+                const imageUrls = await imageService.uploadImages(newImages);
                 updateData.images = imageUrls;
             }
 
