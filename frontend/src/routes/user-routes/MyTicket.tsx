@@ -188,13 +188,42 @@ export default function MyTicket() {
             onClose={() => setSelectedPost(null)}
             onDelete={handleDeletePost}
             isDeleting={deletingPostId === selectedPost.id}
-            onUpdatePost={(updatedPost) => {
-              setPosts((prevPosts: Post[]) =>
-                prevPosts.map((p: Post) =>
-                  p.id === updatedPost.id ? updatedPost : p
-                )
-              );
-              setSelectedPost(updatedPost); // still important to update modal state
+            onUpdatePost={async (updatedPost) => {
+              try {
+                // Save changes to Firebase
+                await postService.updatePost(updatedPost.id, {
+                  title: updatedPost.title,
+                  description: updatedPost.description,
+                  location: updatedPost.location,
+                  status: updatedPost.status,
+                  createdAt: updatedPost.createdAt,
+                  images: updatedPost.images
+                });
+                
+                // Update local state after successful Firebase update
+                setPosts((prevPosts: Post[]) =>
+                  prevPosts.map((p: Post) =>
+                    p.id === updatedPost.id ? updatedPost : p
+                  )
+                );
+                setSelectedPost(updatedPost); // still important to update modal state
+                
+                // Show success message
+                showToast("success", "Ticket Updated", "Your ticket has been successfully updated!");
+              } catch (error: any) {
+                console.error('Error updating post:', error);
+                
+                // Show error message to user
+                let errorMessage = "Failed to update ticket. Please try again.";
+                let errorTitle = "Update Failed";
+                
+                if (error.message?.includes('Cloudinary')) {
+                  errorTitle = "Image Update Failed";
+                  errorMessage = "⚠️ Ticket updated but some images may not have been processed correctly. Please check your ticket.";
+                }
+                
+                showToast("error", errorTitle, errorMessage);
+              }
             }}
           />
         )}
