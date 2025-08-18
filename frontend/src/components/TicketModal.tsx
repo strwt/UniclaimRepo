@@ -48,6 +48,11 @@ const TicketModal = ({
   };
 
   const handleDeleteImage = (index: number) => {
+    // Prevent deletion if this is the last image
+    if (editedImages.length <= 1) {
+      return; // Don't allow deletion of the last image
+    }
+    
     const updated = [...editedImages];
     updated.splice(index, 1);
     setEditedImages(updated);
@@ -356,14 +361,32 @@ const TicketModal = ({
                     className="object-contain max-h-60 w-full rounded"
                   />
                   <button
-                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded"
+                    className={`absolute top-1 right-1 p-1 rounded transition-all ${
+                      editedImages.length <= 1 
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                        : 'bg-red-600 text-white hover:bg-red-500 cursor-pointer'
+                    }`}
                     onClick={() => handleDeleteImage(idx)}
+                    disabled={editedImages.length <= 1}
+                    title={editedImages.length <= 1 ? "Posts must have at least one image" : "Delete image"}
                   >
                     <FiX size={14} />
                   </button>
                 </div>
               ))}
             </div>
+            
+            {/* Helpful message when only one image remains */}
+            {editedImages.length <= 1 && (
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="flex items-center gap-2">
+                  <span className="text-blue-600 text-sm">ℹ️</span>
+                  <span className="text-blue-700 text-sm font-medium">
+                    Posts must have at least one image. To replace this image, upload a new one first.
+                  </span>
+                </div>
+              </div>
+            )}
 
             <input
               type="file"
@@ -373,13 +396,7 @@ const TicketModal = ({
               className="mt-4"
             />
 
-            <div className="flex justify-end gap-3 mt-4">
-              <button
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-500"
-                onClick={() => setEditedImages([])}
-              >
-                Delete All
-              </button>
+            <div className="flex justify-end mt-4">
               <button
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-500"
                 onClick={handleSaveImages}
