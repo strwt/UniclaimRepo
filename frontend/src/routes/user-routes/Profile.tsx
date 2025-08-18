@@ -3,11 +3,12 @@ import EmptyProfile from "@/assets/empty_profile.jpg";
 import { useState, useEffect } from "react";
 import { useToast } from "@/context/ToastContext";
 import { useAuth } from "@/context/AuthContext";
-import { authService } from "@/utils/firebase";
+import { profileUpdateService } from "@/utils/profileUpdateService";
 
 const Profile = () => {
   const { userData, loading } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Use Firebase user data or fallback to empty strings
   const [userInfo, setUserInfo] = useState({
@@ -88,10 +89,13 @@ const Profile = () => {
       return;
     }
 
-    // Update Firebase with new data
+    // Update all user data across collections
     try {
+      setIsUpdating(true);
+      
       if (userData?.uid) {
-        await authService.updateUserData(userData.uid, {
+        // Use the new profile update service to update everything
+        await profileUpdateService.updateAllUserData(userData.uid, {
           firstName,
           lastName,
           email,
@@ -104,8 +108,8 @@ const Profile = () => {
         
         showToast(
           "success",
-          "Profile Updated",
-          "You have updated your profile successfully!"
+          "Profile Updated Successfully!",
+          "Your profile and all related information have been updated across the app."
         );
         setIsEdit(false);
       }
@@ -115,6 +119,8 @@ const Profile = () => {
         "Update Failed",
         error.message || "Failed to update profile. Please try again."
       );
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -180,9 +186,12 @@ const Profile = () => {
               </button>
               <button
                 onClick={handleSave}
-                className="bg-navyblue border border-navyblue  mr-4 px-5 text-xs sm:text-sm md:text-base py-2 text-white rounded-sm lg:mr-6"
+                disabled={isUpdating}
+                className={`border border-navyblue mr-4 px-5 text-xs sm:text-sm md:text-base py-2 text-white rounded-sm lg:mr-6 ${
+                  isUpdating ? 'bg-gray-400 cursor-not-allowed' : 'bg-navyblue hover:bg-blue-700'
+                }`}
               >
-                Save edit
+                {isUpdating ? 'Updating...' : 'Save edit'}
               </button>
             </div>
           )}

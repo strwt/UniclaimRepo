@@ -53,6 +53,11 @@ service cloud.firestore {
         allow create: if request.auth != null 
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
           && request.auth.uid == resource.data.senderId;
+        
+        // Users can update messages they sent (for profile updates)
+        allow update: if request.auth != null 
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
+          && request.auth.uid == resource.data.senderId;
       }
     }
     

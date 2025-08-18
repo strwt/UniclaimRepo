@@ -22,7 +22,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import PageLayout from "../../layout/PageLayout";
 import type { RootStackParamList } from "../../types/type";
 import { useAuth } from "../../context/AuthContext";
-import { authService } from "../../utils/firebase";
+import { profileUpdateService } from "../../utils/profileUpdateService";
 import { cloudinaryService } from "../../utils/cloudinary";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Profile">;
@@ -31,7 +31,7 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation<NavigationProp>();
-  const { logout, userData, user } = useAuth();
+  const { logout, userData, user, refreshUserData } = useAuth();
 
   const [profile, setProfile] = useState({
     firstName: userData?.firstName || "",
@@ -84,16 +84,29 @@ export default function Profile() {
         }
       }
       
-      // Update user data in Firestore
-      await authService.updateUserData(user.uid, {
+      // Prepare update data, only include fields that have values
+      const updateData: any = {
         firstName: profile.firstName,
         lastName: profile.lastName,
         contactNum: profile.contactNumber,
         studentId: profile.studentId,
-        profileImageUrl,
-      });
+      };
 
-      Alert.alert("Success", "Profile updated successfully!");
+      // Only include profileImageUrl if it has a valid value
+      if (profileImageUrl && profileImageUrl !== userData.profileImageUrl) {
+        updateData.profileImageUrl = profileImageUrl;
+      }
+
+      // Update all user data across collections using the new service
+      await profileUpdateService.updateAllUserData(user.uid, updateData);
+
+      // Refresh user data to ensure UI shows updated information
+      await refreshUserData();
+
+      Alert.alert(
+        "Success", 
+        "Profile updated successfully! All your posts and conversations have been updated with the new information."
+      );
       setIsEditing(false);
       setHasImageChanged(false);
     } catch (error: any) {
