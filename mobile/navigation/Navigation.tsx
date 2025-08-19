@@ -2,6 +2,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React, { useState } from "react";
 import type { RootStackParamList } from "../types/type";
+import { useAuth } from "../context/AuthContext";
 
 // Screens
 import Chat from "@/app/Chat";
@@ -46,10 +47,15 @@ export default function Navigation({
   const [images, setImages] = useState<string[]>([]);
   const [showLostInfo, setShowLostInfo] = useState(false);
   const [showFoundInfo, setShowFoundInfo] = useState(false);
+  const { user } = useAuth();
 
-  const initial = !hasSeenOnBoarding
+  // If user is authenticated, skip onboarding and index screens
+  const shouldShowOnboarding = !hasSeenOnBoarding && !user;
+  const shouldShowIndex = !hasPassedIndex && !user;
+
+  const initial = shouldShowOnboarding
     ? "OnBoarding"
-    : !hasPassedIndex
+    : shouldShowIndex
       ? "Index"
       : "RootBottomTabs";
 

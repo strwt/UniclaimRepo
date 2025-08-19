@@ -2,6 +2,7 @@
 import { useFonts } from "expo-font";
 import React, { useEffect, useState } from "react";
 import SplashScreen from "../components/SplashScreen";
+import LoadingScreen from "../components/LoadingScreen";
 import "../global.css";
 
 // screens
@@ -21,11 +22,23 @@ const AppContent = ({
   setHasPassedIndex 
 }: {
   hasSeenOnBoarding: boolean;
-  setHasSeenOnBoarding: (value: boolean) => void;
+  setHasSeenOnBoarding: React.Dispatch<React.SetStateAction<boolean>>;
   hasPassedIndex: boolean;
-  setHasPassedIndex: (value: boolean) => void;
+  setHasPassedIndex: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  // If user is authenticated, skip onboarding and index screens
+  useEffect(() => {
+    if (user && !hasPassedIndex) {
+      setHasPassedIndex(true);
+    }
+  }, [user, hasPassedIndex, setHasPassedIndex]);
+
+  // Show loading screen while auth state is being determined
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <MessageProvider userId={user?.uid || null}>

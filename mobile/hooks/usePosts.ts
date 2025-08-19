@@ -1,21 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { postService } from '../utils/firebase';
 import type { Post } from '../types/type';
 
-// Custom hook for real-time posts
+// Global cache to persist data between component unmounts
+const globalPostCache = new Map<string, { posts: Post[], timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Custom hook for real-time posts with smart caching
 export const usePosts = () => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const cacheKey = 'all-posts';
+
+    // Check if we have valid cached data
+    const cachedData = globalPostCache.get(cacheKey);
+    const hasValidCache = cachedData && (Date.now() - cachedData.timestamp) < CACHE_DURATION;
 
     useEffect(() => {
-        setLoading(true);
-        setError(null);
+        // If we have valid cached data, use it immediately
+        if (hasValidCache) {
+            setPosts(cachedData.posts);
+            setLoading(false);
+            setIsInitialLoad(false);
+        } else {
+            setLoading(true);
+        }
 
         // Subscribe to real-time updates
         const unsubscribe = postService.getAllPosts((fetchedPosts) => {
             setPosts(fetchedPosts);
             setLoading(false);
+            setIsInitialLoad(false);
+
+            // Cache the data
+            globalPostCache.set(cacheKey, {
+                posts: fetchedPosts,
+                timestamp: Date.now()
+            });
         });
 
         return () => {
@@ -25,20 +48,42 @@ export const usePosts = () => {
         };
     }, []);
 
-    return { posts, loading, error };
+    return {
+        posts,
+        loading: isInitialLoad ? loading : false, // Only show loading on first load
+        error,
+        isInitialLoad
+    };
 };
 
-// Custom hook for posts by type
+// Custom hook for posts by type with caching
 export const usePostsByType = (type: 'lost' | 'found') => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const cacheKey = `posts-${type}`;
+
+    const cachedData = globalPostCache.get(cacheKey);
+    const hasValidCache = cachedData && (Date.now() - cachedData.timestamp) < CACHE_DURATION;
 
     useEffect(() => {
-        setLoading(true);
+        if (hasValidCache) {
+            setPosts(cachedData.posts);
+            setLoading(false);
+            setIsInitialLoad(false);
+        } else {
+            setLoading(true);
+        }
 
         const unsubscribe = postService.getPostsByType(type, (fetchedPosts) => {
             setPosts(fetchedPosts);
             setLoading(false);
+            setIsInitialLoad(false);
+
+            globalPostCache.set(cacheKey, {
+                posts: fetchedPosts,
+                timestamp: Date.now()
+            });
         });
 
         return () => {
@@ -48,7 +93,11 @@ export const usePostsByType = (type: 'lost' | 'found') => {
         };
     }, [type]);
 
-    return { posts, loading };
+    return {
+        posts,
+        loading: isInitialLoad ? loading : false,
+        isInitialLoad
+    };
 };
 
 // Custom hook for posts by category

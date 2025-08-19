@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { JSX } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Keyboard, Text, TouchableOpacity, View } from "react-native";
 import {
   SafeAreaView,
@@ -27,6 +27,7 @@ export default function CustomTabs() {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const insets = useSafeAreaInsets();
   const TAB_BAR_HEIGHT = 50;
+  const previousTabRef = useRef(currentTab);
 
   useEffect(() => {
     const keyboardShow = Keyboard.addListener("keyboardDidShow", () =>
@@ -41,6 +42,14 @@ export default function CustomTabs() {
       keyboardHide.remove();
     };
   }, []);
+
+  // Handle tab change with smooth transition
+  const handleTabChange = (newTab: string) => {
+    if (newTab !== currentTab) {
+      previousTabRef.current = currentTab;
+      setCurrentTab(newTab);
+    }
+  };
 
   const tabs: TabConfig[] = [
     {
@@ -80,14 +89,23 @@ export default function CustomTabs() {
     },
   ];
 
-  const CurrentScreen =
-    tabs.find((tab) => tab.key === currentTab)?.component ?? HomeScreen;
-
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
-      {/* Main Content */}
+      {/* Main Content - All tabs mounted but only current one visible */}
       <View className="flex-1">
-        <CurrentScreen />
+        {tabs.map((tab) => (
+          <View
+            key={tab.key}
+            className="flex-1"
+            style={{ 
+              display: currentTab === tab.key ? "flex" : "none",
+              // Add smooth opacity transition for better UX
+              opacity: currentTab === tab.key ? 1 : 0,
+            }}
+          >
+            <tab.component />
+          </View>
+        ))}
       </View>
 
       {/* Bottom Tabs — hidden when keyboard is visible */}
@@ -115,7 +133,7 @@ export default function CustomTabs() {
               return (
                 <TouchableOpacity
                   key={tab.key}
-                  onPress={() => setCurrentTab(tab.key)}
+                  onPress={() => handleTabChange(tab.key)}
                   className="items-center justify-center flex flex-col space-y-1"
                 >
                   <Ionicons
