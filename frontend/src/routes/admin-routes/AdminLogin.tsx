@@ -12,6 +12,7 @@ export default function AdminLogin() {
     adminPassword: "",
     adminGeneral: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   //height vh fit
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function AdminLogin() {
   const navigate = useNavigate(); // Initialize the navigate function
 
   //error handling here
-  const handleLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
 
     const newError = { adminEmail: "", adminPassword: "", adminGeneral: "" };
@@ -76,7 +77,19 @@ export default function AdminLogin() {
 
     const isValid =
       !newError.adminEmail && !newError.adminPassword && !newError.adminGeneral;
-    if (isValid) navigate("/home");
+    
+    if (isValid) {
+      try {
+        setIsLoading(true);
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        navigate("/home");
+      } catch (error) {
+        console.error("Login error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
   };
 
   //error and no error styling
@@ -152,10 +165,22 @@ export default function AdminLogin() {
               {/* submit button */}
               <button
                 onClick={handleLogin}
-                className="bg-brand w-full py-2 text-white rounded-lg hover:bg-teal-600 hover:cursor-pointer transition-all duration-200"
+                className={`w-full py-2 text-white rounded-lg transition-all duration-200 ${
+                  isLoading 
+                    ? "bg-gray-400 cursor-not-allowed" 
+                    : "bg-brand hover:bg-teal-600 hover:cursor-pointer"
+                }`}
                 type="submit"
+                disabled={isLoading}
               >
-                Login
+                {isLoading ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Logging in...</span>
+                  </div>
+                ) : (
+                  "Login"
+                )}
               </button>
 
               <Link

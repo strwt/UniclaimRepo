@@ -12,7 +12,7 @@ export default function Login() {
 
   // const { isAuthenticated, login } = useAuth();
   // const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loading } = useAuth();
   const navigate = useNavigate();
 
   // useEffect(() => {
@@ -135,10 +135,22 @@ export default function Login() {
 
               <div className="space-y-5">
                 <button
-                  className="bg-brand w-full py-2 text-white rounded-lg hover:bg-teal-600 hover:cursor-pointer transition-all duration-200"
+                  className={`w-full py-2 text-white rounded-lg transition-all duration-200 ${
+                    loading 
+                      ? "bg-gray-400 cursor-not-allowed" 
+                      : "bg-brand hover:bg-teal-600 hover:cursor-pointer"
+                  }`}
                   type="submit"
+                  disabled={loading}
                 >
-                  Login
+                  {loading ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Logging in...</span>
+                    </div>
+                  ) : (
+                    "Login"
+                  )}
                 </button>
 
                 <Link

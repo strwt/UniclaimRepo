@@ -28,7 +28,7 @@ export default function Register() {
   const [regError, setRegError] = useState<FormErrors>({});
   
   // Firebase auth and navigation
-  const { register } = useAuth();
+  const { register, loading } = useAuth();
   const navigate = useNavigate();
 
   // handle submit
@@ -250,9 +250,21 @@ export default function Register() {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full mt-4 bg-brand text-white py-2 rounded-lg hover:bg-teal-600 transition-all"
+              className={`w-full mt-4 text-white py-2 rounded-lg transition-all ${
+                loading 
+                  ? "bg-gray-400 cursor-not-allowed" 
+                  : "bg-brand hover:bg-teal-600"
+              }`}
+              disabled={loading}
             >
-              Create an account
+              {loading ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Creating account...</span>
+                </div>
+              ) : (
+                "Create an account"
+              )}
             </button>
           </form>
 
