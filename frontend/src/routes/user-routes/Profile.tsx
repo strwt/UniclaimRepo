@@ -53,13 +53,12 @@ const Profile = () => {
   const { showToast } = useToast();
 
   const handleSave = async () => {
-    const { firstName, lastName, email, contact, studentId } = userInfo;
+    const { firstName, lastName, contact, studentId } = userInfo;
 
     // Check if any field is empty
     if (
       !firstName.trim() ||
       !lastName.trim() ||
-      !email.trim() ||
       !contact.trim() ||
       !studentId.trim()
     ) {
@@ -75,7 +74,6 @@ const Profile = () => {
     const isChanged =
       firstName !== initialUserInfo.firstName ||
       lastName !== initialUserInfo.lastName ||
-      email !== initialUserInfo.email ||
       contact !== initialUserInfo.contact ||
       studentId !== initialUserInfo.studentId;
 
@@ -98,7 +96,6 @@ const Profile = () => {
         await profileUpdateService.updateAllUserData(userData.uid, {
           firstName,
           lastName,
-          email,
           contactNum: contact,
           studentId,
         });
@@ -230,18 +227,9 @@ const Profile = () => {
               {/* Email */}
               <div className="bg-gray-100 border border-gray-700 flex items-center justify-between  rounded px-4 py-2.5">
                 <h1 className="text-sm text-gray-600">Email</h1>
-                {isEdit ? (
-                  <input
-                    type="email"
-                    value={userInfo.email}
-                    onChange={(e) => handleChange("email", e.target.value)}
-                    className="w-60 max-w-sm bg-white border border-gray-300 rounded px-3 py-1.5 text-sm "
-                  />
-                ) : (
-                  <span className="text-gray-800 text-sm">
-                    {userInfo.email}
-                  </span>
-                )}
+                <span className="text-gray-800 text-sm">
+                  {userInfo.email}
+                </span>
               </div>
             </div>
 
