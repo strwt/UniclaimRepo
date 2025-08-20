@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { RootStackParamList } from "../../types/type";
+import { onboardingStorage } from "../../utils/onboardingStorage";
 
 const { width } = Dimensions.get("window");
 
@@ -45,17 +46,45 @@ export default function OnBoarding({ onFinish }: { onFinish: () => void }) {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const flatListRef = useRef<FlatList>(null);
 
-  const onSkip = () => {
-    navigation.replace("Index");
+  const onSkip = async () => {
+    try {
+      // Save that onboarding has been completed
+      await onboardingStorage.setOnboardingCompleted();
+      // Call the onFinish callback to update parent state
+      onFinish();
+      // Navigate to Index screen
+      navigation.replace("Index");
+    } catch (error) {
+      console.error('Error saving onboarding status:', error);
+      // Still navigate even if saving fails
+      onFinish();
+      navigation.replace("Index");
+    }
+  };
+
+  const onComplete = async () => {
+    try {
+      // Save that onboarding has been completed
+      await onboardingStorage.setOnboardingCompleted();
+      // Call the onFinish callback to update parent state
+      onFinish();
+      // Navigate to Index screen
+      navigation.replace("Index");
+    } catch (error) {
+      console.error('Error saving onboarding status:', error);
+      // Still navigate even if saving fails
+      onFinish();
+      navigation.replace("Index");
+    }
   };
 
   return (
     <ScreenWrapper statusBarBg="#ffffff" statusBarStyle="dark-content">
       <SafeAreaView className="flex-1 bg-white">
-        {/* Skip Button */}
+        {/* Skip/Complete Button */}
         <View className="w-full items-end px-6">
           <TouchableOpacity
-            onPress={onSkip}
+            onPress={currentIndex === slides.length - 1 ? onComplete : onSkip}
             className="flex-row items-center mt-4"
           >
             <Text className="text-navyblue font-manrope-medium font-semibold text-base mr-2">

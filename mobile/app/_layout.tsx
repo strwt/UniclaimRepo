@@ -14,6 +14,9 @@ import ScreenWrapper from "../components/ScreenWrapper";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { MessageProvider } from "../context/MessageContext";
 
+// utils
+import { onboardingStorage } from "../utils/onboardingStorage";
+
 // Separate component to access auth context
 const AppContent = ({ 
   hasSeenOnBoarding, 
@@ -77,6 +80,23 @@ export default function RootLayout() {
 
   const [hasSeenOnBoarding, setHasSeenOnBoarding] = useState(false);
   const [hasPassedIndex, setHasPassedIndex] = useState(false);
+
+  // Check onboarding status from storage when app starts
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      try {
+        const hasSeen = await onboardingStorage.hasSeenOnBoarding();
+        setHasSeenOnBoarding(hasSeen);
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        // Keep default false if there's an error
+      }
+    };
+
+    if (fontsLoaded) {
+      checkOnboardingStatus();
+    }
+  }, [fontsLoaded]);
 
   // Delay splash screen after fonts are loaded
   useEffect(() => {
