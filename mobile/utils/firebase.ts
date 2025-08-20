@@ -9,6 +9,7 @@ import {
     User as FirebaseUser,
     UserCredential
 } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     getFirestore,
     doc,
@@ -60,7 +61,20 @@ if (getApps().length === 0) {
     app = getApp(); // Use existing app
 }
 
-export const auth = getAuth(app);
+// Initialize auth with AsyncStorage persistence
+let auth: any;
+try {
+    // Try to use AsyncStorage persistence if available
+    const { initializeAuth, getReactNativePersistence } = require('firebase/auth');
+    auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage)
+    });
+} catch (error) {
+    // Fallback to default auth if persistence setup fails
+    auth = getAuth(app);
+}
+
+export { auth };
 export const db = getFirestore(app);
 // export const storage = getStorage(app); // Removed - using Cloudinary instead
 
