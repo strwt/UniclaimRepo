@@ -34,6 +34,9 @@ import {
 //     deleteObject
 // } from 'firebase/storage';
 
+// Import ListenerManager for centralized listener management
+import { listenerManager } from './ListenerManager';
+
 // Firebase configuration from environment variables
 // Create a .env file in the frontend folder with your Firebase config:
 // VITE_FIREBASE_API_KEY=your-api-key
@@ -291,7 +294,7 @@ export const messageService = {
             // Removed orderBy to avoid composite index requirement
         );
 
-        return onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             const conversations = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -310,21 +313,18 @@ export const messageService = {
                 return dateB.getTime() - dateA.getTime(); // Most recent first
             });
 
-            // Debug logging
-            console.log('User conversations:', {
-                userId,
-                totalConversations: conversations.length,
-                validConversations: sortedConversations.length,
-                conversations: sortedConversations.map((conv: any) => ({
-                    id: conv.id,
-                    postTitle: conv.postTitle,
-                    participants: Object.keys(conv.participants || {}),
-                    participantNames: Object.values(conv.participants || {}).map((p: any) => `${p.firstName} ${p.lastName}`)
-                }))
-            });
+
 
             callback(sortedConversations);
         });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'MessageService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
     },
 
     // Get messages for a conversation
@@ -334,13 +334,21 @@ export const messageService = {
             orderBy('timestamp', 'asc')
         );
 
-        return onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             const messages = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
             callback(messages);
         });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'MessageService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
     },
 
     // Mark conversation as read
@@ -518,7 +526,7 @@ export const postService = {
             orderBy('createdAt', 'desc')
         );
 
-        return onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             const posts = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
@@ -529,6 +537,14 @@ export const postService = {
             console.error('Error fetching posts:', error);
             callback([]);
         });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
     },
 
     // Get posts by type (lost/found)
@@ -539,7 +555,7 @@ export const postService = {
             // Removed orderBy to avoid composite index requirement
         );
 
-        return onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             const posts = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
@@ -555,6 +571,14 @@ export const postService = {
 
             callback(sortedPosts);
         });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
     },
 
     // Get posts by category
@@ -565,7 +589,7 @@ export const postService = {
             // Removed orderBy to avoid composite index requirement
         );
 
-        return onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             const posts = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
@@ -581,6 +605,14 @@ export const postService = {
 
             callback(sortedPosts);
         });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
     },
 
     // Get posts by user email
@@ -591,7 +623,7 @@ export const postService = {
             // Removed orderBy to avoid composite index requirement
         );
 
-        return onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             const posts = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
@@ -607,6 +639,14 @@ export const postService = {
 
             callback(sortedPosts);
         });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
     },
 
     // Get a single post by ID
@@ -750,7 +790,7 @@ export const postService = {
             // Removed orderBy to avoid composite index requirement
         );
 
-        return onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             const posts = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
@@ -766,6 +806,14 @@ export const postService = {
 
             callback(sortedPosts);
         });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
     }
 };
 

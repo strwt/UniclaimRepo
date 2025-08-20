@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { auth, authService, type UserData, getFirebaseErrorMessage } from "../utils/firebase";
+import { listenerManager } from "../utils/ListenerManager";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -31,6 +32,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const fetchedUserData = await authService.getUserData(firebaseUser.uid);
         setUserData(fetchedUserData);
       } else {
+        // User logged out - clean up all listeners
+        listenerManager.removeAllListeners();
+        
         setUser(null);
         setUserData(null);
         setIsAuthenticated(false);
@@ -73,6 +77,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async (): Promise<void> => {
     try {
       setLoading(true);
+      
+      // Clean up all listeners before logging out
+      listenerManager.removeAllListeners();
+      
       await authService.logout();
       // onAuthStateChanged will handle updating the state
     } catch (error: any) {

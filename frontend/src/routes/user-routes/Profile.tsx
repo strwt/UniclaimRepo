@@ -1,12 +1,11 @@
 import MobileNavInfo from "@/components/NavHeadComp";
-import EmptyProfile from "@/assets/empty_profile.jpg";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/context/ToastContext";
 import { useAuth } from "@/context/AuthContext";
 import { profileUpdateService } from "@/utils/profileUpdateService";
 import { cloudinaryService } from "@/utils/cloudinary";
 import ProfilePicture from "@/components/ProfilePicture";
-import { validateProfilePicture, formatFileSize, getRecommendedDimensionsText, extractCloudinaryPublicId } from "@/utils/profilePictureUtils";
+import { validateProfilePicture, getRecommendedDimensionsText, extractCloudinaryPublicId } from "@/utils/profilePictureUtils";
 
 const Profile = () => {
   const { userData, loading } = useAuth();

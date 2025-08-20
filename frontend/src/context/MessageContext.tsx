@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { messageService } from "../utils/firebase";
+import { listenerManager } from "../utils/ListenerManager";
 import type { Conversation, Message } from "@/types/Post";
 
 interface MessageContextType {
@@ -11,6 +12,7 @@ interface MessageContextType {
   getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void) => () => void;
   markConversationAsRead: (conversationId: string) => Promise<void>;
   markMessageAsRead: (conversationId: string, messageId: string) => Promise<void>;
+  cleanupListeners: () => void; // Add cleanupListeners to the interface
 }
 
 const MessageContext = createContext<MessageContextType | undefined>(undefined);
@@ -18,6 +20,7 @@ const MessageContext = createContext<MessageContextType | undefined>(undefined);
 export const MessageProvider = ({ children, userId }: { children: ReactNode; userId: string | null }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentListenerId, setCurrentListenerId] = useState<string | null>(null);
 
   // Calculate total unread count
   const totalUnreadCount = conversations.reduce((total, conv) => total + (conv.unreadCount || 0), 0);
@@ -27,17 +30,47 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     if (!userId) {
       setConversations([]);
       setLoading(false);
+      // Clean up any existing listener
+      if (currentListenerId) {
+        listenerManager.removeListener(currentListenerId);
+        setCurrentListenerId(null);
+      }
       return;
     }
 
     setLoading(true);
+    
+    // Clean up previous listener if it exists
+    if (currentListenerId) {
+      listenerManager.removeListener(currentListenerId);
+    }
+
     const unsubscribe = messageService.getUserConversations(userId, (loadedConversations) => {
       setConversations(loadedConversations);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Register the listener with the ListenerManager
+    const listenerId = listenerManager.addListener(unsubscribe, 'MessageContext');
+    setCurrentListenerId(listenerId);
+
+    return () => {
+      if (currentListenerId) {
+        listenerManager.removeListener(currentListenerId);
+        setCurrentListenerId(null);
+      }
+    };
   }, [userId]);
+
+  // Cleanup function to be called from outside (e.g., during logout)
+  const cleanupListeners = () => {
+    if (currentListenerId) {
+      listenerManager.removeListener(currentListenerId);
+      setCurrentListenerId(null);
+    }
+    // Also clean up any other MessageContext listeners
+    listenerManager.cleanupByContext('MessageContext');
+  };
 
   const sendMessage = async (conversationId: string, senderId: string, senderName: string, text: string): Promise<void> => {
     try {
@@ -86,6 +119,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         getConversationMessages,
         markConversationAsRead,
         markMessageAsRead,
+        cleanupListeners, // Expose cleanup function
       }}
     >
       {children}
