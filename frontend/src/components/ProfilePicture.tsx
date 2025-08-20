@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { DEFAULT_PROFILE_PICTURE } from '@/types/User';
 
 interface ProfilePictureProps {
@@ -7,7 +7,7 @@ interface ProfilePictureProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl';
   className?: string;
   fallbackSrc?: string;
-  priority?: boolean; // For important images that should load immediately
+  priority?: boolean;
 }
 
 const ProfilePicture: React.FC<ProfilePictureProps> = ({
@@ -18,9 +18,6 @@ const ProfilePicture: React.FC<ProfilePictureProps> = ({
   fallbackSrc = DEFAULT_PROFILE_PICTURE,
   priority = false
 }) => {
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
-
   const sizeClasses = {
     xs: 'w-5 h-5',
     sm: 'w-8 h-8',
@@ -33,38 +30,21 @@ const ProfilePicture: React.FC<ProfilePictureProps> = ({
     '5xl': 'w-40 h-40'
   };
 
-  const handleImageLoad = () => {
-    setImageLoading(false);
-    setImageError(false);
-  };
-
-  const handleImageError = () => {
-    setImageError(true);
-    setImageLoading(false);
-  };
-
-  const imageSrc = imageError || !src ? fallbackSrc : src;
+  // Just show the image directly - no loading states, no complications
+  const imageSrc = src || fallbackSrc;
 
   return (
-    <div className={`relative ${sizeClasses[size]} ${className}`}>
-      {imageLoading && (
-        <div className={`${sizeClasses[size]} rounded-full bg-gray-200 animate-pulse flex items-center justify-center`}>
-          <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-        </div>
-      )}
-      <img
-        src={imageSrc}
-        alt={alt}
-        className={`${sizeClasses[size]} rounded-full object-cover border border-gray-200 transition-opacity duration-200 ${
-          imageLoading ? 'opacity-0' : 'opacity-100'
-        }`}
-        onLoad={handleImageLoad}
-        onError={handleImageError}
-        style={{ display: imageLoading ? 'none' : 'block' }}
-        loading={priority ? "eager" : "lazy"}
-        decoding="async"
-      />
-    </div>
+    <img
+      src={imageSrc}
+      alt={alt}
+      className={`${sizeClasses[size]} rounded-full object-cover border border-gray-200 ${className}`}
+      loading={priority ? "eager" : "lazy"}
+      onError={(e) => {
+        // If image fails, fallback to default
+        const target = e.target as HTMLImageElement;
+        target.src = fallbackSrc;
+      }}
+    />
   );
 };
 

@@ -4,9 +4,15 @@ export type UnsubscribeFunction = () => void;
 class ListenerManager {
     private listeners: Map<string, UnsubscribeFunction> = new Map();
     private listenerCount = 0;
+    private isCleaningUp = false;
 
     // Add a new listener and return a unique ID
     addListener(unsubscribeFn: UnsubscribeFunction, context: string = 'unknown'): string {
+        // Don't add listeners during cleanup
+        if (this.isCleaningUp) {
+            return '';
+        }
+
         const listenerId = `${context}_${++this.listenerCount}`;
         this.listeners.set(listenerId, unsubscribeFn);
         return listenerId;
@@ -20,7 +26,7 @@ class ListenerManager {
                 unsubscribeFn();
                 this.listeners.delete(listenerId);
                 return true;
-            } catch (error) {
+            } catch (error: any) {
                 this.listeners.delete(listenerId);
                 return false;
             }
@@ -28,18 +34,36 @@ class ListenerManager {
         return false;
     }
 
-    // Remove all listeners
+    // Remove all listeners with better error handling
     removeAllListeners(): void {
-        this.listeners.forEach((unsubscribeFn) => {
+        if (this.isCleaningUp) {
+            return;
+        }
+
+        this.isCleaningUp = true;
+
+        const listenerIds = Array.from(this.listeners.keys());
+
+        listenerIds.forEach((listenerId) => {
             try {
-                unsubscribeFn();
-            } catch (error) {
+                const unsubscribeFn = this.listeners.get(listenerId);
+                if (unsubscribeFn) {
+                    unsubscribeFn();
+                }
+            } catch (error: any) {
                 // Silent error handling
             }
         });
 
         this.listeners.clear();
         this.listenerCount = 0;
+        this.isCleaningUp = false;
+    }
+
+    // Force cleanup and reset state (useful for debugging)
+    forceCleanup(): void {
+        this.isCleaningUp = false;
+        this.removeAllListeners();
     }
 
     // Get count of active listeners
@@ -57,7 +81,7 @@ class ListenerManager {
         return this.listeners.has(listenerId);
     }
 
-    // Clean up listeners by context (e.g., 'MessageContext', 'AuthContext')
+    // Clean up listeners by context (e.g., 'PostService', 'MessageContext')
     cleanupByContext(context: string): number {
         let removedCount = 0;
         const listenersToRemove: string[] = [];
@@ -75,6 +99,11 @@ class ListenerManager {
         });
 
         return removedCount;
+    }
+
+    // Check if cleanup is in progress
+    isCleanupInProgress(): boolean {
+        return this.isCleaningUp;
     }
 }
 

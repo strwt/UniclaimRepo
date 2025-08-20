@@ -27,8 +27,10 @@ export default function PostModal({ post, onClose }: PostModalProps) {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [showOverlay, setShowOverlay] = useState(true);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [imageLoadingError, setImageLoadingError] = useState<string | null>(null);
   const inactivityIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastInteractionTimeRef = useRef<number>(Date.now());
+  const imageLoadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if current user is the creator of the post
   const isCurrentUserCreator = userData?.uid === post.creatorId;
@@ -76,18 +78,50 @@ export default function PostModal({ post, onClose }: PostModalProps) {
   }, []);
 
   useEffect(() => {
-    const urls = post.images.map((img) =>
-      typeof img === "string" ? img : URL.createObjectURL(img)
-    );
+    // Clear any existing timeout
+    if (imageLoadingTimeoutRef.current) {
+      clearTimeout(imageLoadingTimeoutRef.current);
+      imageLoadingTimeoutRef.current = null;
+    }
 
-    setImageUrls(urls);
+    setImageLoadingError(null);
 
-    return () => {
-      urls.forEach((url) => {
-        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
-      });
-    };
+    try {
+      const urls = post.images.map((img) =>
+        typeof img === "string" ? img : URL.createObjectURL(img)
+      );
+
+      setImageUrls(urls);
+
+      // Set a timeout to detect if images are taking too long to load
+      imageLoadingTimeoutRef.current = setTimeout(() => {
+        if (imageUrls.length === 0) {
+          setImageLoadingError("Images taking too long to load");
+        }
+      }, 10000); // 10 second timeout
+
+      return () => {
+        urls.forEach((url) => {
+          if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+        });
+      };
+    } catch (error) {
+      console.error('Error processing images:', error);
+      setImageLoadingError("Failed to load images");
+    }
   }, [post.images]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (imageLoadingTimeoutRef.current) {
+        clearTimeout(imageLoadingTimeoutRef.current);
+      }
+      if (inactivityIntervalRef.current) {
+        clearInterval(inactivityIntervalRef.current);
+      }
+    };
+  }, []);
 
   const handleImageClick = () => {
     setShowOverlay(false);
@@ -210,6 +244,30 @@ export default function PostModal({ post, onClose }: PostModalProps) {
               >
                 {currentIndex + 1}/{imageUrls.length}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Image loading error display */}
+        {imageLoadingError && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-red-600 text-sm">⚠️ {imageLoadingError}</span>
+              </div>
+              <button
+                onClick={() => {
+                  setImageLoadingError(null);
+                  // Force re-processing of images
+                  const urls = post.images.map((img) =>
+                    typeof img === "string" ? img : URL.createObjectURL(img)
+                  );
+                  setImageUrls(urls);
+                }}
+                className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
+              >
+                Retry
+              </button>
             </div>
           </div>
         )}

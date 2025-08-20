@@ -111,6 +111,7 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
             src={post.user?.profilePicture}
             alt="user profile"
             size="xs"
+            priority={false} // Don't prioritize profile pictures
           />
           <p className="text-xs text-blue-800 font-medium">
             Posted by {post.user?.firstName && post.user?.lastName 

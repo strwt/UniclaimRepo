@@ -522,8 +522,8 @@ export const postService = {
     // Get all posts with real-time updates
     getAllPosts(callback: (posts: Post[]) => void) {
         const q = query(
-            collection(db, 'posts'),
-            orderBy('createdAt', 'desc')
+            collection(db, 'posts')
+            // orderBy('createdAt', 'desc') // Temporarily commented out
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -532,9 +532,17 @@ export const postService = {
                 ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
-            callback(posts);
+
+            // Sort posts by createdAt in JavaScript instead
+            const sortedPosts = posts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
         }, (error) => {
-            console.error('Error fetching posts:', error);
+            console.error('PostService: Error fetching posts:', error);
             callback([]);
         });
 

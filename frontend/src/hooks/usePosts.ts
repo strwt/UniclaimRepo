@@ -1,27 +1,90 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { postService } from '../utils/firebase';
 import type { Post } from '../types/Post';
+import { useAuth } from '../context/AuthContext';
 
 // Custom hook for real-time posts
 export const usePosts = () => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { isAuthenticated, userData } = useAuth();
+    const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const listenerActiveRef = useRef<boolean>(false);
 
     useEffect(() => {
+        // Clear any existing timeout
+        if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+            loadingTimeoutRef.current = null;
+        }
+
+        // Don't create listeners until user is authenticated
+        if (!isAuthenticated) {
+            setPosts([]);
+            setLoading(false);
+            setError(null);
+            listenerActiveRef.current = false;
+            return;
+        }
+
+        // If authenticated but userData is still loading, wait
+        if (isAuthenticated && !userData) {
+            setLoading(true);
+            setError(null);
+            listenerActiveRef.current = false;
+            return;
+        }
+
+        // Both authenticated and userData loaded - create listeners
         setLoading(true);
         setError(null);
+        listenerActiveRef.current = true;
+
+        // Set a safety timeout to prevent infinite loading
+        loadingTimeoutRef.current = setTimeout(() => {
+            setLoading(false);
+            setError('Loading timeout - please refresh the page');
+            listenerActiveRef.current = false;
+        }, 15000); // 15 second timeout
 
         // Subscribe to real-time updates
         const unsubscribe = postService.getAllPosts((fetchedPosts) => {
-            setPosts(fetchedPosts);
-            setLoading(false);
+            if (listenerActiveRef.current) {
+                setPosts(fetchedPosts);
+                setLoading(false);
+                setError(null);
+
+                // Clear the timeout since we got data
+                if (loadingTimeoutRef.current) {
+                    clearTimeout(loadingTimeoutRef.current);
+                    loadingTimeoutRef.current = null;
+                }
+            }
         });
 
         return () => {
+            listenerActiveRef.current = false;
+
+            // Clear timeout
+            if (loadingTimeoutRef.current) {
+                clearTimeout(loadingTimeoutRef.current);
+                loadingTimeoutRef.current = null;
+            }
+
             if (unsubscribe) {
                 unsubscribe();
             }
+        };
+    }, [isAuthenticated, userData]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (loadingTimeoutRef.current) {
+                clearTimeout(loadingTimeoutRef.current);
+            }
+            listenerActiveRef.current = false;
         };
     }, []);
 
@@ -32,8 +95,23 @@ export const usePosts = () => {
 export const usePostsByType = (type: 'lost' | 'found') => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const { isAuthenticated, userData } = useAuth();
 
     useEffect(() => {
+        // Don't create listeners until user is authenticated
+        if (!isAuthenticated) {
+            setPosts([]);
+            setLoading(false);
+            return;
+        }
+
+        // If authenticated but userData is still loading, wait
+        if (isAuthenticated && !userData) {
+            setLoading(true);
+            return;
+        }
+
+        // Both authenticated and userData loaded - create listeners
         setLoading(true);
 
         const unsubscribe = postService.getPostsByType(type, (fetchedPosts) => {
@@ -46,7 +124,7 @@ export const usePostsByType = (type: 'lost' | 'found') => {
                 unsubscribe();
             }
         };
-    }, [type]);
+    }, [type, isAuthenticated, userData]);
 
     return { posts, loading };
 };
@@ -55,6 +133,7 @@ export const usePostsByType = (type: 'lost' | 'found') => {
 export const usePostsByCategory = (category: string) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const { isAuthenticated, userData } = useAuth();
 
     useEffect(() => {
         if (!category) {
@@ -63,6 +142,20 @@ export const usePostsByCategory = (category: string) => {
             return;
         }
 
+        // Don't create listeners until user is authenticated
+        if (!isAuthenticated) {
+            setPosts([]);
+            setLoading(false);
+            return;
+        }
+
+        // If authenticated but userData is still loading, wait
+        if (isAuthenticated && !userData) {
+            setLoading(true);
+            return;
+        }
+
+        // Both authenticated and userData loaded - create listeners
         setLoading(true);
 
         const unsubscribe = postService.getPostsByCategory(category, (fetchedPosts) => {
@@ -75,7 +168,7 @@ export const usePostsByCategory = (category: string) => {
                 unsubscribe();
             }
         };
-    }, [category]);
+    }, [category, isAuthenticated, userData]);
 
     return { posts, loading };
 };
@@ -84,6 +177,7 @@ export const usePostsByCategory = (category: string) => {
 export const useUserPosts = (userEmail: string) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const { isAuthenticated, userData } = useAuth();
 
     useEffect(() => {
         if (!userEmail) {
@@ -92,6 +186,20 @@ export const useUserPosts = (userEmail: string) => {
             return;
         }
 
+        // Don't create listeners until user is authenticated
+        if (!isAuthenticated) {
+            setPosts([]);
+            setLoading(false);
+            return;
+        }
+
+        // If authenticated but userData is still loading, wait
+        if (isAuthenticated && !userData) {
+            setLoading(true);
+            return;
+        }
+
+        // Both authenticated and userData loaded - create listeners
         setLoading(true);
 
         const unsubscribe = postService.getUserPosts(userEmail, (fetchedPosts) => {
@@ -104,7 +212,7 @@ export const useUserPosts = (userEmail: string) => {
                 unsubscribe();
             }
         };
-    }, [userEmail]);
+    }, [userEmail, isAuthenticated, userData]);
 
     return { posts, loading };
 };
@@ -113,6 +221,7 @@ export const useUserPosts = (userEmail: string) => {
 export const useUserPostsWithSet = (userEmail: string) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const { isAuthenticated, userData } = useAuth();
 
     useEffect(() => {
         if (!userEmail) {
@@ -121,6 +230,20 @@ export const useUserPostsWithSet = (userEmail: string) => {
             return;
         }
 
+        // Don't create listeners until user is authenticated
+        if (!isAuthenticated) {
+            setPosts([]);
+            setLoading(false);
+            return;
+        }
+
+        // If authenticated but userData is still loading, wait
+        if (isAuthenticated && !userData) {
+            setLoading(true);
+            return;
+        }
+
+        // Both authenticated and userData loaded - create listeners
         setLoading(true);
 
         const unsubscribe = postService.getUserPosts(userEmail, (fetchedPosts) => {
@@ -133,7 +256,7 @@ export const useUserPostsWithSet = (userEmail: string) => {
                 unsubscribe();
             }
         };
-    }, [userEmail]);
+    }, [userEmail, isAuthenticated, userData]);
 
     return { posts, setPosts, loading };
 };

@@ -28,21 +28,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(firebaseUser);
         setIsAuthenticated(true);
         
-        // Fetch user data from Firestore
-        const fetchedUserData = await authService.getUserData(firebaseUser.uid);
-        setUserData(fetchedUserData);
+        try {
+          // Fetch user data from Firestore
+          const fetchedUserData = await authService.getUserData(firebaseUser.uid);
+          setUserData(fetchedUserData);
+        } catch (error: any) {
+          console.error('AuthContext: Error fetching user data:', error);
+          setUserData(null);
+        }
       } else {
-        // User logged out - clean up all listeners
-        listenerManager.removeAllListeners();
+        // User logged out - clean up all listeners first
+        try {
+          listenerManager.removeAllListeners();
+        } catch (error) {
+          console.error('AuthContext: Error during listener cleanup:', error);
+          // Force cleanup if normal cleanup fails
+          listenerManager.forceCleanup();
+        }
         
         setUser(null);
         setUserData(null);
         setIsAuthenticated(false);
       }
+      
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
@@ -51,6 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await authService.login(email, password);
       // onAuthStateChanged will handle updating the state
     } catch (error: any) {
+      console.error('AuthContext: Login failed:', error);
       setLoading(false);
       throw new Error(getFirebaseErrorMessage(error));
     }
@@ -69,6 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await authService.register(email, password, firstName, lastName, contactNum, studentId);
       // onAuthStateChanged will handle updating the state
     } catch (error: any) {
+      console.error('AuthContext: Registration failed:', error);
       setLoading(false);
       throw new Error(getFirebaseErrorMessage(error));
     }
@@ -78,29 +94,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setLoading(true);
       
-      // Clean up all listeners before logging out
-      listenerManager.removeAllListeners();
+      // Clean up listeners before logout
+      try {
+        listenerManager.removeAllListeners();
+      } catch (error) {
+        console.error('AuthContext: Error during pre-logout cleanup:', error);
+        listenerManager.forceCleanup();
+      }
       
       await authService.logout();
       // onAuthStateChanged will handle updating the state
     } catch (error: any) {
+      console.error('AuthContext: Logout failed:', error);
       setLoading(false);
       throw new Error(getFirebaseErrorMessage(error));
     }
   };
 
   return (
-    <AuthContext.Provider 
-      value={{ 
-        isAuthenticated, 
-        user, 
-        userData, 
-        loading, 
-        login, 
-        register, 
-        logout 
-      }}
-    >
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      user,
+      userData,
+      loading,
+      login,
+      register,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -108,6 +128,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return context;
 };
