@@ -17,7 +17,7 @@ export interface UserProfileUpdate {
     email?: string;
     contactNum?: string;
     studentId?: string;
-    profileImageUrl?: string;
+    profilePicture?: string;
 }
 
 // Interface for the profile update service
@@ -96,6 +96,9 @@ export const profileUpdateService: ProfileUpdateService = {
                 if (updates.studentId !== undefined) {
                     postUpdates['user.studentId'] = updates.studentId;
                 }
+                if (updates.profilePicture !== undefined) {
+                    postUpdates['user.profilePicture'] = updates.profilePicture;
+                }
 
                 batch.update(postRef, postUpdates);
                 updateCount++;
@@ -153,7 +156,7 @@ export const profileUpdateService: ProfileUpdateService = {
 
                 if (updates.firstName !== undefined || updates.lastName !== undefined ||
                     updates.email !== undefined || updates.contactNum !== undefined ||
-                    updates.studentId !== undefined) {
+                    updates.studentId !== undefined || updates.profilePicture !== undefined) {
 
                     const currentParticipant = conversationData.participants[userId] || {};
                     const updatedParticipant = {
@@ -162,7 +165,8 @@ export const profileUpdateService: ProfileUpdateService = {
                         ...(updates.lastName !== undefined && { lastName: updates.lastName }),
                         ...(updates.email !== undefined && { email: updates.email }),
                         ...(updates.contactNum !== undefined && { contactNum: updates.contactNum }),
-                        ...(updates.studentId !== undefined && { studentId: updates.studentId })
+                        ...(updates.studentId !== undefined && { studentId: updates.studentId }),
+                        ...(updates.profilePicture !== undefined && { profilePicture: updates.profilePicture })
                     };
 
                     conversationUpdates[`participants.${userId}`] = updatedParticipant;
@@ -177,7 +181,7 @@ export const profileUpdateService: ProfileUpdateService = {
                 }
 
                 // Update messages where the user is the sender
-                if (updates.firstName !== undefined || updates.lastName !== undefined) {
+                if (updates.firstName !== undefined || updates.lastName !== undefined || updates.profilePicture !== undefined) {
                     try {
                         const messagesQuery = query(
                             collection(db, 'conversations', conversationDoc.id, 'messages'),
@@ -210,6 +214,9 @@ export const profileUpdateService: ProfileUpdateService = {
                                 }
                                 if (updates.lastName !== undefined) {
                                     messageUpdates.senderLastName = updates.lastName;
+                                }
+                                if (updates.profilePicture !== undefined) {
+                                    messageUpdates.senderProfilePicture = updates.profilePicture;
                                 }
 
                                 // Only add to batch if we have updates

@@ -3,6 +3,7 @@ import { useMessage } from '../context/MessageContext';
 import { useAuth } from '../context/AuthContext';
 import type { Conversation } from '../types/Post';
 import LoadingSpinner from './LoadingSpinner';
+import ProfilePicture from './ProfilePicture';
 
 interface ConversationListProps {
   onSelectConversation: (conversation: Conversation) => void;
@@ -69,6 +70,14 @@ const ConversationList: React.FC<ConversationListProps> = ({
     return otherParticipants.length > 0 ? otherParticipants.join(', ') : 'Unknown User';
   };
 
+  // Get the other participant's profile picture (exclude current user)
+  const getOtherParticipantProfilePicture = (conversation: Conversation, currentUserId: string) => {
+    const otherParticipant = Object.entries(conversation.participants)
+      .find(([uid]) => uid !== currentUserId);
+    
+    return otherParticipant ? otherParticipant[1].profilePicture : null;
+  };
+
   return (
     <div className="bg-white border-r border-gray-200 w-full max-w-sm">
       <div className="p-4 border-b border-gray-200">
@@ -90,13 +99,21 @@ const ConversationList: React.FC<ConversationListProps> = ({
               }`}
             >
               <div className="flex items-start justify-between mb-2">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-gray-900 truncate">
-                    {conversation.postTitle}
-                  </h3>
-                  <p className="text-sm text-gray-500 truncate">
-                    {userData ? getOtherParticipantName(conversation, userData.uid) : 'Unknown User'}
-                  </p>
+                                 <div className="flex items-center gap-3 flex-1 min-w-0">
+                   <ProfilePicture
+                     src={userData ? getOtherParticipantProfilePicture(conversation, userData.uid) : null}
+                     alt="participant profile"
+                     size="md"
+                     className="flex-shrink-0"
+                   />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-gray-900 truncate">
+                      {conversation.postTitle}
+                    </h3>
+                    <p className="text-sm text-gray-500 truncate">
+                      {userData ? getOtherParticipantName(conversation, userData.uid) : 'Unknown User'}
+                    </p>
+                  </div>
                 </div>
                 {hasUnread && (
                   <span className="ml-2 bg-blue-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">

@@ -15,6 +15,7 @@ export interface Post {
     email: string;
     contactNum: string;
     studentId: string;
+    profilePicture?: string;
   };
   createdAt?: string | Date | any; // Firebase timestamp or Date
   updatedAt?: string | Date | any; // Firebase timestamp or Date
@@ -28,6 +29,7 @@ export interface Message {
   id: string;
   senderId: string;
   senderName: string;
+  senderProfilePicture?: string;
   text: string;
   timestamp: any; // Firebase timestamp
   readBy: string[];
@@ -42,6 +44,7 @@ export interface Conversation {
       uid: string;
       firstName: string;
       lastName: string;
+      profilePicture?: string;
       joinedAt: any;
     };
   };

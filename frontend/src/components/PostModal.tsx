@@ -4,6 +4,7 @@ import type { Post } from "@/types/Post";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useMessage } from "@/context/MessageContext";
+import ProfilePicture from "./ProfilePicture";
 
 interface PostModalProps {
   post: Post;
@@ -144,13 +145,20 @@ export default function PostModal({ post, onClose }: PostModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="bg-white rounded p-4 shadow w-[25rem] sm:w-[26rem] md:w-[32rem] lg:w-[42rem] xl:w-[60rem] max-w-full max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
         <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <p className="text-xs text-gray-500">Posted by:</p>
-            <p className="text-sm">
-              {post.user?.firstName && post.user?.lastName
-                ? `${post.user.firstName} ${post.user.lastName}`
-                : "Anonymous"}
-            </p>
+                      <div className="flex items-center gap-3">
+              <ProfilePicture
+                src={post.user?.profilePicture}
+                alt="user profile"
+                size="md"
+              />
+            <div className="flex flex-col">
+              <p className="text-xs text-gray-500">Posted by:</p>
+              <p className="text-sm">
+                {post.user?.firstName && post.user?.lastName
+                  ? `${post.user.firstName} ${post.user.lastName}`
+                  : "Anonymous"}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {!isCurrentUserCreator && (

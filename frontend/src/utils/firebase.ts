@@ -78,6 +78,7 @@ export interface UserData {
     lastName: string;
     contactNum: string;
     studentId: string;
+    profilePicture?: string;
     createdAt: any;
     updatedAt: any;
 }

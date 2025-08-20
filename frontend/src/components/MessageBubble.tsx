@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Message } from '@/types/Post';
+import ProfilePicture from './ProfilePicture';
 
 interface MessageBubbleProps {
   message: Message;
@@ -22,11 +23,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   return (
     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-3`}>
       <div className={`max-w-xs lg:max-w-md ${isOwnMessage ? 'order-2' : 'order-1'}`}>
-        {showSenderName && !isOwnMessage && (
-          <div className="text-xs text-gray-500 mb-1 ml-2">
-            {message.senderName}
-          </div>
-        )}
+                 {showSenderName && !isOwnMessage && (
+           <div className="flex items-center gap-2 text-xs text-gray-500 mb-1 ml-2">
+             <ProfilePicture
+               src={message.senderProfilePicture}
+               alt="sender profile"
+               size="xs"
+             />
+             <span>{message.senderName}</span>
+           </div>
+         )}
         
         <div
           className={`px-4 py-2 rounded-lg ${

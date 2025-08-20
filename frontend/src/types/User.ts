@@ -1,3 +1,6 @@
+// Default profile picture for users without a custom image
+export const DEFAULT_PROFILE_PICTURE = '/src/assets/empty_profile.jpg';
+
 export interface User {
   uid: string;
   firstName: string;
@@ -5,6 +8,7 @@ export interface User {
   email: string;
   contactNum: string;
   studentId: string;
+  profilePicture?: string;
   createdAt?: any;
   updatedAt?: any;
 }

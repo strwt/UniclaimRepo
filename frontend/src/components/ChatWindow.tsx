@@ -4,6 +4,7 @@ import type { Conversation, Message } from '@/types/Post';
 import MessageBubble from './MessageBubble';
 import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
+import ProfilePicture from './ProfilePicture';
 
 interface ChatWindowProps {
   conversation: Conversation | null;
@@ -81,6 +82,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     return otherParticipants.length > 0 ? otherParticipants.join(', ') : 'Unknown User';
   };
 
+  const getOtherParticipantProfilePicture = (conversation: Conversation) => {
+    if (!userData) return null;
+    
+    const otherParticipant = Object.entries(conversation.participants)
+      .find(([uid]) => uid !== userData.uid);
+    
+    return otherParticipant ? otherParticipant[1].profilePicture : null;
+  };
+
   if (!conversation) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-50">
@@ -98,9 +108,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       {/* Chat Header */}
       <div className="p-4 border-b border-gray-200 bg-gray-50">
         <h3 className="font-semibold text-gray-900">{conversation.postTitle}</h3>
-        <p className="text-sm text-gray-500">
-          {getOtherParticipantName(conversation)}
-        </p>
+                 <div className="flex items-center gap-3 mt-1">
+           <ProfilePicture
+             src={getOtherParticipantProfilePicture(conversation)}
+             alt="participant profile"
+             size="sm"
+           />
+           <p className="text-sm text-gray-500">
+             {getOtherParticipantName(conversation)}
+           </p>
+         </div>
       </div>
 
       {/* Messages Area */}

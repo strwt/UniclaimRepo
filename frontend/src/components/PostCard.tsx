@@ -1,5 +1,6 @@
 import { useEffect, useMemo, memo } from "react";
 import type { Post } from "@/types/Post";
+import ProfilePicture from "./ProfilePicture";
 
 interface PostCardProps {
   post: Post;
@@ -105,13 +106,20 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
         </h1>
 
         {/* Display the user who created the post */}
-        <p className="text-xs text-blue-800 mb-2 font-medium">
-          Posted by {post.user?.firstName && post.user?.lastName 
-            ? `${post.user.firstName} ${post.user.lastName}` 
-            : post.user?.email 
-            ? post.user.email.split('@')[0] 
-            : 'Unknown User'}
-        </p>
+        <div className="flex items-center gap-2 mb-2">
+          <ProfilePicture
+            src={post.user?.profilePicture}
+            alt="user profile"
+            size="xs"
+          />
+          <p className="text-xs text-blue-800 font-medium">
+            Posted by {post.user?.firstName && post.user?.lastName 
+              ? `${post.user.firstName} ${post.user.lastName}` 
+              : post.user?.email 
+              ? post.user.email.split('@')[0] 
+              : 'Unknown User'}
+          </p>
+        </div>
 
         <div className="text-sm lg:text-xs flex gap-2">
           {post.location && (
