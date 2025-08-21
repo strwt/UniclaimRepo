@@ -7,14 +7,14 @@ import { cloudinaryService } from "@/utils/cloudinary";
 import { imageService } from "@/utils/firebase";
 import { postUpdateService } from "@/utils/postUpdateService";
 import ProfilePicture from "@/components/ProfilePicture";
-import { validateProfilePicture, getRecommendedDimensionsText, isCloudinaryImage } from "@/utils/profilePictureUtils";
+import { validateProfilePicture, isCloudinaryImage } from "@/utils/profilePictureUtils";
 
 const Profile = () => {
   const { userData, loading, refreshUserData } = useAuth();
   const { showToast } = useToast();
   const [isEdit, setIsEdit] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isUploadingProfilePicture, setIsUploadingProfilePicture] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Use Firebase user data or fallback to empty strings
@@ -187,7 +187,7 @@ const Profile = () => {
         // Handle profile picture changes if there's a new file
         if (selectedProfileFile) {
           try {
-            setIsUploadingProfilePicture(true);
+    
             
             // Upload new profile picture to Cloudinary
             const imageUrls = await cloudinaryService.uploadImages([selectedProfileFile], 'profiles');
@@ -214,7 +214,7 @@ const Profile = () => {
             showToast("error", "Upload Failed", "Failed to upload profile picture. Please try again.");
             return; // Don't proceed with save if upload fails
           } finally {
-            setIsUploadingProfilePicture(false);
+    
           }
         } else if (profilePicturePreviewUrl === null && userInfo.profilePicture === "") {
           // Profile picture was removed

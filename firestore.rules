@@ -35,9 +35,9 @@ service cloud.firestore {
       allow read: if request.auth != null 
         && request.auth.uid in resource.data.participants;
       
-      // Users can create conversations
+      // Users can create conversations where they are a participant
       allow create: if request.auth != null 
-        && request.auth.uid in resource.data.participants;
+        && request.auth.uid in request.resource.data.participants;
       
       // Users can update conversations they participate in
       allow update: if request.auth != null 

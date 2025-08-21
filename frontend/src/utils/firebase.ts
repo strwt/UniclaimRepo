@@ -187,12 +187,16 @@ export const messageService = {
             // Use passed post owner user data or fallback to fetching from users collection
             let postOwnerFirstName = '';
             let postOwnerLastName = '';
+            let postOwnerProfilePicture = '';
             // Note: contact number not used in conversation document
 
             if (postOwnerUserData && postOwnerUserData.firstName && postOwnerUserData.lastName) {
                 // Use the passed user data from the post
                 postOwnerFirstName = postOwnerUserData.firstName;
                 postOwnerLastName = postOwnerUserData.lastName;
+                postOwnerProfilePicture = postOwnerUserData.profilePicture || '';
+
+
             } else {
                 // Fallback: try to fetch from users collection
                 try {
@@ -201,6 +205,7 @@ export const messageService = {
                         const postOwnerData = postOwnerDoc.data();
                         postOwnerFirstName = postOwnerData.firstName || '';
                         postOwnerLastName = postOwnerData.lastName || '';
+                        postOwnerProfilePicture = postOwnerData.profilePicture || '';
                     }
                 } catch (error) {
                     console.warn('Could not fetch post owner data:', error);
@@ -231,27 +236,21 @@ export const messageService = {
                         uid: currentUserId,
                         firstName: currentUserData.firstName,
                         lastName: currentUserData.lastName,
+                        profilePicture: currentUserData.profilePicture || null,
                         joinedAt: serverTimestamp()
                     },
                     [postOwnerId]: {
                         uid: postOwnerId,
                         firstName: postOwnerFirstName,
                         lastName: postOwnerLastName,
+                        profilePicture: postOwnerProfilePicture || null,
                         joinedAt: serverTimestamp()
                     }
                 },
                 createdAt: serverTimestamp()
             };
 
-            // Debug logging
-            console.log('Creating conversation with data:', {
-                postId,
-                postTitle,
-                currentUserId,
-                postOwnerId,
-                participants: Object.keys(conversationData.participants),
-                participantNames: Object.values(conversationData.participants).map((p: any) => `${p.firstName} ${p.lastName}`)
-            });
+
 
             const conversationRef = await addDoc(collection(db, 'conversations'), conversationData);
 
@@ -262,12 +261,13 @@ export const messageService = {
     },
 
     // Send a message
-    async sendMessage(conversationId: string, senderId: string, senderName: string, text: string): Promise<void> {
+    async sendMessage(conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string): Promise<void> {
         try {
             const messagesRef = collection(db, 'conversations', conversationId, 'messages');
             await addDoc(messagesRef, {
                 senderId,
                 senderName,
+                senderProfilePicture: senderProfilePicture || null,
                 text,
                 timestamp: serverTimestamp(),
                 readBy: [senderId]
@@ -833,9 +833,39 @@ export const postService = {
                 await imageService.deleteImages(post.images as string[]);
             }
 
+            // Delete all conversations related to this post
+            await this.deleteConversationsByPostId(postId);
+
+            // Delete the post
             await deleteDoc(doc(db, 'posts', postId));
         } catch (error: any) {
             throw new Error(error.message || 'Failed to delete post');
+        }
+    },
+
+    // Delete all conversations related to a specific post
+    async deleteConversationsByPostId(postId: string): Promise<void> {
+        try {
+            // Query conversations by postId
+            const conversationsQuery = query(
+                collection(db, 'conversations'),
+                where('postId', '==', postId)
+            );
+
+            const conversationsSnapshot = await getDocs(conversationsQuery);
+
+            // Delete each conversation (this will automatically delete messages due to subcollection behavior)
+            const deletePromises = conversationsSnapshot.docs.map(doc =>
+                deleteDoc(doc.ref)
+            );
+
+            if (deletePromises.length > 0) {
+                await Promise.all(deletePromises);
+                console.log(`Deleted ${deletePromises.length} conversation(s) for post ${postId}`);
+            }
+        } catch (error: any) {
+            console.error('Error deleting conversations for post:', error);
+            // Don't throw error - post deletion should continue even if conversation deletion fails
         }
     },
 

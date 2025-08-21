@@ -31,7 +31,8 @@ const ProfilePicture: React.FC<ProfilePictureProps> = ({
   };
 
   // Just show the image directly - no loading states, no complications
-  const imageSrc = src || fallbackSrc;
+  // Convert empty strings to null so they fall back to default
+  const imageSrc = (src && src.trim() !== '') ? src : fallbackSrc;
 
   return (
     <img

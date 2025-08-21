@@ -60,7 +60,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         conversation.id,
         userData.uid,
         `${userData.firstName} ${userData.lastName}`,
-        newMessage.trim()
+        newMessage.trim(),
+        userData.profilePicture
       );
       setNewMessage('');
     } catch (error) {

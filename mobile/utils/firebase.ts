@@ -720,10 +720,40 @@ export const postService = {
                 }
             }
 
+            // Delete all conversations related to this post
+            await this.deleteConversationsByPostId(postId);
+
+            // Delete the post
             await deleteDoc(doc(db, 'posts', postId));
         } catch (error: any) {
             console.error('Error deleting post:', error);
             throw new Error(error.message || 'Failed to delete post');
+        }
+    },
+
+    // Delete all conversations related to a specific post
+    async deleteConversationsByPostId(postId: string): Promise<void> {
+        try {
+            // Query conversations by postId
+            const conversationsQuery = query(
+                collection(db, 'conversations'),
+                where('postId', '==', postId)
+            );
+
+            const conversationsSnapshot = await getDocs(conversationsQuery);
+
+            // Delete each conversation (this will automatically delete messages due to subcollection behavior)
+            const deletePromises = conversationsSnapshot.docs.map(doc =>
+                deleteDoc(doc.ref)
+            );
+
+            if (deletePromises.length > 0) {
+                await Promise.all(deletePromises);
+                console.log(`Deleted ${deletePromises.length} conversation(s) for post ${postId}`);
+            }
+        } catch (error: any) {
+            console.error('Error deleting conversations for post:', error);
+            // Don't throw error - post deletion should continue even if conversation deletion fails
         }
     },
 
