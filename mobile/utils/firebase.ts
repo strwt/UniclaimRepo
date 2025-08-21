@@ -90,7 +90,7 @@ export interface UserData {
     lastName: string;
     contactNum: string;
     studentId: string; // Required field for student ID
-    profileImageUrl?: string; // Optional field for profile image URL
+    profilePicture?: string; // Standardized field name to match web version
     createdAt: any;
     updatedAt: any;
 }
@@ -176,6 +176,7 @@ export const authService = {
                 lastName,
                 contactNum,
                 studentId,
+                profilePicture: undefined, // Initialize with undefined, will be set later
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             };
@@ -248,6 +249,24 @@ export const messageService = {
     // Create a new conversation
     async createConversation(postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: UserData, postOwnerUserData?: any): Promise<string> {
         try {
+            console.log('🔍 Mobile: Creating conversation with data:', {
+                postId,
+                postTitle,
+                postOwnerId,
+                currentUserId,
+                currentUserData: {
+                    uid: currentUserData.uid,
+                    firstName: currentUserData.firstName,
+                    lastName: currentUserData.lastName,
+                    hasProfilePicture: !!currentUserData.profilePicture
+                },
+                postOwnerUserData: postOwnerUserData ? {
+                    firstName: postOwnerUserData.firstName,
+                    lastName: postOwnerUserData.lastName,
+                    hasProfilePicture: !!(postOwnerUserData.profilePicture || postOwnerUserData.profileImageUrl)
+                } : 'No post owner data'
+            });
+
             // Simple duplicate check: get all user conversations and filter in JavaScript
             const userConversationsQuery = query(
                 collection(db, 'conversations'),
@@ -259,11 +278,11 @@ export const messageService = {
                 return data.postId === postId && data.participants && data.participants[postOwnerId];
             });
             if (existingConversation) {
-                console.log('Reusing existing conversation:', existingConversation.id);
+                console.log('✅ Mobile: Reusing existing conversation:', existingConversation.id);
                 return existingConversation.id;
             }
 
-            const conversationRef = await addDoc(collection(db, 'conversations'), {
+            const conversationData = {
                 postId,
                 postTitle,
                 participants: {
@@ -271,22 +290,33 @@ export const messageService = {
                         uid: currentUserId,
                         firstName: currentUserData.firstName,
                         lastName: currentUserData.lastName,
-                        profilePicture: currentUserData.profileImageUrl,
+                        profilePicture: currentUserData.profilePicture || null, // Ensure null instead of undefined
                         joinedAt: serverTimestamp()
                     },
                     [postOwnerId]: {
                         uid: postOwnerId,
                         firstName: postOwnerUserData?.firstName || 'Post Owner',
                         lastName: postOwnerUserData?.lastName || '',
-                        profilePicture: postOwnerUserData?.profilePicture || postOwnerUserData?.profileImageUrl,
+                        profilePicture: (postOwnerUserData?.profilePicture || postOwnerUserData?.profileImageUrl) || null, // Ensure null instead of undefined
                         joinedAt: serverTimestamp()
                     }
                 },
                 createdAt: serverTimestamp()
-            });
+            };
 
+            console.log('🔍 Mobile: Conversation data structure:', conversationData);
+
+            const conversationRef = await addDoc(collection(db, 'conversations'), conversationData);
+
+            console.log('✅ Mobile: Conversation created successfully:', conversationRef.id);
             return conversationRef.id;
         } catch (error: any) {
+            console.error('❌ Mobile: Failed to create conversation:', error);
+            console.error('❌ Mobile: Error details:', {
+                code: error.code,
+                message: error.message,
+                details: error.details
+            });
             throw new Error(error.message || 'Failed to create conversation');
         }
     },
@@ -294,15 +324,27 @@ export const messageService = {
     // Send a message
     async sendMessage(conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string): Promise<void> {
         try {
-            const messagesRef = collection(db, 'conversations', conversationId, 'messages');
-            await addDoc(messagesRef, {
+            console.log('🔍 Mobile: Attempting to send message:', {
+                conversationId,
                 senderId,
                 senderName,
-                senderProfilePicture,
+                hasProfilePicture: !!senderProfilePicture,
+                textLength: text.length
+            });
+
+            const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+            const messageData = {
+                senderId,
+                senderName,
+                senderProfilePicture: senderProfilePicture || null, // Ensure null instead of undefined
                 text,
                 timestamp: serverTimestamp(),
                 readBy: [senderId]
-            });
+            };
+
+            console.log('🔍 Mobile: Message data structure:', messageData);
+
+            await addDoc(messagesRef, messageData);
 
             // Update last message in conversation
             await updateDoc(doc(db, 'conversations', conversationId), {
@@ -312,7 +354,15 @@ export const messageService = {
                     timestamp: serverTimestamp()
                 }
             });
+
+            console.log('✅ Mobile: Message sent successfully');
         } catch (error: any) {
+            console.error('❌ Mobile: Failed to send message:', error);
+            console.error('❌ Mobile: Error details:', {
+                code: error.code,
+                message: error.message,
+                details: error.details
+            });
             throw new Error(error.message || 'Failed to send message');
         }
     },

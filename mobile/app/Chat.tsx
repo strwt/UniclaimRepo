@@ -15,8 +15,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from "@expo/vector-icons";
 import { useMessage } from "@/context/MessageContext";
 import { useAuth } from "@/context/AuthContext";
-import type { Message } from "@/types/type";
-import type { RootStackParamList } from "@/types/type";
+import type { Message, RootStackParamList } from "@/types/type";
 
 type ChatRouteProp = RouteProp<RootStackParamList, 'Chat'>;
 type ChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Chat'>;
@@ -65,14 +64,6 @@ export default function Chat() {
   const [conversationId, setConversationId] = useState(initialConversationId || '');
   const flatListRef = useRef<FlatList>(null);
   
-  if (!user || !userData) {
-    return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <Text className="text-gray-500">Please log in to send messages</Text>
-      </SafeAreaView>
-    );
-  }
-
   useEffect(() => {
     if (conversationId) {
       // Load messages for existing conversation
@@ -82,7 +73,15 @@ export default function Chat() {
       });
       return () => unsubscribe();
     }
-  }, [conversationId]);
+  }, [conversationId, getConversationMessages]);
+
+  if (!user || !userData) {
+    return (
+      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+        <Text className="text-gray-500">Please log in to send messages</Text>
+      </SafeAreaView>
+    );
+  }
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -128,7 +127,7 @@ export default function Chat() {
         user.uid,
         `${userData.firstName} ${userData.lastName}`,
         newMessage.trim(),
-        userData.profileImageUrl
+        userData.profilePicture
       );
       setNewMessage('');
       scrollToBottom();
@@ -173,7 +172,7 @@ export default function Chat() {
           <View className="flex-1 items-center justify-center p-6">
             <Ionicons name="chatbubbles-outline" size={64} color="#9CA3AF" />
             <Text className="text-gray-500 text-center mt-4">
-              Start the conversation about "{postTitle}"
+              Start the conversation about &ldquo;{postTitle}&rdquo;
             </Text>
           </View>
         ) : (
