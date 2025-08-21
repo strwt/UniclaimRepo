@@ -80,12 +80,12 @@ const ConversationList: React.FC<ConversationListProps> = ({
 
   return (
     <div className="bg-white border-r border-gray-200 w-full max-w-sm">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-800">Messages</h2>
+      <div className="p-4 border-b border-gray-200 mt-10">
+        
         <p className="text-sm text-gray-500">{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</p>
       </div>
       
-      <div className="overflow-y-auto h-[calc(100vh-200px)]">
+      <div className="overflow-y-auto h-[calc(100vh-280px)]">
         {conversations.map((conversation) => {
           const isSelected = selectedConversationId === conversation.id;
           const hasUnread = conversation.unreadCount && conversation.unreadCount > 0;

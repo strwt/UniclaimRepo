@@ -25,8 +25,8 @@ const MessagesPage: React.FC = () => {
 
   return (
     <PageWrapper title="Messages">
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-40 bg-gray-50 ">
+        <div className="max-w-8xl mx-auto">
           {/* Page Header */}
           <div className="bg-white shadow-sm border-b border-gray-200">
             <div className="px-4 py-6 sm:px-6 lg:px-8">
@@ -38,7 +38,7 @@ const MessagesPage: React.FC = () => {
           </div>
 
           {/* Messages Layout */}
-          <div className="flex h-[calc(100vh-200px)] bg-white shadow-lg rounded-lg overflow-hidden">
+          <div className="flex h-[calc(105vh-280px)] bg-white shadow-lg rounded-lg overflow-hidden mt-1">
             {/* Conversation List - Left Side */}
             <div className="w-full sm:w-80 lg:w-96 border-r border-gray-200">
               <ConversationList
