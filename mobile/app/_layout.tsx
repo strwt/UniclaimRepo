@@ -13,6 +13,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import ScreenWrapper from "../components/ScreenWrapper";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { MessageProvider } from "../context/MessageContext";
+import { CoordinatesProvider } from "../context/CoordinatesContext";
 
 // utils
 import { onboardingStorage } from "../utils/onboardingStorage";
@@ -120,12 +121,14 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <AppContent
-          hasSeenOnBoarding={hasSeenOnBoarding}
-          setHasSeenOnBoarding={setHasSeenOnBoarding}
-          hasPassedIndex={hasPassedIndex}
-          setHasPassedIndex={setHasPassedIndex}
-        />
+        <CoordinatesProvider>
+          <AppContent
+            hasSeenOnBoarding={hasSeenOnBoarding}
+            setHasSeenOnBoarding={setHasSeenOnBoarding}
+            hasPassedIndex={hasPassedIndex}
+            setHasPassedIndex={setHasPassedIndex}
+          />
+        </CoordinatesProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

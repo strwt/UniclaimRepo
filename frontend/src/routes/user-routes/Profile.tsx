@@ -4,8 +4,9 @@ import { useToast } from "@/context/ToastContext";
 import { useAuth } from "@/context/AuthContext";
 import { profileUpdateService } from "@/utils/profileUpdateService";
 import { cloudinaryService } from "@/utils/cloudinary";
+import { imageService } from "@/utils/firebase";
 import ProfilePicture from "@/components/ProfilePicture";
-import { validateProfilePicture, getRecommendedDimensionsText, extractCloudinaryPublicId } from "@/utils/profilePictureUtils";
+import { validateProfilePicture, getRecommendedDimensionsText } from "@/utils/profilePictureUtils";
 
 const Profile = () => {
   const { userData, loading } = useAuth();
@@ -106,21 +107,29 @@ const Profile = () => {
       // Update local state immediately for better UX
       setUserInfo(prev => ({ ...prev, profilePicture: "" }));
       
-      // If there's a profile picture URL, delete it from Cloudinary
+      // If there's a profile picture URL, delete it from Cloudinary using image service
       if (currentProfilePicture && currentProfilePicture !== "") {
         try {
-          // Extract the public ID from the Cloudinary URL
-          const publicId = extractCloudinaryPublicId(currentProfilePicture);
+          // Use the image service to delete the profile picture and update user profile
+          await imageService.deleteProfilePicture(currentProfilePicture, userData?.uid);
           
-          if (publicId) {
-            // Delete the image from Cloudinary
-            await cloudinaryService.deleteImage(publicId);
-            showToast("success", "Profile Picture Removed", "Your profile picture has been removed from storage and your profile.");
-          } else {
-            // If we can't extract the public ID, still remove it locally
-            showToast("info", "Profile Picture Removed", "Your profile picture has been removed from your profile.");
-            console.warn("Could not extract Cloudinary public ID from URL:", currentProfilePicture);
+          // Update the user's profile in Firestore to remove the profile picture URL
+          if (userData?.uid) {
+            try {
+              await profileUpdateService.updateAllUserData(userData.uid, {
+                firstName: userInfo.firstName,
+                lastName: userInfo.lastName,
+                contactNum: userInfo.contact,
+                studentId: userInfo.studentId,
+                profilePicture: "", // Remove profile picture URL
+              });
+            } catch (updateError: any) {
+              console.error("Failed to update user profile in Firestore:", updateError.message);
+              // Don't fail the deletion - image was removed from Cloudinary successfully
+            }
           }
+          
+          showToast("success", "Profile Picture Removed", "Your profile picture has been removed from storage and your profile.");
         } catch (cloudinaryError: any) {
           // If Cloudinary deletion fails, still remove it locally but show a warning
           console.error("Failed to delete image from Cloudinary:", cloudinaryError);

@@ -8,6 +8,7 @@ import CustomDropdown from "../../components/Dropdown";
 import CustomDropdownWithSearch from "../../components/DropdownWithSearch";
 import ImageUpload from "../../components/ImageUpload";
 import Info from "../../components/Info";
+import { useCoordinates } from "../../context/CoordinatesContext";
 
 // navigation
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -35,8 +36,7 @@ type ItemDetailsProps = {
   setSelectedLocation: React.Dispatch<React.SetStateAction<string | null>>;
   selectedCategory: string | null;
   setSelectedCategory: React.Dispatch<React.SetStateAction<string | null>>;
-  coordinates: { lat: number; lng: number } | null;
-  setCoordinates: React.Dispatch<React.SetStateAction<{ lat: number; lng: number } | null>>;
+
 };
 
 type NavigationProps = NativeStackNavigationProp<
@@ -65,10 +65,9 @@ export default function ItemDetails({
   setSelectedLocation,
   selectedCategory,
   setSelectedCategory,
-  coordinates,
-  setCoordinates,
 }: ItemDetailsProps) {
   const navigation = useNavigation<NavigationProps>();
+  const { coordinates, setCoordinates } = useCoordinates();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -266,23 +265,18 @@ export default function ItemDetails({
         <View className="flex-row items-center border border-gray-300 rounded-md px-3 h-[3.3rem] bg-white">
           <Text className="flex-1 font-manrope text-base text-gray-700">
             {coordinates
-              ? `${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)}`
+              ? `${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}`
               : "Pin a location to show coordinates"}
           </Text>
           {coordinates && (
-            <Pressable onPress={() => setCoordinates(null)} hitSlop={10}>
+            <Pressable onPress={() => setCoordinates({ latitude: 0, longitude: 0 })} hitSlop={10}>
               <Ionicons name="close-outline" size={20} color="#4B5563" />
             </Pressable>
           )}
         </View>
 
         <TouchableOpacity
-          onPress={() =>
-            navigation.navigate("USTPMapScreen", {
-              setCoordinatesFromMap: (coords: { lat: number; lng: number }) =>
-                setCoordinates(coords),
-            })
-          }
+          onPress={() => navigation.navigate("USTPMapScreen")}
           className="mt-3 h-[3.3rem] bg-navyblue rounded-md justify-center items-center"
         >
           <Text className="text-white font-manrope-medium text-base">

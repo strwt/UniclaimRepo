@@ -12,6 +12,7 @@ import PageWrapper from "../../layout/PageLayout";
 import ContactDetails from "./ContactDetails";
 import ItemDetails from "./ItemDetails";
 import { useAuth } from "../../context/AuthContext";
+import { useCoordinates } from "../../context/CoordinatesContext";
 import { postService } from "../../utils/firebase";
 import type { Post } from "../../types/type";
 
@@ -19,6 +20,7 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function Report() {
   const { user, userData } = useAuth();
+  const { coordinates, setCoordinates } = useCoordinates();
   
   // Form state
   const [activeTab, setActiveTab] = useState<"item" | "contact">("item");
@@ -30,7 +32,6 @@ export default function Report() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Toast visibility state
@@ -99,13 +100,17 @@ export default function Report() {
           contactNum: userData.contactNum,
           studentId: userData.studentId,
         },
+        creatorId: user.uid, // Add creator ID
         postedById: user.uid, // Use Firebase user ID for messaging
         status: "pending",
       };
 
       // Only add optional fields if they have valid values
       if (coordinates) {
-        postData.coordinates = coordinates;
+        postData.coordinates = {
+          lat: coordinates.latitude,
+          lng: coordinates.longitude
+        };
       }
       
       // Only add foundAction for found items that have a selected action
@@ -130,7 +135,7 @@ export default function Report() {
               setSelectedDate(null);
               setSelectedLocation(null);
               setSelectedCategory(null);
-              setCoordinates(null);
+              setCoordinates({ latitude: 0, longitude: 0 });
               setImages([]);
               setActiveTab("item");
             },
@@ -226,8 +231,6 @@ export default function Report() {
               setSelectedLocation={setSelectedLocation}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
-              coordinates={coordinates}
-              setCoordinates={setCoordinates}
             />
           ) : (
             <ContactDetails

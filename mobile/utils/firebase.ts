@@ -419,6 +419,100 @@ export const imageService = {
             // For other errors, just log them without throwing
             console.error('Image deletion encountered issues:', error.message);
         }
+    },
+
+    // Delete single profile picture from Cloudinary and update user profile
+    async deleteProfilePicture(profilePictureUrl: string, userId?: string): Promise<void> {
+        try {
+            if (!profilePictureUrl || !profilePictureUrl.includes('cloudinary.com')) {
+                return; // No Cloudinary image to delete
+            }
+
+            // Extract public ID from Cloudinary URL for deletion
+            const publicId = extractCloudinaryPublicId(profilePictureUrl);
+
+            if (publicId) {
+                try {
+                    await cloudinaryService.deleteImage(publicId);
+
+                    // If userId is provided, update the user's profile in Firestore
+                    if (userId) {
+                        try {
+                            const userRef = doc(db, 'users', userId);
+                            await updateDoc(userRef, {
+                                profileImageUrl: null,
+                                updatedAt: serverTimestamp()
+                            });
+                        } catch (updateError: any) {
+                            console.error('Failed to update user profile in Firestore:', updateError.message);
+                            // Don't throw error - image was deleted from Cloudinary successfully
+                        }
+                    }
+                } catch (deleteError: any) {
+                    // Handle deletion errors gracefully without throwing
+                    if (deleteError.message?.includes('permission') || deleteError.message?.includes('401')) {
+                        // Silent handling for permission issues
+                    } else if (deleteError.message?.includes('signature') || deleteError.message?.includes('CryptoJS')) {
+                        // Silent handling for signature issues
+                    } else {
+                        // Silent handling for other errors
+                    }
+                    // Don't throw error - just log it and continue
+                }
+            }
+        } catch (error: any) {
+            // Check if it's a Cloudinary configuration issue
+            if (error.message?.includes('not configured') || error.message?.includes('credentials')) {
+                // Silent handling for configuration issues
+                return;
+            }
+
+            // Check if it's a permission issue
+            if (error.message?.includes('401') || error.message?.includes('permission')) {
+                // Silent handling for permission issues
+                return;
+            }
+
+            // Check if it's a signature generation issue
+            if (error.message?.includes('signature') || error.message?.includes('CryptoJS')) {
+                // Silent handling for signature issues
+                return;
+            }
+
+            // For other errors, just log them without throwing
+            console.error('Profile picture deletion encountered issues:', error.message);
+        }
+    }
+};
+
+// User service functions
+export const userService = {
+    // Update user profile data
+    async updateUserProfile(userId: string, updates: Partial<UserData>): Promise<void> {
+        try {
+            const userRef = doc(db, 'users', userId);
+            await updateDoc(userRef, {
+                ...updates,
+                updatedAt: serverTimestamp()
+            });
+        } catch (error: any) {
+            console.error('Error updating user profile:', error);
+            throw new Error(error.message || 'Failed to update user profile');
+        }
+    },
+
+    // Get user data by ID
+    async getUserById(userId: string): Promise<UserData | null> {
+        try {
+            const userDoc = await getDoc(doc(db, 'users', userId));
+            if (userDoc.exists()) {
+                return userDoc.data() as UserData;
+            }
+            return null;
+        } catch (error: any) {
+            console.error('Error getting user data:', error);
+            throw new Error(error.message || 'Failed to get user data');
+        }
     }
 };
 

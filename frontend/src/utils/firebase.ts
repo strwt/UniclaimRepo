@@ -479,6 +479,80 @@ export const imageService = {
             // Re-throw other errors so the calling function can handle them
             throw new Error(`Failed to delete images from Cloudinary: ${error.message}`);
         }
+    },
+
+    // Delete single profile picture from storage and update user profile
+    async deleteProfilePicture(profilePictureUrl: string, userId?: string): Promise<void> {
+        try {
+            if (!profilePictureUrl || !profilePictureUrl.includes('cloudinary.com')) {
+                return; // No Cloudinary image to delete
+            }
+
+            // Extract public ID from Cloudinary URL for deletion
+            const publicId = extractCloudinaryPublicId(profilePictureUrl);
+
+            if (publicId) {
+                await cloudinaryService.deleteImage(publicId);
+
+                // If userId is provided, update the user's profile in Firestore
+                if (userId) {
+                    try {
+                        const userRef = doc(db, 'users', userId);
+                        await updateDoc(userRef, {
+                            profileImageUrl: null,
+                            updatedAt: serverTimestamp()
+                        });
+                    } catch (updateError: any) {
+                        console.error('Failed to update user profile in Firestore:', updateError.message);
+                        // Don't throw error - image was deleted from Cloudinary successfully
+                    }
+                }
+            }
+        } catch (error: any) {
+            // Check if it's a Cloudinary configuration issue
+            if (error.message?.includes('not configured') || error.message?.includes('credentials')) {
+                throw new Error('Cloudinary API credentials not configured. Profile picture cannot be deleted from storage.');
+            }
+
+            // Check if it's a permission issue
+            if (error.message?.includes('401') || error.message?.includes('permission')) {
+                throw new Error('Cloudinary account permissions insufficient. Profile picture cannot be deleted from storage.');
+            }
+
+            // Re-throw other errors so the calling function can handle them
+            throw new Error(`Failed to delete profile picture from Cloudinary: ${error.message}`);
+        }
+    }
+};
+
+// User service functions
+export const userService = {
+    // Update user profile data
+    async updateUserProfile(userId: string, updates: Partial<UserData>): Promise<void> {
+        try {
+            const userRef = doc(db, 'users', userId);
+            await updateDoc(userRef, {
+                ...updates,
+                updatedAt: serverTimestamp()
+            });
+        } catch (error: any) {
+            console.error('Error updating user profile:', error);
+            throw new Error(error.message || 'Failed to update user profile');
+        }
+    },
+
+    // Get user data by ID
+    async getUserById(userId: string): Promise<UserData | null> {
+        try {
+            const userDoc = await getDoc(doc(db, 'users', userId));
+            if (userDoc.exists()) {
+                return userDoc.data() as UserData;
+            }
+            return null;
+        } catch (error: any) {
+            console.error('Error getting user data:', error);
+            throw new Error(error.message || 'Failed to get user data');
+        }
     }
 };
 

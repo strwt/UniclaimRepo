@@ -1,30 +1,22 @@
 // USTPMapScreen.tsx
 import { Ionicons } from "@expo/vector-icons";
-import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-
-// Define RootStackParamList
-export type RootStackParamList = {
-  ItemDetails: undefined;
-  USTPMapScreen: {
-    setCoordinatesFromMap: (coords: { lat: number; lng: number }) => void;
-  };
-};
-
-type USTPMapRouteProp = RouteProp<RootStackParamList, "USTPMapScreen">;
+import { useCoordinates } from "../../context/CoordinatesContext";
 
 export default function USTPMapScreen() {
   const navigation = useNavigation();
-  const route = useRoute<USTPMapRouteProp>();
+  const { setCoordinatesFromMap } = useCoordinates();
 
   const onMessage = (event: any) => {
     const coords = JSON.parse(event.nativeEvent.data);
-    if (typeof route.params.setCoordinatesFromMap === "function") {
-      route.params.setCoordinatesFromMap(coords);
-    }
+    setCoordinatesFromMap({
+      latitude: coords.lat,
+      longitude: coords.lng
+    });
     navigation.goBack();
   };
 

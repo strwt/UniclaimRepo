@@ -47,6 +47,13 @@ export default function Navigation({
   const [images, setImages] = useState<string[]>([]);
   const [showLostInfo, setShowLostInfo] = useState(false);
   const [showFoundInfo, setShowFoundInfo] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [reportType, setReportType] = useState<"lost" | "found" | null>(null);
+  const [foundAction, setFoundAction] = useState<"keep" | "turnover to OSA" | "turnover to Campus Security" | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { user } = useAuth();
 
   // If user is authenticated, skip onboarding and index screens
@@ -106,6 +113,20 @@ export default function Navigation({
               showFoundInfo={showFoundInfo}
               setShowLostInfo={setShowLostInfo}
               setShowFoundInfo={setShowFoundInfo}
+              title={title}
+              setTitle={setTitle}
+              description={description}
+              setDescription={setDescription}
+              reportType={reportType}
+              setReportType={setReportType}
+              foundAction={foundAction}
+              setFoundAction={setFoundAction}
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+              selectedLocation={selectedLocation}
+              setSelectedLocation={setSelectedLocation}
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
             />
           </ScreenWrapper>
         )}

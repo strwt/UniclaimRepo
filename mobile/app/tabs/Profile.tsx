@@ -24,6 +24,7 @@ import type { RootStackParamList } from "../../types/type";
 import { useAuth } from "../../context/AuthContext";
 import { profileUpdateService } from "../../utils/profileUpdateService";
 import { cloudinaryService } from "../../utils/cloudinary";
+import { imageService, userService } from "../../utils/firebase";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Profile">;
 
@@ -73,18 +74,35 @@ export default function Profile() {
       
       let profileImageUrl = userData.profileImageUrl;
 
-      // Upload image to Cloudinary if it has changed
-      if (hasImageChanged && profile.imageUri && typeof profile.imageUri === 'object' && 'uri' in profile.imageUri) {
-        try {
-          const uploadedUrls = await cloudinaryService.uploadImages([profile.imageUri.uri], 'profiles');
-          profileImageUrl = uploadedUrls[0];
-        } catch (imageError: any) {
-          console.error('Error uploading profile image:', imageError);
-          Alert.alert("Warning", "Failed to upload profile image, but other changes will be saved.");
+      // Handle profile picture changes
+      if (hasImageChanged) {
+        if (profile.imageUri && typeof profile.imageUri === 'object' && 'uri' in profile.imageUri) {
+          // New image uploaded - check if it's a local file or Cloudinary URL
+          if (profile.imageUri.uri.startsWith('file://') || profile.imageUri.uri.startsWith('content://')) {
+            // Local file - upload to Cloudinary
+            try {
+              const uploadedUrls = await cloudinaryService.uploadImages([profile.imageUri.uri], 'profiles');
+              profileImageUrl = uploadedUrls[0];
+            } catch (imageError: any) {
+              console.error('Error uploading profile image:', imageError);
+              Alert.alert("Warning", "Failed to upload profile image, but other changes will be saved.");
+              // Revert to original image
+              profileImageUrl = userData.profileImageUrl;
+            }
+          } else if (profile.imageUri.uri.includes('cloudinary.com')) {
+            // Already a Cloudinary URL - use it directly
+            profileImageUrl = profile.imageUri.uri;
+          } else {
+            // Default image - set to empty string
+            profileImageUrl = "";
+          }
+        } else {
+          // No image - set to empty string (profile picture removed)
+          profileImageUrl = "";
         }
       }
       
-      // Prepare update data, only include fields that have values
+      // Prepare update data
       const updateData: any = {
         firstName: profile.firstName,
         lastName: profile.lastName,
@@ -92,13 +110,23 @@ export default function Profile() {
         studentId: profile.studentId,
       };
 
-      // Only include profileImageUrl if it has a valid value
-      if (profileImageUrl && profileImageUrl !== userData.profileImageUrl) {
+      // Include profileImageUrl if it has changed
+      if (hasImageChanged) {
         updateData.profileImageUrl = profileImageUrl;
       }
 
       // Update all user data across collections using the new service
       await profileUpdateService.updateAllUserData(user.uid, updateData);
+
+      // If profile picture was removed, delete the old image from Cloudinary
+      if (hasImageChanged && userData.profileImageUrl && profileImageUrl === "") {
+        try {
+          await imageService.deleteProfilePicture(userData.profileImageUrl, user.uid);
+        } catch (deleteError: any) {
+          console.error('Failed to delete old profile picture from Cloudinary:', deleteError.message);
+          // Don't fail the save operation - image was removed from profile successfully
+        }
+      }
 
       // Refresh user data to ensure UI shows updated information
       await refreshUserData();
@@ -189,6 +217,37 @@ export default function Profile() {
     }
   };
 
+  const handleRemoveProfilePicture = () => {
+    // Show confirmation dialog
+    Alert.alert(
+      "Remove Profile Picture",
+      "Are you sure you want to remove your profile picture? This will be applied when you save your changes.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => {
+            // Only update local state - no immediate deletion
+            setProfile((prev) => ({
+              ...prev,
+              imageUri: require("../../assets/images/squarepic.jpg"), // Use default image
+            }));
+            setHasImageChanged(true);
+            
+            Alert.alert(
+              "Profile Picture Removed",
+              "Profile picture has been removed from your profile. Click 'Save Changes' to apply this change permanently."
+            );
+          },
+        },
+      ]
+    );
+  };
+
   const renderField = (
     iconName: keyof typeof AntDesign.glyphMap | keyof typeof Ionicons.glyphMap,
     label: string,
@@ -273,6 +332,19 @@ export default function Profile() {
                 </View>
               )}
             </TouchableOpacity>
+
+            {/* Remove profile picture button - only show when editing and has a profile picture */}
+            {isEditing && userData?.profileImageUrl && (
+              <TouchableOpacity
+                className="mt-2 bg-red-500 rounded-md py-2 px-3 flex-row items-center gap-2"
+                onPress={handleRemoveProfilePicture}
+              >
+                <Ionicons name="trash-outline" size={16} color="white" />
+                <Text className="text-white text-sm font-manrope-medium">
+                  Remove Photo
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <View className="items-center flex-col gap-1 mt-3">
               <Text className="font-manrope-bold text-xl">

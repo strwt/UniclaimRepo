@@ -15,9 +15,7 @@ export type RootStackParamList = {
   InitialRouter: undefined;
   ItemDetails: undefined;
   PostDetails: { post: Post }; // ✅ FIXED: added param to the screen
-  USTPMapScreen: {
-    setCoordinatesFromMap: (coords: { lat: number; lng: number }) => void;
-  };
+  USTPMapScreen: undefined;
 };
 export interface Post {
   id: string;
