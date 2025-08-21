@@ -833,11 +833,11 @@ export const postService = {
                 await imageService.deleteImages(post.images as string[]);
             }
 
-            // Delete all conversations related to this post
-            await this.deleteConversationsByPostId(postId);
-
-            // Delete the post
+            // Delete the post first
             await deleteDoc(doc(db, 'posts', postId));
+
+            // Delete all conversations related to this post after post is deleted
+            await this.deleteConversationsByPostId(postId);
         } catch (error: any) {
             throw new Error(error.message || 'Failed to delete post');
         }
@@ -846,22 +846,48 @@ export const postService = {
     // Delete all conversations related to a specific post
     async deleteConversationsByPostId(postId: string): Promise<void> {
         try {
+            // Get current user info for debugging
+            const currentUser = auth.currentUser;
+            console.log('🔍 Debug: Current user during deletion:', {
+                uid: currentUser?.uid,
+                email: currentUser?.email,
+                isAuthenticated: !!currentUser
+            });
+
             // Query conversations by postId
+            console.log('🔍 Debug: Querying conversations for postId:', postId);
             const conversationsQuery = query(
                 collection(db, 'conversations'),
                 where('postId', '==', postId)
             );
 
+            console.log('🔍 Debug: About to execute query...');
             const conversationsSnapshot = await getDocs(conversationsQuery);
+            console.log('🔍 Debug: Query executed, found conversations:', conversationsSnapshot.docs.length);
+
+            // Debug: Log conversation details
+            conversationsSnapshot.docs.forEach((doc, index) => {
+                const conversationData = doc.data();
+                console.log(`🔍 Debug: Conversation ${index + 1}:`, {
+                    conversationId: doc.id,
+                    postId: conversationData.postId,
+                    participants: conversationData.participants,
+                    currentUserUid: currentUser?.uid,
+                    isCurrentUserParticipant: currentUser?.uid ? conversationData.participants[currentUser.uid] != null : false
+                });
+            });
 
             // Delete each conversation (this will automatically delete messages due to subcollection behavior)
-            const deletePromises = conversationsSnapshot.docs.map(doc =>
-                deleteDoc(doc.ref)
-            );
+            console.log('🔍 Debug: About to delete conversations...');
+            const deletePromises = conversationsSnapshot.docs.map(doc => {
+                console.log('🔍 Debug: Attempting to delete conversation:', doc.id);
+                return deleteDoc(doc.ref);
+            });
 
             if (deletePromises.length > 0) {
+                console.log('🔍 Debug: Executing deletion promises...');
                 await Promise.all(deletePromises);
-                console.log(`Deleted ${deletePromises.length} conversation(s) for post ${postId}`);
+                console.log(`✅ Success: Deleted ${deletePromises.length} conversation(s) for post ${postId}`);
             }
         } catch (error: any) {
             console.error('Error deleting conversations for post:', error);
