@@ -65,6 +65,13 @@ export default function Chat() {
   const flatListRef = useRef<FlatList>(null);
   
   useEffect(() => {
+    // If no conversation exists, create one immediately
+    if (!conversationId && postId && postOwnerId && user && userData && !loading) {
+      handleCreateConversation();
+    }
+  }, [postId, postOwnerId, user, userData, loading]);
+
+  useEffect(() => {
     if (conversationId) {
       // Load messages for existing conversation
       const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
@@ -114,12 +121,7 @@ export default function Chat() {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
-
-    if (!conversationId) {
-      await handleCreateConversation();
-      if (!conversationId) return;
-    }
+    if (!newMessage.trim() || !conversationId) return;
 
     try {
       await sendMessage(
@@ -172,7 +174,7 @@ export default function Chat() {
           <View className="flex-1 items-center justify-center p-6">
             <Ionicons name="chatbubbles-outline" size={64} color="#9CA3AF" />
             <Text className="text-gray-500 text-center mt-4">
-              Start the conversation about &ldquo;{postTitle}&rdquo;
+              {loading ? "Setting up your conversation..." : `Start the conversation about "${postTitle}"`}
             </Text>
           </View>
         ) : (
@@ -198,10 +200,13 @@ export default function Chat() {
             <TextInput
               value={newMessage}
               onChangeText={setNewMessage}
-              placeholder="Type a message..."
-              className="flex-1 border border-gray-300 rounded-full px-4 py-3 text-base"
+              placeholder={loading ? "Creating conversation..." : "Type a message..."}
+              className={`flex-1 border border-gray-300 rounded-full px-4 py-3 text-base ${
+                loading ? 'bg-gray-100' : 'bg-white'
+              }`}
               multiline
               maxLength={500}
+              editable={!loading}
             />
             <TouchableOpacity
               onPress={handleSendMessage}
