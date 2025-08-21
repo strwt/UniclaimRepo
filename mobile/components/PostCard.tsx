@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import type { Post } from "../types/type";
+import ProfilePicture from "./ProfilePicture";
 
 type RootStackParamList = {
   PostDetails: { post: Post };
@@ -121,20 +122,26 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
         <Text className="text-2xl my-1.5 font-manrope-semibold text-black">
           {post.title}
         </Text>
-        <Text className="text-xs text-blue-800 mb-2 font-manrope-bold">
-          Posted by {(() => {
-            // ✅ Handle multiple data structure scenarios
-            if (post.user?.firstName && post.user?.lastName) {
-              return `${post.user.firstName} ${post.user.lastName}`;
-            } else if (post.postedBy) {
-              return post.postedBy;
-            } else if (post.user?.email) {
-              return post.user.email.split('@')[0]; // Show username part of email
-            } else {
-              return 'Unknown User';
-            }
-          })()}
-        </Text>
+        <View className="flex-row items-center gap-2 mb-2">
+          <ProfilePicture
+            src={post.user?.profilePicture}
+            size="xs"
+          />
+          <Text className="text-xs text-blue-800 font-manrope-bold">
+            Posted by {(() => {
+              // ✅ Handle multiple data structure scenarios
+              if (post.user?.firstName && post.user?.lastName) {
+                return `${post.user.firstName} ${post.user.lastName}`;
+              } else if (post.postedBy) {
+                return post.postedBy;
+              } else if (post.user?.email) {
+                return post.user.email.split('@')[0]; // Show username part of email
+              } else {
+                return 'Unknown User';
+              }
+            })()}
+          </Text>
+        </View>
 
         <View className="flex-row flex-wrap items-center gap-2">
           <View className="flex-row items-center gap-1">

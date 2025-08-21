@@ -25,6 +25,7 @@ import { useAuth } from "../../context/AuthContext";
 import { profileUpdateService } from "../../utils/profileUpdateService";
 import { cloudinaryService } from "../../utils/cloudinary";
 import { imageService, userService } from "../../utils/firebase";
+import { postUpdateService } from "../../utils/postUpdateService";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Profile">;
 
@@ -117,6 +118,16 @@ export default function Profile() {
 
       // Update all user data across collections using the new service
       await profileUpdateService.updateAllUserData(user.uid, updateData);
+
+      // Update all existing posts with the new profile picture
+      if (hasImageChanged && profileImageUrl) {
+        try {
+          await postUpdateService.updateUserPostsWithProfilePicture(user.uid, profileImageUrl);
+        } catch (postUpdateError: any) {
+          console.error('Failed to update posts with new profile picture:', postUpdateError.message);
+          // Don't fail the save operation - profile was updated successfully
+        }
+      }
 
       // If profile picture was removed, delete the old image from Cloudinary
       if (hasImageChanged && userData.profileImageUrl && profileImageUrl === "") {

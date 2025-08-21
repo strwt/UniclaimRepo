@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { profileUpdateService } from "@/utils/profileUpdateService";
 import { cloudinaryService } from "@/utils/cloudinary";
 import { imageService } from "@/utils/firebase";
+import { postUpdateService } from "@/utils/postUpdateService";
 import ProfilePicture from "@/components/ProfilePicture";
 import { validateProfilePicture, getRecommendedDimensionsText } from "@/utils/profilePictureUtils";
 
@@ -198,6 +199,16 @@ const Profile = () => {
           studentId,
           profilePicture: userInfo.profilePicture,
         });
+
+        // Update all existing posts with the new profile picture
+        if (userInfo.profilePicture && userInfo.profilePicture !== initialUserInfo.profilePicture) {
+          try {
+            await postUpdateService.updateUserPostsWithProfilePicture(userData.uid, userInfo.profilePicture);
+          } catch (postUpdateError: any) {
+            console.error('Failed to update posts with new profile picture:', postUpdateError.message);
+            // Don't fail the save operation - profile was updated successfully
+          }
+        }
 
         // Update local state
         setInitialUserInfo(userInfo);
