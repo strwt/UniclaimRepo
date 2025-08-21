@@ -784,13 +784,8 @@ export const postService = {
     // Delete all conversations related to a specific post
     async deleteConversationsByPostId(postId: string): Promise<void> {
         try {
-            // Get current user info for debugging
+            // Get current user info
             const currentUser = auth.currentUser;
-            console.log('🔍 Mobile Debug: Current user during deletion:', {
-                uid: currentUser?.uid,
-                email: currentUser?.email,
-                isAuthenticated: !!currentUser
-            });
 
             // Query conversations by postId
             const conversationsQuery = query(
@@ -800,18 +795,6 @@ export const postService = {
 
             const conversationsSnapshot = await getDocs(conversationsQuery);
 
-            // Debug: Log conversation details
-            conversationsSnapshot.docs.forEach((doc, index) => {
-                const conversationData = doc.data();
-                console.log(`🔍 Mobile Debug: Conversation ${index + 1}:`, {
-                    conversationId: doc.id,
-                    postId: conversationData.postId,
-                    participants: conversationData.participants,
-                    currentUserUid: currentUser?.uid,
-                    isCurrentUserParticipant: currentUser?.uid ? conversationData.participants[currentUser.uid] != null : false
-                });
-            });
-
             // Delete each conversation (this will automatically delete messages due to subcollection behavior)
             const deletePromises = conversationsSnapshot.docs.map(doc =>
                 deleteDoc(doc.ref)
@@ -819,7 +802,6 @@ export const postService = {
 
             if (deletePromises.length > 0) {
                 await Promise.all(deletePromises);
-                console.log(`Deleted ${deletePromises.length} conversation(s) for post ${postId}`);
             }
         } catch (error: any) {
             console.error('Error deleting conversations for post:', error);

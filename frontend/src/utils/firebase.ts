@@ -935,48 +935,24 @@ export const postService = {
     // Delete all conversations related to a specific post
     async deleteConversationsByPostId(postId: string): Promise<void> {
         try {
-            // Get current user info for debugging
+            // Get current user info
             const currentUser = auth.currentUser;
-            console.log('🔍 Debug: Current user during deletion:', {
-                uid: currentUser?.uid,
-                email: currentUser?.email,
-                isAuthenticated: !!currentUser
-            });
 
             // Query conversations by postId
-            console.log('🔍 Debug: Querying conversations for postId:', postId);
             const conversationsQuery = query(
                 collection(db, 'conversations'),
                 where('postId', '==', postId)
             );
 
-            console.log('🔍 Debug: About to execute query...');
             const conversationsSnapshot = await getDocs(conversationsQuery);
-            console.log('🔍 Debug: Query executed, found conversations:', conversationsSnapshot.docs.length);
-
-            // Debug: Log conversation details
-            conversationsSnapshot.docs.forEach((doc, index) => {
-                const conversationData = doc.data();
-                console.log(`🔍 Debug: Conversation ${index + 1}:`, {
-                    conversationId: doc.id,
-                    postId: conversationData.postId,
-                    participants: conversationData.participants,
-                    currentUserUid: currentUser?.uid,
-                    isCurrentUserParticipant: currentUser?.uid ? conversationData.participants[currentUser.uid] != null : false
-                });
-            });
 
             // Delete each conversation (this will automatically delete messages due to subcollection behavior)
-            console.log('🔍 Debug: About to delete conversations...');
-            const deletePromises = conversationsSnapshot.docs.map(doc => {
-                console.log('🔍 Debug: Attempting to delete conversation:', doc.id);
-                return deleteDoc(doc.ref);
-            });
+            const deletePromises = conversationsSnapshot.docs.map(doc =>
+                deleteDoc(doc.ref)
+            );
 
             if (deletePromises.length > 0) {
-                console.log('🔍 Debug: Executing deletion promises...');
                 await Promise.all(deletePromises);
-                console.log(`✅ Success: Deleted ${deletePromises.length} conversation(s) for post ${postId}`);
             }
         } catch (error: any) {
             console.error('Error deleting conversations for post:', error);
