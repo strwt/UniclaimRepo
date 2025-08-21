@@ -23,7 +23,7 @@ import PageLayout from "../../layout/PageLayout";
 import type { RootStackParamList } from "../../types/type";
 import { useAuth } from "../../context/AuthContext";
 import { profileUpdateService } from "../../utils/profileUpdateService";
-import { cloudinaryService } from "../../utils/cloudinary";
+import { cloudinaryService, deleteOldProfilePicture } from "../../utils/cloudinary";
 import { imageService, userService } from "../../utils/firebase";
 import { postUpdateService } from "../../utils/postUpdateService";
 
@@ -84,6 +84,21 @@ export default function Profile() {
             try {
               const uploadedUrls = await cloudinaryService.uploadImages([profile.imageUri.uri], 'profiles');
               profileImageUrl = uploadedUrls[0];
+              
+              // Automatically delete the old profile picture if it exists and is different from the new one
+              if (userData.profileImageUrl && userData.profileImageUrl !== profileImageUrl) {
+                try {
+                  const deletionSuccess = await deleteOldProfilePicture(userData.profileImageUrl);
+                  if (deletionSuccess) {
+                    console.log('Old profile picture deleted successfully');
+                  } else {
+                    console.log('Failed to delete old profile picture, but continuing with profile update');
+                  }
+                } catch (deleteError: any) {
+                  console.error('Error deleting old profile picture:', deleteError.message);
+                  // Don't fail the save operation - continue with profile update
+                }
+              }
             } catch (imageError: any) {
               console.error('Error uploading profile image:', imageError);
               Alert.alert("Warning", "Failed to upload profile image, but other changes will be saved.");
@@ -93,6 +108,21 @@ export default function Profile() {
           } else if (profile.imageUri.uri.includes('cloudinary.com')) {
             // Already a Cloudinary URL - use it directly
             profileImageUrl = profile.imageUri.uri;
+            
+            // Automatically delete the old profile picture if it exists and is different from the new one
+            if (userData.profileImageUrl && userData.profileImageUrl !== profileImageUrl) {
+              try {
+                const deletionSuccess = await deleteOldProfilePicture(userData.profileImageUrl);
+                if (deletionSuccess) {
+                  console.log('Old profile picture deleted successfully');
+                } else {
+                  console.log('Failed to delete old profile picture, but continuing with profile update');
+                }
+              } catch (deleteError: any) {
+                console.error('Error deleting old profile picture:', deleteError.message);
+                // Don't fail the save operation - continue with profile update
+              }
+            }
           } else {
             // Default image - set to empty string
             profileImageUrl = "";
@@ -100,6 +130,21 @@ export default function Profile() {
         } else {
           // No image - set to empty string (profile picture removed)
           profileImageUrl = "";
+          
+          // Automatically delete the old profile picture if it exists
+          if (userData.profileImageUrl) {
+            try {
+              const deletionSuccess = await deleteOldProfilePicture(userData.profileImageUrl);
+              if (deletionSuccess) {
+                console.log('Old profile picture deleted successfully after removal');
+              } else {
+                console.log('Failed to delete old profile picture after removal, but continuing with profile update');
+              }
+            } catch (deleteError: any) {
+              console.error('Error deleting old profile picture after removal:', deleteError.message);
+              // Don't fail the save operation - continue with profile update
+            }
+          }
         }
       }
       
@@ -126,16 +171,6 @@ export default function Profile() {
         } catch (postUpdateError: any) {
           console.error('Failed to update posts with profile picture change:', postUpdateError.message);
           // Don't fail the save operation - profile was updated successfully
-        }
-      }
-
-      // If profile picture was removed, delete the old image from Cloudinary
-      if (hasImageChanged && userData.profileImageUrl && profileImageUrl === "") {
-        try {
-          await imageService.deleteProfilePicture(userData.profileImageUrl, user.uid);
-        } catch (deleteError: any) {
-          console.error('Failed to delete old profile picture from Cloudinary:', deleteError.message);
-          // Don't fail the save operation - image was removed from profile successfully
         }
       }
 

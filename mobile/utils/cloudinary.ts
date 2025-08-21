@@ -351,6 +351,78 @@ export const cloudinaryService = {
     }
 };
 
+// Helper function to extract public ID from Cloudinary URL
+export const extractPublicIdFromUrl = (url: string): string | null => {
+    try {
+        if (!url || !url.includes('cloudinary.com')) {
+            return null;
+        }
+
+        // Handle different Cloudinary URL formats
+        const urlParts = url.split('/');
+        const uploadIndex = urlParts.findIndex(part => part === 'upload');
+
+        if (uploadIndex === -1) {
+            return null;
+        }
+
+        // Extract everything after 'upload' and before any version number
+        const pathAfterUpload = urlParts.slice(uploadIndex + 1);
+
+        // Find the first part that contains the folder structure
+        let publicId = '';
+
+        for (let i = 0; i < pathAfterUpload.length; i++) {
+            const part = pathAfterUpload[i];
+
+            // Skip version numbers (they start with 'v' followed by numbers)
+            if (part.startsWith('v') && /^\d+$/.test(part.substring(1))) {
+                continue;
+            }
+
+            // Build the public ID from this point
+            publicId = pathAfterUpload.slice(i).join('/');
+            break;
+        }
+
+        // Remove file extension if present
+        if (publicId) {
+            publicId = publicId.replace(/\.[^/.]+$/, '');
+        }
+
+        return publicId || null;
+    } catch (error) {
+        console.error('Error extracting public ID from URL:', error);
+        return null;
+    }
+};
+
+// Function to delete old profile picture
+export const deleteOldProfilePicture = async (oldProfileImageUrl: string): Promise<boolean> => {
+    try {
+        // Extract public ID from the old profile image URL
+        const publicId = extractPublicIdFromUrl(oldProfileImageUrl);
+
+        if (!publicId) {
+            console.log('Could not extract public ID from profile image URL, skipping deletion');
+            return false;
+        }
+
+        // Delete the image using the existing deleteImage function
+        await cloudinaryService.deleteImage(publicId);
+
+        console.log(`Successfully deleted old profile picture: ${publicId}`);
+        return true;
+
+    } catch (error: any) {
+        console.error('Failed to delete old profile picture:', error.message);
+
+        // Don't throw error - this is cleanup, not critical functionality
+        // Return false to indicate deletion failed
+        return false;
+    }
+};
+
 // Test function specifically for testing image deletion
 export const testImageDeletion = async (publicId: string = 'posts/test_image') => {
     try {
