@@ -6,9 +6,9 @@ export const postUpdateService = {
      * Update all posts created by a specific user to include their current profile picture
      * This ensures old posts show the user's current profile picture
      */
-    async updateUserPostsWithProfilePicture(userId: string, profilePictureUrl: string): Promise<void> {
+    async updateUserPostsWithProfilePicture(userId: string, profilePictureUrl: string | null): Promise<void> {
         try {
-            console.log(`Updating posts for user ${userId} with profile picture`);
+            console.log(`Updating posts for user ${userId} with profile picture: ${profilePictureUrl || 'REMOVED'}`);
 
             // Query all posts created by this user
             const postsRef = collection(db, 'posts');
@@ -26,11 +26,16 @@ export const postUpdateService = {
 
             querySnapshot.forEach((docSnapshot) => {
                 const postData = docSnapshot.data();
+                const currentProfilePicture = postData.user?.profilePicture;
 
-                // Only update if the post doesn't have a profile picture or it's different
-                if (!postData.user?.profilePicture || postData.user.profilePicture !== profilePictureUrl) {
+                // Update if:
+                // 1. Profile picture was removed (profilePictureUrl is null/empty) and post has one
+                // 2. Profile picture was changed and is different
+                if ((!profilePictureUrl && currentProfilePicture) ||
+                    (profilePictureUrl && currentProfilePicture !== profilePictureUrl)) {
+
                     batch.update(docSnapshot.ref, {
-                        'user.profilePicture': profilePictureUrl,
+                        'user.profilePicture': profilePictureUrl || null,
                         updatedAt: new Date()
                     });
                     updateCount++;
@@ -39,9 +44,9 @@ export const postUpdateService = {
 
             if (updateCount > 0) {
                 await batch.commit();
-                console.log(`Updated ${updateCount} posts with new profile picture`);
+                console.log(`Updated ${updateCount} posts with profile picture: ${profilePictureUrl || 'REMOVED'}`);
             } else {
-                console.log('All posts already have the current profile picture');
+                console.log('All posts already have the current profile picture state');
             }
 
         } catch (error: any) {

@@ -127,7 +127,8 @@ export default function Chat() {
         conversationId,
         user.uid,
         `${userData.firstName} ${userData.lastName}`,
-        newMessage.trim()
+        newMessage.trim(),
+        userData.profileImageUrl
       );
       setNewMessage('');
       scrollToBottom();

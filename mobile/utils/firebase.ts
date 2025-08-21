@@ -271,12 +271,14 @@ export const messageService = {
                         uid: currentUserId,
                         firstName: currentUserData.firstName,
                         lastName: currentUserData.lastName,
+                        profilePicture: currentUserData.profileImageUrl,
                         joinedAt: serverTimestamp()
                     },
                     [postOwnerId]: {
                         uid: postOwnerId,
                         firstName: postOwnerUserData?.firstName || 'Post Owner',
                         lastName: postOwnerUserData?.lastName || '',
+                        profilePicture: postOwnerUserData?.profilePicture || postOwnerUserData?.profileImageUrl,
                         joinedAt: serverTimestamp()
                     }
                 },
@@ -290,12 +292,13 @@ export const messageService = {
     },
 
     // Send a message
-    async sendMessage(conversationId: string, senderId: string, senderName: string, text: string): Promise<void> {
+    async sendMessage(conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string): Promise<void> {
         try {
             const messagesRef = collection(db, 'conversations', conversationId, 'messages');
             await addDoc(messagesRef, {
                 senderId,
                 senderName,
+                senderProfilePicture,
                 text,
                 timestamp: serverTimestamp(),
                 readBy: [senderId]

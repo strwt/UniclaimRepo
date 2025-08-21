@@ -49,6 +49,7 @@ export interface Message {
   id: string;
   senderId: string;
   senderName: string;
+  senderProfilePicture?: string;
   text: string;
   timestamp: any; // Firebase timestamp
   readBy: string[];
@@ -63,6 +64,7 @@ export interface Conversation {
       uid: string;
       firstName: string;
       lastName: string;
+      profilePicture?: string;
       joinedAt: any;
     };
   };

@@ -200,12 +200,12 @@ const Profile = () => {
           profilePicture: userInfo.profilePicture,
         });
 
-        // Update all existing posts with the new profile picture
-        if (userInfo.profilePicture && userInfo.profilePicture !== initialUserInfo.profilePicture) {
+        // Update all existing posts with the new profile picture (or removal)
+        if (userInfo.profilePicture !== initialUserInfo.profilePicture) {
           try {
             await postUpdateService.updateUserPostsWithProfilePicture(userData.uid, userInfo.profilePicture);
           } catch (postUpdateError: any) {
-            console.error('Failed to update posts with new profile picture:', postUpdateError.message);
+            console.error('Failed to update posts with profile picture change:', postUpdateError.message);
             // Don't fail the save operation - profile was updated successfully
           }
         }
