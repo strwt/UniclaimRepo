@@ -10,12 +10,11 @@ import ProfilePicture from "@/components/ProfilePicture";
 import { validateProfilePicture, getRecommendedDimensionsText, isCloudinaryImage } from "@/utils/profilePictureUtils";
 
 const Profile = () => {
-  const { userData, loading } = useAuth();
+  const { userData, loading, refreshUserData } = useAuth();
   const { showToast } = useToast();
   const [isEdit, setIsEdit] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isRemovingImage, setIsRemovingImage] = useState(false);
+  const [isUploadingProfilePicture, setIsUploadingProfilePicture] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Use Firebase user data or fallback to empty strings
@@ -29,6 +28,10 @@ const Profile = () => {
   });
 
   const [initialUserInfo, setInitialUserInfo] = useState(userInfo);
+  
+  // State for local file storage (deferred upload approach)
+  const [selectedProfileFile, setSelectedProfileFile] = useState<File | null>(null);
+  const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] = useState<string | null>(null);
 
   // Update local state when Firebase data loads
   useEffect(() => {
@@ -43,11 +46,34 @@ const Profile = () => {
       };
       setUserInfo(updatedInfo);
       setInitialUserInfo(updatedInfo);
+      // Reset local file state when user data loads
+      setSelectedProfileFile(null);
+      setProfilePicturePreviewUrl(null);
     }
   }, [userData]);
 
+  // Cleanup preview URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (profilePicturePreviewUrl) {
+        URL.revokeObjectURL(profilePicturePreviewUrl);
+      }
+    };
+  }, [profilePicturePreviewUrl]);
+
+  // Helper function to clean up preview URL
+  const cleanupPreviewUrl = () => {
+    if (profilePicturePreviewUrl) {
+      URL.revokeObjectURL(profilePicturePreviewUrl);
+      setProfilePicturePreviewUrl(null);
+    }
+  };
+
   const handleCancel = () => {
     setUserInfo(initialUserInfo);
+    // Reset local file state when canceling
+    setSelectedProfileFile(null);
+    cleanupPreviewUrl();
     setIsEdit(false);
   };
 
@@ -72,46 +98,17 @@ const Profile = () => {
     }
 
     try {
-      setIsUploadingImage(true);
+      // Store the file locally instead of uploading immediately
+      setSelectedProfileFile(file);
       
-      // Store the old profile picture URL before uploading new one
-      const oldProfilePicture = userInfo.profilePicture;
-      
-      // Show upload progress
-      showToast("info", "Uploading...", "Please wait while we upload your profile picture.");
-      
-      // Upload to Cloudinary
-      const imageUrls = await cloudinaryService.uploadImages([file], 'profiles');
-      const newProfilePictureUrl = imageUrls[0];
-      
-      // Update local state
-      setUserInfo(prev => ({ ...prev, profilePicture: newProfilePictureUrl }));
-      
-      // Delete the old profile picture if it exists and is different from the new one
-      if (oldProfilePicture && oldProfilePicture !== "" && oldProfilePicture !== newProfilePictureUrl) {
-        // Only delete if it's a Cloudinary image that can be safely removed
-        if (isCloudinaryImage(oldProfilePicture)) {
-          try {
-            // Delete old image from Cloudinary
-            await imageService.deleteProfilePicture(oldProfilePicture, userData?.uid);
-            console.log('Old profile picture deleted successfully from Cloudinary');
-          } catch (deleteError: any) {
-            console.error('Failed to delete old profile picture from Cloudinary:', deleteError.message);
-            // Don't fail the upload - show warning but continue
-            showToast("warning", "Cleanup Warning", "New profile picture uploaded successfully, but there was an issue removing the old one from storage.");
-          }
-        } else {
-          console.log('Old profile picture is not a Cloudinary image, skipping deletion:', oldProfilePicture);
-        }
-      }
-      
-      showToast("success", "Profile Picture Updated", "Your profile picture has been uploaded successfully!");
+      // Create a preview URL from the local file
+      const previewUrl = URL.createObjectURL(file);
+      setProfilePicturePreviewUrl(previewUrl);
       
     } catch (error: any) {
-      console.error('Profile picture upload error:', error);
-      showToast("error", "Upload Failed", error.message || "Failed to upload profile picture. Please try again.");
+      console.error('Profile picture selection error:', error);
+      showToast("error", "Selection Failed", "Failed to process the selected image. Please try again.");
     } finally {
-      setIsUploadingImage(false);
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -121,53 +118,15 @@ const Profile = () => {
 
   const handleRemoveProfilePicture = async () => {
     try {
-      setIsRemovingImage(true);
+      // Clear the local file selection
+      setSelectedProfileFile(null);
+      cleanupPreviewUrl();
       
-      // Store the current profile picture URL before removing it
-      const currentProfilePicture = userInfo.profilePicture;
+      showToast("success", "Profile Picture Removed", "Profile picture will be removed when you save changes.");
       
-      // Update local state immediately for better UX
-      setUserInfo(prev => ({ ...prev, profilePicture: "" }));
-      
-      // If there's a profile picture URL, delete it from Cloudinary using image service
-      if (currentProfilePicture && currentProfilePicture !== "") {
-        try {
-          // Use the image service to delete the profile picture and update user profile
-          await imageService.deleteProfilePicture(currentProfilePicture, userData?.uid);
-          
-          // Update the user's profile in Firestore to remove the profile picture URL
-          if (userData?.uid) {
-            try {
-              await profileUpdateService.updateAllUserData(userData.uid, {
-                firstName: userInfo.firstName,
-                lastName: userInfo.lastName,
-                contactNum: userInfo.contact,
-                studentId: userInfo.studentId,
-                profilePicture: "", // Remove profile picture URL
-              });
-            } catch (updateError: any) {
-              console.error("Failed to update user profile in Firestore:", updateError.message);
-              // Don't fail the deletion - image was removed from Cloudinary successfully
-            }
-          }
-          
-          showToast("success", "Profile Picture Removed", "Your profile picture has been removed from storage and your profile.");
-        } catch (cloudinaryError: any) {
-          // If Cloudinary deletion fails, still remove it locally but show a warning
-          console.error("Failed to delete image from Cloudinary:", cloudinaryError);
-          showToast("warning", "Partial Removal", "Profile picture removed from profile, but there was an issue deleting it from storage. You may need to remove it manually later.");
-        }
-      } else {
-        showToast("info", "Profile Picture Removed", "Your profile picture has been removed.");
-      }
     } catch (error: any) {
       console.error("Error removing profile picture:", error);
       showToast("error", "Removal Failed", "Failed to remove profile picture. Please try again.");
-      
-      // Revert the local state change if there was an error
-      setUserInfo(prev => ({ ...prev, profilePicture: initialUserInfo.profilePicture }));
-    } finally {
-      setIsRemovingImage(false);
     }
   };
 
@@ -189,13 +148,14 @@ const Profile = () => {
       return;
     }
 
-    // Check if values actually changed
+    // Check if values actually changed (including profile picture)
+    const hasProfilePictureChanged = selectedProfileFile !== null || profilePicturePreviewUrl !== null;
     const isChanged =
       firstName !== initialUserInfo.firstName ||
       lastName !== initialUserInfo.lastName ||
       contact !== initialUserInfo.contact ||
       studentId !== initialUserInfo.studentId ||
-      userInfo.profilePicture !== initialUserInfo.profilePicture;
+      hasProfilePictureChanged;
 
     if (!isChanged) {
       showToast(
@@ -207,32 +167,102 @@ const Profile = () => {
       return;
     }
 
+    // Show summary of what will happen
+    if (hasProfilePictureChanged) {
+      if (selectedProfileFile) {
+        // New profile picture will be uploaded and old one replaced
+      } else {
+        // Profile picture will be removed
+      }
+    }
+
     // Update all user data across collections
     try {
       setIsUpdating(true);
       
       if (userData?.uid) {
+        let finalProfilePicture = userInfo.profilePicture;
+        let oldProfilePicture = initialUserInfo.profilePicture; // Use initial value, not current value
+
+        // Handle profile picture changes if there's a new file
+        if (selectedProfileFile) {
+          try {
+            setIsUploadingProfilePicture(true);
+            
+            // Upload new profile picture to Cloudinary
+            const imageUrls = await cloudinaryService.uploadImages([selectedProfileFile], 'profiles');
+            finalProfilePicture = imageUrls[0];
+            
+            // Delete the old profile picture if it exists and is different from the new one
+            if (oldProfilePicture && oldProfilePicture !== "" && oldProfilePicture !== finalProfilePicture) {
+              if (isCloudinaryImage(oldProfilePicture)) {
+                try {
+                  await imageService.deleteProfilePicture(oldProfilePicture, userData.uid);
+                } catch (deleteError: any) {
+                  // Don't fail the save operation - continue with profile update
+                  showToast("warning", "Cleanup Warning", "New profile picture uploaded successfully, but there was an issue removing the old one from storage.");
+                }
+              } else {
+                // Old profile picture is not a Cloudinary image, skipping deletion
+              }
+            } else {
+              // No old profile picture to delete or same image
+            }
+            
+          } catch (uploadError: any) {
+            console.error('Failed to upload profile picture:', uploadError);
+            showToast("error", "Upload Failed", "Failed to upload profile picture. Please try again.");
+            return; // Don't proceed with save if upload fails
+          } finally {
+            setIsUploadingProfilePicture(false);
+          }
+        } else if (profilePicturePreviewUrl === null && userInfo.profilePicture === "") {
+          // Profile picture was removed
+          if (oldProfilePicture && oldProfilePicture !== "") {
+            if (isCloudinaryImage(oldProfilePicture)) {
+              try {
+                await imageService.deleteProfilePicture(oldProfilePicture, userData.uid);
+              } catch (deleteError: any) {
+                // Don't fail the save operation - continue with profile update
+                showToast("warning", "Cleanup Warning", "Profile picture removed from profile, but there was an issue deleting it from storage.");
+              }
+            }
+          }
+        }
+
         // Use the new profile update service to update everything
         await profileUpdateService.updateAllUserData(userData.uid, {
           firstName,
           lastName,
           contactNum: contact,
           studentId,
-          profilePicture: userInfo.profilePicture,
+          profilePicture: finalProfilePicture,
         });
 
         // Update all existing posts with the new profile picture (or removal)
-        if (userInfo.profilePicture !== initialUserInfo.profilePicture) {
+        if (finalProfilePicture !== initialUserInfo.profilePicture) {
           try {
-            await postUpdateService.updateUserPostsWithProfilePicture(userData.uid, userInfo.profilePicture);
+            await postUpdateService.updateUserPostsWithProfilePicture(userData.uid, finalProfilePicture);
           } catch (postUpdateError: any) {
             console.error('Failed to update posts with profile picture change:', postUpdateError.message);
             // Don't fail the save operation - profile was updated successfully
           }
         }
 
-        // Update local state
-        setInitialUserInfo(userInfo);
+        // Update local state and clear preview
+        setUserInfo(prev => ({ ...prev, profilePicture: finalProfilePicture }));
+        setInitialUserInfo(prev => ({ ...prev, profilePicture: finalProfilePicture }));
+        setSelectedProfileFile(null);
+        cleanupPreviewUrl();
+        
+        // Refresh user data to ensure UI shows updated profile picture
+        await refreshUserData();
+        
+        console.log('Profile update completed:', {
+          finalProfilePicture,
+          userInfoProfilePicture: userInfo.profilePicture,
+          refreshedUserData: userData?.profilePicture
+        });
         
         showToast(
           "success",
@@ -283,21 +313,22 @@ const Profile = () => {
           <div className="absolute flex gap-8 -bottom-20 z-10 left-4 md:-bottom-25 lg:-bottom-30">
             <div className="relative">
               <ProfilePicture
-                src={userInfo.profilePicture}
+                src={profilePicturePreviewUrl || userInfo.profilePicture}
                 alt="profile"
                 size="5xl"
                 className="lg:left-6"
                 priority={true}
+                key={userInfo.profilePicture || 'default'} // Force re-render when profile picture changes
               />
               {isEdit && (
                 <div className="absolute -bottom-2 -right-2 flex gap-1">
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploadingImage}
+                    disabled={isUpdating}
                     className="bg-navyblue text-white rounded-full p-2 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                     title="Upload new profile picture"
                   >
-                    {isUploadingImage ? (
+                    {isUpdating ? (
                       <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -308,14 +339,14 @@ const Profile = () => {
                       </svg>
                     )}
                   </button>
-                  {userInfo.profilePicture && (
+                  {(userInfo.profilePicture || profilePicturePreviewUrl) && (
                     <button
                       onClick={handleRemoveProfilePicture}
-                      disabled={isRemovingImage}
+                      disabled={isUpdating}
                       className="bg-red-500 text-white rounded-full p-2 hover:bg-red-600 disabled:bg-red-400 disabled:cursor-not-allowed"
                       title="Remove profile picture"
                     >
-                      {isRemovingImage ? (
+                      {isUpdating ? (
                         <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -386,39 +417,6 @@ const Profile = () => {
         {/* account details */}
         <div className="mx-7 mt-10 md:mt-20 lg:mt-25">
           <h1 className="text-[16px] lg:text-base my-5">Account Details</h1>
-          
-          {/* Profile Picture Section */}
-          <div className="mb-6">
-            <div className="bg-gray-100 border border-gray-700 rounded px-4 py-2.5">
-              <div className="flex items-center justify-between mb-2">
-                <h1 className="text-sm text-gray-600">Profile Picture</h1>
-                {isEdit ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-800 text-sm max-w-xs truncate">
-                      {userInfo.profilePicture ? "Image uploaded" : "No image"}
-                    </span>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploadingImage}
-                      className="bg-navyblue text-white px-3 py-1 rounded text-xs hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    >
-                      {isUploadingImage ? "Uploading..." : "Change"}
-                    </button>
-                  </div>
-                ) : (
-                  <span className="text-gray-800 text-sm">
-                    {userInfo.profilePicture ? "Image uploaded" : "No image"}
-                  </span>
-                )}
-              </div>
-              {isEdit && (
-                <div className="text-xs text-gray-500 mt-2">
-                  <p>Recommended: {getRecommendedDimensionsText()}</p>
-                  <p>Max size: 5MB • Formats: JPEG, PNG, WebP</p>
-                </div>
-              )}
-            </div>
-          </div>
           
           {/* read-only inputs and edit inputs */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
