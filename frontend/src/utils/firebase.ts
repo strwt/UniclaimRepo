@@ -82,6 +82,7 @@ export interface UserData {
     contactNum: string;
     studentId: string;
     profilePicture?: string;
+    profileImageUrl?: string; // Added to support mobile app field name
     createdAt: any;
     updatedAt: any;
 }
@@ -196,7 +197,6 @@ export const messageService = {
                 postOwnerLastName = postOwnerUserData.lastName;
                 postOwnerProfilePicture = postOwnerUserData.profilePicture || '';
 
-
             } else {
                 // Fallback: try to fetch from users collection
                 try {
@@ -210,6 +210,32 @@ export const messageService = {
                 } catch (error) {
                     console.warn('Could not fetch post owner data:', error);
                     // Continue with empty values if fetch fails
+                }
+            }
+
+            // Always ensure we have profile pictures - fetch fresh data if missing
+            let currentUserProfilePicture = currentUserData.profilePicture || currentUserData.profileImageUrl || '';
+            if (!currentUserProfilePicture) {
+                try {
+                    const currentUserDoc = await getDoc(doc(db, 'users', currentUserId));
+                    if (currentUserDoc.exists()) {
+                        const freshUserData = currentUserDoc.data();
+                        currentUserProfilePicture = freshUserData.profilePicture || freshUserData.profileImageUrl || '';
+                    }
+                } catch (error) {
+                    console.warn('Could not fetch current user data for profile picture:', error);
+                }
+            }
+
+            if (!postOwnerProfilePicture) {
+                try {
+                    const postOwnerDoc = await getDoc(doc(db, 'users', postOwnerId));
+                    if (postOwnerDoc.exists()) {
+                        const freshPostOwnerData = postOwnerDoc.data();
+                        postOwnerProfilePicture = freshPostOwnerData.profilePicture || freshPostOwnerData.profileImageUrl || '';
+                    }
+                } catch (error) {
+                    console.warn('Could not fetch post owner data for profile picture:', error);
                 }
             }
 
@@ -236,7 +262,7 @@ export const messageService = {
                         uid: currentUserId,
                         firstName: currentUserData.firstName,
                         lastName: currentUserData.lastName,
-                        profilePicture: currentUserData.profilePicture || null,
+                        profilePicture: currentUserProfilePicture || null,
                         joinedAt: serverTimestamp()
                     },
                     [postOwnerId]: {
@@ -249,8 +275,6 @@ export const messageService = {
                 },
                 createdAt: serverTimestamp()
             };
-
-
 
             const conversationRef = await addDoc(collection(db, 'conversations'), conversationData);
 
@@ -306,14 +330,26 @@ export const messageService = {
                 return participantIds.length > 1; // Must have at least 2 participants
             });
 
+            // Check and recover missing profile pictures for each conversation
+            validConversations.forEach((conversation: any) => {
+                if (profilePictureRecoveryService.needsProfilePictureRecovery(conversation)) {
+                    // Attempt to recover profile pictures in the background
+                    profilePictureRecoveryService.recoverProfilePictures(conversation.id, conversation)
+                        .then(() => {
+                            // Profile pictures recovered successfully
+                        })
+                        .catch((error) => {
+                            console.error('❌ Failed to recover profile pictures for conversation:', conversation.id, error);
+                        });
+                }
+            });
+
             // Sort conversations by createdAt in JavaScript instead
             const sortedConversations = validConversations.sort((a: any, b: any) => {
                 const dateA = a.createdAt ? (a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)) : new Date(0);
                 const dateB = b.createdAt ? (b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)) : new Date(0);
                 return dateB.getTime() - dateA.getTime(); // Most recent first
             });
-
-
 
             callback(sortedConversations);
         });
@@ -433,6 +469,59 @@ function extractCloudinaryPublicId(url: string): string | null {
         return null;
     }
 }
+
+// Profile picture recovery function for conversations
+export const profilePictureRecoveryService = {
+    // Check if a conversation needs profile picture recovery
+    needsProfilePictureRecovery(conversation: any): boolean {
+        if (!conversation || !conversation.participants) return false;
+
+        return Object.values(conversation.participants).some((participant: any) => {
+            return !participant.profilePicture || participant.profilePicture === null;
+        });
+    },
+
+    // Recover missing profile pictures for a conversation
+    async recoverProfilePictures(conversationId: string, conversation: any): Promise<void> {
+        try {
+            const updates: any = {};
+            let hasUpdates = false;
+
+            // Check each participant for missing profile pictures
+            for (const [userId, participant] of Object.entries(conversation.participants)) {
+                const participantData = participant as any;
+
+                if (!participantData.profilePicture || participantData.profilePicture === null) {
+                    try {
+                        // Fetch fresh user data from users collection
+                        const userDoc = await getDoc(doc(db, 'users', userId));
+                        if (userDoc.exists()) {
+                            const userData = userDoc.data();
+
+                            // Check both field names since mobile uses profileImageUrl and web uses profilePicture
+                            const profilePicture = userData.profilePicture || userData.profileImageUrl;
+
+                            if (profilePicture) {
+                                updates[`participants.${userId}.profilePicture`] = profilePicture;
+                                hasUpdates = true;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Error fetching user data for profile picture recovery:', userId, error);
+                    }
+                }
+            }
+
+            // Update conversation if we have profile pictures to recover
+            if (hasUpdates) {
+                await updateDoc(doc(db, 'conversations', conversationId), updates);
+            }
+        } catch (error: any) {
+            console.error('❌ Error during profile picture recovery:', error);
+            throw new Error('Failed to recover profile pictures: ' + error.message);
+        }
+    }
+};
 
 // Image upload service using Cloudinary
 export const imageService = {
