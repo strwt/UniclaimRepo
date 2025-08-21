@@ -144,3 +144,18 @@ export const extractCloudinaryPublicId = (url: string): string | null => {
         return null;
     }
 };
+
+/**
+ * Checks if a URL is a Cloudinary image that can be safely deleted
+ */
+export const isCloudinaryImage = (url: string): boolean => {
+    if (!url || typeof url !== 'string') return false;
+
+    // Check if it's a Cloudinary URL
+    const isCloudinaryUrl = url.includes('cloudinary.com');
+
+    // Check if it has a valid public ID (can be extracted for deletion)
+    const hasValidPublicId = extractCloudinaryPublicId(url) !== null;
+
+    return isCloudinaryUrl && hasValidPublicId;
+};

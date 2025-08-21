@@ -7,7 +7,7 @@ import { cloudinaryService } from "@/utils/cloudinary";
 import { imageService } from "@/utils/firebase";
 import { postUpdateService } from "@/utils/postUpdateService";
 import ProfilePicture from "@/components/ProfilePicture";
-import { validateProfilePicture, getRecommendedDimensionsText } from "@/utils/profilePictureUtils";
+import { validateProfilePicture, getRecommendedDimensionsText, isCloudinaryImage } from "@/utils/profilePictureUtils";
 
 const Profile = () => {
   const { userData, loading } = useAuth();
@@ -74,6 +74,9 @@ const Profile = () => {
     try {
       setIsUploadingImage(true);
       
+      // Store the old profile picture URL before uploading new one
+      const oldProfilePicture = userInfo.profilePicture;
+      
       // Show upload progress
       showToast("info", "Uploading...", "Please wait while we upload your profile picture.");
       
@@ -83,6 +86,24 @@ const Profile = () => {
       
       // Update local state
       setUserInfo(prev => ({ ...prev, profilePicture: newProfilePictureUrl }));
+      
+      // Delete the old profile picture if it exists and is different from the new one
+      if (oldProfilePicture && oldProfilePicture !== "" && oldProfilePicture !== newProfilePictureUrl) {
+        // Only delete if it's a Cloudinary image that can be safely removed
+        if (isCloudinaryImage(oldProfilePicture)) {
+          try {
+            // Delete old image from Cloudinary
+            await imageService.deleteProfilePicture(oldProfilePicture, userData?.uid);
+            console.log('Old profile picture deleted successfully from Cloudinary');
+          } catch (deleteError: any) {
+            console.error('Failed to delete old profile picture from Cloudinary:', deleteError.message);
+            // Don't fail the upload - show warning but continue
+            showToast("warning", "Cleanup Warning", "New profile picture uploaded successfully, but there was an issue removing the old one from storage.");
+          }
+        } else {
+          console.log('Old profile picture is not a Cloudinary image, skipping deletion:', oldProfilePicture);
+        }
+      }
       
       showToast("success", "Profile Picture Updated", "Your profile picture has been uploaded successfully!");
       

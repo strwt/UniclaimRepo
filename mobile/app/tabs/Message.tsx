@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import PageLayout from "@/layout/PageLayout";
 import { useMessage } from "@/context/MessageContext";
 import { useAuth } from "@/context/AuthContext";
+import ProfilePicture from "@/components/ProfilePicture";
 import type { Conversation } from "@/types/type";
 import type { RootStackParamList } from "@/types/type";
 
@@ -31,34 +32,57 @@ const ConversationItem = ({ conversation, onPress }: { conversation: Conversatio
     return otherParticipants.length > 0 ? otherParticipants.join(', ') : 'Unknown User';
   };
 
+  // Get the other participant's profile picture (exclude current user)
+  const getOtherParticipantProfilePicture = () => {
+    if (!userData) return null;
+    
+    const otherParticipant = Object.entries(conversation.participants || {})
+      .find(([uid]) => uid !== userData.uid);
+    
+    return otherParticipant ? otherParticipant[1].profilePicture : null;
+  };
+
   return (
     <TouchableOpacity 
       onPress={onPress}
       className="bg-white p-4 border-b border-gray-200"
     >
-      <View className="flex-row justify-between items-start">
-        <View className="flex-1">
-          <Text className="font-semibold text-gray-800 text-base" numberOfLines={1}>
-            {conversation.postTitle}
-          </Text>
-          <Text className="text-gray-500 text-xs mt-1" numberOfLines={1}>
-            {getOtherParticipantName()}
-          </Text>
-          <Text className="text-gray-600 text-sm mt-1" numberOfLines={2}>
-            {conversation.lastMessage?.text || 'No messages yet'}
-          </Text>
+      <View className="flex-row items-start">
+        {/* Profile Picture */}
+        <View className="mr-3">
+          <ProfilePicture 
+            src={getOtherParticipantProfilePicture()} 
+            size="md"
+          />
         </View>
-        <View className="ml-2">
-          <Text className="text-gray-500 text-xs">
-            {formatTime(conversation.lastMessage?.timestamp)}
-          </Text>
-          {conversation.unreadCount && conversation.unreadCount > 0 && (
-            <View className="bg-blue-500 rounded-full w-5 h-5 items-center justify-center mt-1 self-end">
-              <Text className="text-white text-xs font-bold">
-                {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
+        
+        {/* Conversation Details */}
+        <View className="flex-1">
+          <View className="flex-row justify-between items-start">
+            <View className="flex-1">
+              <Text className="font-semibold text-gray-800 text-base" numberOfLines={1}>
+                {conversation.postTitle}
+              </Text>
+              <Text className="text-gray-500 text-xs mt-1" numberOfLines={1}>
+                {getOtherParticipantName()}
+              </Text>
+              <Text className="text-gray-600 text-sm mt-1" numberOfLines={2}>
+                {conversation.lastMessage?.text || 'No messages yet'}
               </Text>
             </View>
-          )}
+            <View className="ml-2">
+              <Text className="text-gray-500 text-xs">
+                {formatTime(conversation.lastMessage?.timestamp)}
+              </Text>
+              {conversation.unreadCount && conversation.unreadCount > 0 && (
+                <View className="bg-blue-500 rounded-full w-5 h-5 items-center justify-center mt-1 self-end">
+                  <Text className="text-white text-xs font-bold">
+                    {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
