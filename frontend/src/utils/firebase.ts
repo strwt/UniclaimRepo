@@ -960,8 +960,6 @@ export const postService = {
     // Delete post
     async deletePost(postId: string): Promise<void> {
         try {
-            console.log('🔧 Starting post deletion process for:', postId);
-
             // Get post data to delete associated images
             const post = await this.getPostById(postId);
 
@@ -971,37 +969,27 @@ export const postService = {
 
             // Delete the post first
             await deleteDoc(doc(db, 'posts', postId));
-            console.log('✅ Post deleted successfully');
 
             // Delete all conversations related to this post after post is deleted
             await this.deleteConversationsByPostId(postId);
-            console.log('✅ Related conversations deleted successfully');
 
             // SAFETY NET: Automatic ghost detection and cleanup
-            console.log('🔍 Running automatic ghost detection as safety net...');
             try {
                 const ghostConversations = await ghostConversationService.detectGhostConversations();
 
                 if (ghostConversations.length > 0) {
-                    console.log(`⚠️ Safety net detected ${ghostConversations.length} ghost conversations, cleaning up automatically...`);
-
                     const cleanupResult = await ghostConversationService.cleanupGhostConversations(ghostConversations);
-                    console.log(`✅ Safety net cleanup completed: ${cleanupResult.success} cleaned, ${cleanupResult.failed} failed`);
 
                     if (cleanupResult.errors.length > 0) {
-                        console.warn('⚠️ Safety net cleanup had some errors:', cleanupResult.errors);
+                        console.warn('Safety net cleanup had some errors:', cleanupResult.errors);
                     }
-                } else {
-                    console.log('✅ Safety net: No ghost conversations detected');
                 }
             } catch (ghostError: any) {
-                console.warn('⚠️ Safety net ghost detection failed (non-critical):', ghostError.message);
                 // Don't fail the main deletion if ghost detection fails
+                console.warn('Safety net ghost detection failed (non-critical):', ghostError.message);
             }
-
-            console.log('🎉 Post deletion process completed successfully');
         } catch (error: any) {
-            console.error('❌ Post deletion failed:', error);
+            console.error('Post deletion failed:', error);
             throw new Error(error.message || 'Failed to delete post');
         }
     },
@@ -1009,8 +997,6 @@ export const postService = {
     // Delete all conversations related to a specific post
     async deleteConversationsByPostId(postId: string): Promise<void> {
         try {
-            console.log('🔧 Starting transaction-based conversation deletion for post:', postId);
-
             // STEP 1: Query conversations by postId
             const conversationsQuery = query(
                 collection(db, 'conversations'),
@@ -1018,10 +1004,8 @@ export const postService = {
             );
 
             const conversationsSnapshot = await getDocs(conversationsQuery);
-            console.log(`🔧 Found ${conversationsSnapshot.docs.length} conversations to delete`);
 
             if (conversationsSnapshot.docs.length === 0) {
-                console.log('✅ No conversations found to delete');
                 return;
             }
 
@@ -1031,43 +1015,31 @@ export const postService = {
             // STEP 3: Delete messages and conversations in the correct order
             for (const convDoc of conversationsSnapshot.docs) {
                 const conversationId = convDoc.id;
-                console.log(`🔧 Processing conversation ${conversationId} for complete cleanup...`);
 
                 try {
                     // STEP 3a: Delete all messages in the subcollection first
-                    console.log(`🔧 Deleting messages for conversation ${conversationId}...`);
                     const messagesQuery = query(collection(db, 'conversations', conversationId, 'messages'));
                     const messagesSnapshot = await getDocs(messagesQuery);
 
                     if (messagesSnapshot.docs.length > 0) {
-                        console.log(`🔧 Found ${messagesSnapshot.docs.length} messages to delete in conversation ${conversationId}`);
-
                         // Add all messages to the deletion batch
                         messagesSnapshot.docs.forEach(messageDoc => {
                             batch.delete(messageDoc.ref);
-                            console.log(`🔧 Added message ${messageDoc.id} to deletion batch`);
                         });
-                    } else {
-                        console.log(`🔧 No messages found in conversation ${conversationId}`);
                     }
 
                     // STEP 3b: Add conversation document to deletion batch
                     batch.delete(convDoc.ref);
-                    console.log(`🔧 Added conversation ${conversationId} to deletion batch`);
 
                 } catch (error: any) {
-                    console.error(`❌ Error processing conversation ${conversationId}:`, error);
                     throw new Error(`Failed to process conversation ${conversationId}: ${error.message}`);
                 }
             }
 
             // STEP 4: Execute the batch operation atomically
-            console.log('🔧 Executing batch deletion for messages and conversations...');
             await batch.commit();
-            console.log('✅ Batch deletion completed successfully');
 
             // STEP 5: Verify deletion was successful
-            console.log('🔧 Verifying complete deletion...');
             const verifyQuery = query(
                 collection(db, 'conversations'),
                 where('postId', '==', postId)
@@ -1075,14 +1047,11 @@ export const postService = {
             const verifySnapshot = await getDocs(verifyQuery);
 
             if (verifySnapshot.docs.length > 0) {
-                console.warn('⚠️ WARNING: Some conversations still exist after deletion!');
                 throw new Error('Conversation deletion verification failed');
             }
 
-            console.log('✅ Verification successful: All conversations and messages deleted');
-
         } catch (error: any) {
-            console.error('❌ Error deleting conversations for post:', error);
+            console.error('Error deleting conversations for post:', error);
             throw new Error(`Failed to delete conversations: ${error.message}`);
         }
     },
@@ -1152,13 +1121,9 @@ export const ghostConversationService = {
     // Detect ghost conversations (conversations without corresponding posts)
     async detectGhostConversations(): Promise<{ conversationId: string; postId: string; reason: string }[]> {
         try {
-            console.log('🔍 Starting ghost conversation detection...');
-
             // Get all conversations
             const conversationsSnapshot = await getDocs(collection(db, 'conversations'));
             const ghostConversations: { conversationId: string; postId: string; reason: string }[] = [];
-
-            console.log(`🔍 Checking ${conversationsSnapshot.docs.length} conversations for ghosts...`);
 
             // Check each conversation
             for (const convDoc of conversationsSnapshot.docs) {
@@ -1202,11 +1167,10 @@ export const ghostConversationService = {
                 }
             }
 
-            console.log(`🔍 Ghost detection complete: Found ${ghostConversations.length} ghost conversations`);
             return ghostConversations;
 
         } catch (error: any) {
-            console.error('❌ Ghost conversation detection failed:', error);
+            console.error('Ghost conversation detection failed:', error);
             throw new Error(`Failed to detect ghost conversations: ${error.message}`);
         }
     },
@@ -1214,13 +1178,10 @@ export const ghostConversationService = {
     // Detect orphaned messages (messages without parent conversations)
     async detectOrphanedMessages(): Promise<{ conversationId: string; messageId: string; reason: string }[]> {
         try {
-            console.log('🔍 Starting orphaned message detection...');
-
             const orphanedMessages: { conversationId: string; messageId: string; reason: string }[] = [];
 
             // Get all conversations
             const conversationsSnapshot = await getDocs(collection(db, 'conversations'));
-            console.log(`🔍 Checking messages in ${conversationsSnapshot.docs.length} conversations for orphans...`);
 
             for (const convDoc of conversationsSnapshot.docs) {
                 const conversationId = convDoc.id;
@@ -1234,8 +1195,6 @@ export const ghostConversationService = {
                         const messagesSnapshot = await getDocs(messagesQuery);
 
                         if (messagesSnapshot.docs.length > 0) {
-                            console.log(`🔍 Found ${messagesSnapshot.docs.length} orphaned messages in deleted conversation ${conversationId}`);
-
                             messagesSnapshot.docs.forEach(messageDoc => {
                                 orphanedMessages.push({
                                     conversationId: conversationId,
@@ -1247,15 +1206,11 @@ export const ghostConversationService = {
                     }
                 } catch (error: any) {
                     // If we can't access the conversation, it might be deleted
-                    console.log(`🔍 Cannot access conversation ${conversationId}, checking for orphaned messages...`);
-
                     try {
                         const messagesQuery = query(collection(db, 'conversations', conversationId, 'messages'));
                         const messagesSnapshot = await getDocs(messagesQuery);
 
                         if (messagesSnapshot.docs.length > 0) {
-                            console.log(`🔍 Found ${messagesSnapshot.docs.length} potentially orphaned messages in conversation ${conversationId}`);
-
                             messagesSnapshot.docs.forEach(messageDoc => {
                                 orphanedMessages.push({
                                     conversationId: conversationId,
@@ -1265,16 +1220,15 @@ export const ghostConversationService = {
                             });
                         }
                     } catch (messageError: any) {
-                        console.log(`🔍 Cannot access messages for conversation ${conversationId}: ${messageError.message}`);
+                        // Silent fail for message access errors
                     }
                 }
             }
 
-            console.log(`🔍 Orphaned message detection complete: Found ${orphanedMessages.length} orphaned messages`);
             return orphanedMessages;
 
         } catch (error: any) {
-            console.error('❌ Orphaned message detection failed:', error);
+            console.error('Orphaned message detection failed:', error);
             throw new Error(`Failed to detect orphaned messages: ${error.message}`);
         }
     },
@@ -1282,8 +1236,6 @@ export const ghostConversationService = {
     // Clean up ghost conversations
     async cleanupGhostConversations(ghostConversations: { conversationId: string; postId: string; reason: string }[]): Promise<{ success: number; failed: number; errors: string[] }> {
         try {
-            console.log(`🧹 Starting cleanup of ${ghostConversations.length} ghost conversations...`);
-
             const batch = writeBatch(db);
             let success = 0;
             let failed = 0;
@@ -1294,7 +1246,6 @@ export const ghostConversationService = {
                 try {
                     const convRef = doc(db, 'conversations', ghost.conversationId);
                     batch.delete(convRef);
-                    console.log(`🧹 Added ghost conversation ${ghost.conversationId} to cleanup batch`);
                 } catch (error: any) {
                     failed++;
                     errors.push(`Failed to add ${ghost.conversationId}: ${error.message}`);
@@ -1305,13 +1256,12 @@ export const ghostConversationService = {
                 // Execute the batch deletion
                 await batch.commit();
                 success = ghostConversations.length;
-                console.log(`✅ Successfully cleaned up ${success} ghost conversations`);
             }
 
             return { success, failed, errors };
 
         } catch (error: any) {
-            console.error('❌ Ghost conversation cleanup failed:', error);
+            console.error('Ghost conversation cleanup failed:', error);
             throw new Error(`Failed to cleanup ghost conversations: ${error.message}`);
         }
     },
@@ -1319,8 +1269,6 @@ export const ghostConversationService = {
     // Clean up orphaned messages
     async cleanupOrphanedMessages(orphanedMessages: { conversationId: string; messageId: string; reason: string }[]): Promise<{ success: number; failed: number; errors: string[] }> {
         try {
-            console.log(`🧹 Starting cleanup of ${orphanedMessages.length} orphaned messages...`);
-
             const batch = writeBatch(db);
             let success = 0;
             let failed = 0;
@@ -1341,7 +1289,6 @@ export const ghostConversationService = {
                     messages.forEach(message => {
                         const messageRef = doc(db, 'conversations', conversationId, 'messages', message.messageId);
                         batch.delete(messageRef);
-                        console.log(`🧹 Added orphaned message ${message.messageId} to cleanup batch`);
                     });
                 } catch (error: any) {
                     failed += messages.length;
@@ -1353,13 +1300,12 @@ export const ghostConversationService = {
                 // Execute the batch deletion
                 await batch.commit();
                 success = orphanedMessages.length;
-                console.log(`✅ Successfully cleaned up ${success} orphaned messages`);
             }
 
             return { success, failed, errors };
 
         } catch (error: any) {
-            console.error('❌ Orphaned message cleanup failed:', error);
+            console.error('Orphaned message cleanup failed:', error);
             throw new Error(`Failed to cleanup orphaned messages: ${error.message}`);
         }
     },
@@ -1373,8 +1319,6 @@ export const ghostConversationService = {
         details: string[];
     }> {
         try {
-            console.log('🔍 Starting conversation integrity validation...');
-
             const result: {
                 totalConversations: number;
                 validConversations: number;
@@ -1432,11 +1376,10 @@ export const ghostConversationService = {
                 }
             }
 
-            console.log('🔍 Conversation integrity validation complete:', result);
             return result;
 
         } catch (error: any) {
-            console.error('❌ Conversation integrity validation failed:', error);
+            console.error('Conversation integrity validation failed:', error);
             throw new Error(`Failed to validate conversation integrity: ${error.message}`);
         }
     }
@@ -1456,14 +1399,10 @@ export const backgroundCleanupService = {
         const errors: string[] = [];
 
         try {
-            console.log('🧹 Starting periodic background cleanup...');
-
             // Detect ghost conversations
             const ghostConversations = await ghostConversationService.detectGhostConversations();
-            console.log(`🔍 Periodic cleanup: Found ${ghostConversations.length} ghost conversations`);
 
             if (ghostConversations.length === 0) {
-                console.log('✅ Periodic cleanup: No ghosts found, system is clean');
                 return {
                     timestamp: new Date().toISOString(),
                     ghostsDetected: 0,
@@ -1475,7 +1414,6 @@ export const backgroundCleanupService = {
 
             // Clean up detected ghosts
             const cleanupResult = await ghostConversationService.cleanupGhostConversations(ghostConversations);
-            console.log(`🧹 Periodic cleanup: Cleaned ${cleanupResult.success} ghosts, ${cleanupResult.failed} failed`);
 
             // Collect any errors
             if (cleanupResult.errors.length > 0) {
@@ -1483,7 +1421,6 @@ export const backgroundCleanupService = {
             }
 
             const duration = Date.now() - startTime;
-            console.log(`✅ Periodic cleanup completed in ${duration}ms`);
 
             return {
                 timestamp: new Date().toISOString(),
@@ -1495,7 +1432,7 @@ export const backgroundCleanupService = {
 
         } catch (error: any) {
             const duration = Date.now() - startTime;
-            console.error('❌ Periodic cleanup failed:', error);
+            console.error('Periodic cleanup failed:', error);
             errors.push(`Periodic cleanup failed: ${error.message}`);
 
             return {
@@ -1516,14 +1453,11 @@ export const backgroundCleanupService = {
         issues: string[];
     }> {
         try {
-            console.log('🔍 Running quick health check...');
-
             // Get total conversation count
             const conversationsSnapshot = await getDocs(collection(db, 'conversations'));
             const totalConversations = conversationsSnapshot.docs.length;
 
             if (totalConversations === 0) {
-                console.log('✅ Quick health check: No conversations found, system is clean');
                 return {
                     healthy: true,
                     totalConversations: 0,
@@ -1564,8 +1498,6 @@ export const backgroundCleanupService = {
             const estimatedGhosts = Math.ceil((ghostCount / sampleSize) * totalConversations);
             const healthy = estimatedGhosts === 0;
 
-            console.log(`🔍 Quick health check: Estimated ${estimatedGhosts} ghosts out of ${totalConversations} conversations`);
-
             return {
                 healthy: healthy,
                 totalConversations: totalConversations,
@@ -1574,7 +1506,7 @@ export const backgroundCleanupService = {
             };
 
         } catch (error: any) {
-            console.error('❌ Quick health check failed:', error);
+            console.error('Quick health check failed:', error);
             return {
                 healthy: false,
                 totalConversations: 0,

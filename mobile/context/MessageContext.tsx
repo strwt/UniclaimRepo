@@ -29,16 +29,14 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     
     // Simple listener that automatically handles conversation updates
     const unsubscribe = messageService.getUserConversations(userId, (loadedConversations) => {
-      console.log('🔧 Mobile MessageContext: Received conversations update:', loadedConversations.length);
       setConversations(loadedConversations);
       setLoading(false);
     }, (error) => {
-      console.error('🔧 Mobile MessageContext: Listener error:', error);
+      console.error('Mobile MessageContext: Listener error:', error);
       setLoading(false);
       
       // If there's an error, try to refresh conversations manually
       if (error?.code === 'permission-denied' || error?.code === 'not-found') {
-        console.log('🔧 Mobile MessageContext: Permission or not-found error, will refresh manually');
         refreshConversations();
       }
     });
@@ -73,12 +71,10 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     if (!userId) return;
     
     try {
-      console.log('🔧 Mobile MessageContext: Refreshing conversations...');
       setLoading(true);
       
       // Use a one-time query to get current state
       const currentConversations = await messageService.getCurrentConversations(userId);
-      console.log('🔧 Mobile MessageContext: Refresh result:', currentConversations.length, 'conversations');
       
       setConversations(currentConversations);
       setLoading(false);
