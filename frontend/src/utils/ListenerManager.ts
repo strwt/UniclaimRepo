@@ -105,6 +105,19 @@ class ListenerManager {
     isCleanupInProgress(): boolean {
         return this.isCleaningUp;
     }
+
+    // Graceful reconnection after deletion operations
+    async gracefulReconnectionAfterDeletion(context: string): Promise<void> {
+        console.log(`🔧 ListenerManager: Graceful reconnection for ${context} after deletion...`);
+
+        // Wait a bit to ensure deletion operations complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Mark that cleanup is complete and listeners can be recreated
+        this.isCleaningUp = false;
+
+        console.log(`🔧 ListenerManager: ${context} listeners can now be recreated safely`);
+    }
 }
 
 // Create a singleton instance

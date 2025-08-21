@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { messageService } from "../utils/firebase";
-import { listenerManager } from "../utils/ListenerManager";
 import type { Conversation, Message } from "@/types/Post";
 
 interface MessageContextType {
@@ -12,7 +11,7 @@ interface MessageContextType {
   getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void) => () => void;
   markConversationAsRead: (conversationId: string) => Promise<void>;
   markMessageAsRead: (conversationId: string, messageId: string) => Promise<void>;
-  cleanupListeners: () => void; // Add cleanupListeners to the interface
+  refreshConversations: () => Promise<void>; // Simplified refresh function
 }
 
 const MessageContext = createContext<MessageContextType | undefined>(undefined);
@@ -20,7 +19,6 @@ const MessageContext = createContext<MessageContextType | undefined>(undefined);
 export const MessageProvider = ({ children, userId }: { children: ReactNode; userId: string | null }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentListenerId, setCurrentListenerId] = useState<string | null>(null);
 
   // Calculate total unread count
   const totalUnreadCount = conversations.reduce((total, conv) => total + (conv.unreadCount || 0), 0);
@@ -30,47 +28,31 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     if (!userId) {
       setConversations([]);
       setLoading(false);
-      // Clean up any existing listener
-      if (currentListenerId) {
-        listenerManager.removeListener(currentListenerId);
-        setCurrentListenerId(null);
-      }
       return;
     }
 
     setLoading(true);
     
-    // Clean up previous listener if it exists
-    if (currentListenerId) {
-      listenerManager.removeListener(currentListenerId);
-    }
-
+    // Simple listener that automatically handles conversation updates
     const unsubscribe = messageService.getUserConversations(userId, (loadedConversations) => {
+      console.log('🔧 MessageContext: Received conversations update:', loadedConversations.length);
       setConversations(loadedConversations);
       setLoading(false);
+    }, (error) => {
+      console.error('🔧 MessageContext: Listener error:', error);
+      setLoading(false);
+      
+      // If there's an error, try to refresh conversations manually
+      if (error?.code === 'permission-denied' || error?.code === 'not-found') {
+        console.log('🔧 MessageContext: Permission or not-found error, will refresh manually');
+        refreshConversations();
+      }
     });
 
-    // Register the listener with the ListenerManager
-    const listenerId = listenerManager.addListener(unsubscribe, 'MessageContext');
-    setCurrentListenerId(listenerId);
-
     return () => {
-      if (currentListenerId) {
-        listenerManager.removeListener(currentListenerId);
-        setCurrentListenerId(null);
-      }
+      unsubscribe();
     };
   }, [userId]);
-
-  // Cleanup function to be called from outside (e.g., during logout)
-  const cleanupListeners = () => {
-    if (currentListenerId) {
-      listenerManager.removeListener(currentListenerId);
-      setCurrentListenerId(null);
-    }
-    // Also clean up any other MessageContext listeners
-    listenerManager.cleanupByContext('MessageContext');
-  };
 
   const sendMessage = async (conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string): Promise<void> => {
     try {
@@ -104,7 +86,28 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     try {
       await messageService.markMessageAsRead(conversationId, messageId, userId!);
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to mark message as read');
+      throw new Error(error.message || 'Failed to mark conversation as read');
+    }
+  };
+
+  // Simple refresh function that fetches current conversations
+  const refreshConversations = async (): Promise<void> => {
+    if (!userId) return;
+    
+    try {
+      console.log('🔧 MessageContext: Refreshing conversations...');
+      setLoading(true);
+      
+      // Use a one-time query to get current state
+      const currentConversations = await messageService.getCurrentConversations(userId);
+      console.log('🔧 MessageContext: Refresh result:', currentConversations.length, 'conversations');
+      
+      setConversations(currentConversations);
+      setLoading(false);
+    } catch (error: any) {
+      console.error('🔧 MessageContext: Refresh failed:', error);
+      setLoading(false);
+      throw new Error(error.message || 'Failed to refresh conversations');
     }
   };
 
@@ -119,7 +122,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         getConversationMessages,
         markConversationAsRead,
         markMessageAsRead,
-        cleanupListeners, // Expose cleanup function
+        refreshConversations,
       }}
     >
       {children}

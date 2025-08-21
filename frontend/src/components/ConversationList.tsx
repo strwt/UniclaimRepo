@@ -19,6 +19,14 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const { conversations, loading } = useMessage();
   const { userData } = useAuth();
 
+  // NEW: Debug conversations state changes
+  useEffect(() => {
+    console.log('🔧 ConversationList: Conversations state updated:', {
+      count: conversations.length,
+      conversations: conversations.map(conv => ({ id: conv.id, postId: conv.postId }))
+    });
+  }, [conversations]);
+
   // Auto-select conversation when component mounts or conversations change
   useEffect(() => {
     if (autoSelectConversationId && conversations.length > 0 && !selectedConversationId) {

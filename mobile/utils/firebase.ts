@@ -24,7 +24,8 @@ import {
     updateDoc,
     deleteDoc,
     serverTimestamp,
-    getDocs
+    getDocs,
+    writeBatch
 } from 'firebase/firestore';
 // Firebase Storage removed - using Cloudinary instead
 // import {
@@ -404,6 +405,387 @@ export const messageService = {
             }));
             callback(messages);
         });
+    },
+
+    // Mark message as read
+    async markMessageAsRead(conversationId: string, messageId: string, userId: string): Promise<void> {
+        try {
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+            const messageDoc = await getDoc(messageRef);
+
+            if (messageDoc.exists()) {
+                const messageData = messageDoc.data();
+                const readBy = messageData.readBy || [];
+
+                if (!readBy.includes(userId)) {
+                    await updateDoc(messageRef, {
+                        readBy: [...readBy, userId]
+                    });
+                }
+            }
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to mark message as read');
+        }
+    },
+
+    // Get current conversations for a user (one-time query, not real-time)
+    async getCurrentConversations(userId: string): Promise<any[]> {
+        try {
+            console.log('🔧 Mobile MessageService: Performing one-time query for current conversations...');
+
+            const q = query(
+                collection(db, 'conversations'),
+                where(`participants.${userId}`, '!=', null)
+            );
+
+            const snapshot = await getDocs(q);
+            const conversations = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            // Filter out conversations where the user is the only participant
+            const validConversations = conversations.filter((conv: any) => {
+                const participantIds = Object.keys(conv.participants || {});
+                return participantIds.length > 1; // Must have at least 2 participants
+            });
+
+            // Sort conversations by createdAt
+            const sortedConversations = validConversations.sort((a: any, b: any) => {
+                const dateA = a.createdAt ? (a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)) : new Date(0);
+                const dateB = b.createdAt ? (b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)) : new Date(0);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            console.log(`🔧 Mobile MessageService: One-time query found ${sortedConversations.length} conversations`);
+            return sortedConversations;
+
+        } catch (error: any) {
+            console.error('❌ Mobile MessageService: One-time query failed:', error);
+            throw new Error(error.message || 'Failed to get current conversations');
+        }
+    }
+};
+
+// Ghost conversation detection and cleanup utilities
+export const ghostConversationService = {
+    // Detect ghost conversations (conversations without corresponding posts)
+    async detectGhostConversations(): Promise<{ conversationId: string; postId: string; reason: string }[]> {
+        try {
+            console.log('🔍 Mobile: Starting ghost conversation detection...');
+
+            // Get all conversations
+            const conversationsSnapshot = await getDocs(collection(db, 'conversations'));
+            const ghostConversations: { conversationId: string; postId: string; reason: string }[] = [];
+
+            console.log(`🔍 Mobile: Checking ${conversationsSnapshot.docs.length} conversations for ghosts...`);
+
+            // Check each conversation
+            for (const convDoc of conversationsSnapshot.docs) {
+                const convData = convDoc.data();
+                const postId = convData.postId;
+
+                if (!postId) {
+                    ghostConversations.push({
+                        conversationId: convDoc.id,
+                        postId: 'unknown',
+                        reason: 'Missing postId field'
+                    });
+                    continue;
+                }
+
+                try {
+                    // Check if the post still exists
+                    const postDoc = await getDoc(doc(db, 'posts', postId));
+
+                    if (!postDoc.exists()) {
+                        ghostConversations.push({
+                            conversationId: convDoc.id,
+                            postId: postId,
+                            reason: 'Post no longer exists'
+                        });
+                    }
+                } catch (error: any) {
+                    if (error.code === 'permission-denied') {
+                        ghostConversations.push({
+                            conversationId: convDoc.id,
+                            postId: postId,
+                            reason: 'Cannot access post (permission denied)'
+                        });
+                    } else {
+                        ghostConversations.push({
+                            conversationId: convDoc.id,
+                            postId: postId,
+                            reason: `Error checking post: ${error.message}`
+                        });
+                    }
+                }
+            }
+
+            console.log(`🔍 Mobile: Ghost detection complete: Found ${ghostConversations.length} ghost conversations`);
+            return ghostConversations;
+
+        } catch (error: any) {
+            console.error('❌ Mobile: Ghost conversation detection failed:', error);
+            throw new Error(`Failed to detect ghost conversations: ${error.message}`);
+        }
+    },
+
+    // Clean up ghost conversations
+    async cleanupGhostConversations(ghostConversations: { conversationId: string; postId: string; reason: string }[]): Promise<{ success: number; failed: number; errors: string[] }> {
+        try {
+            console.log(`🧹 Mobile: Starting cleanup of ${ghostConversations.length} ghost conversations...`);
+
+            const batch = writeBatch(db);
+            let success = 0;
+            let failed = 0;
+            const errors: string[] = [];
+
+            // Add all ghost conversations to deletion batch
+            ghostConversations.forEach(ghost => {
+                try {
+                    const convRef = doc(db, 'conversations', ghost.conversationId);
+                    batch.delete(convRef);
+                    console.log(`🧹 Mobile: Added ghost conversation ${ghost.conversationId} to cleanup batch`);
+                } catch (error: any) {
+                    failed++;
+                    errors.push(`Failed to add ${ghost.conversationId}: ${error.message}`);
+                }
+            });
+
+            if (ghostConversations.length > 0) {
+                // Execute the batch deletion
+                await batch.commit();
+                success = ghostConversations.length;
+                console.log(`✅ Mobile: Successfully cleaned up ${success} ghost conversations`);
+            }
+
+            return { success, failed, errors };
+
+        } catch (error: any) {
+            console.error('❌ Mobile: Ghost conversation cleanup failed:', error);
+            throw new Error(`Failed to cleanup ghost conversations: ${error.message}`);
+        }
+    },
+
+    // Validate conversation integrity (for admin use)
+    async validateConversationIntegrity(): Promise<{
+        totalConversations: number;
+        validConversations: number;
+        ghostConversations: number;
+        orphanedMessages: number;
+        details: string[];
+    }> {
+        try {
+            console.log('🔍 Mobile: Starting conversation integrity validation...');
+
+            const result: {
+                totalConversations: number;
+                validConversations: number;
+                ghostConversations: number;
+                orphanedMessages: number;
+                details: string[];
+            } = {
+                totalConversations: 0,
+                validConversations: 0,
+                ghostConversations: 0,
+                orphanedMessages: 0,
+                details: []
+            };
+
+            // Get all conversations
+            const conversationsSnapshot = await getDocs(collection(db, 'conversations'));
+            result.totalConversations = conversationsSnapshot.docs.length;
+
+            for (const convDoc of conversationsSnapshot.docs) {
+                const convData = convDoc.data();
+                const postId = convData.postId;
+
+                if (!postId) {
+                    result.ghostConversations++;
+                    result.details.push(`Conversation ${convDoc.id}: Missing postId`);
+                    continue;
+                }
+
+                try {
+                    // Check if post exists
+                    const postDoc = await getDoc(doc(db, 'posts', postId));
+
+                    if (!postDoc.exists()) {
+                        result.ghostConversations++;
+                        result.details.push(`Conversation ${convDoc.id}: Post ${postId} not found`);
+                        continue;
+                    }
+
+                    // Check for orphaned messages
+                    try {
+                        const messagesSnapshot = await getDocs(collection(db, 'conversations', convDoc.id, 'messages'));
+                        if (messagesSnapshot.docs.length === 0) {
+                            result.details.push(`Conversation ${convDoc.id}: No messages found`);
+                        }
+                    } catch (error: any) {
+                        result.orphanedMessages++;
+                        result.details.push(`Conversation ${convDoc.id}: Cannot access messages - ${error.message}`);
+                    }
+
+                    result.validConversations++;
+
+                } catch (error: any) {
+                    result.ghostConversations++;
+                    result.details.push(`Conversation ${convDoc.id}: Error checking post - ${error.message}`);
+                }
+            }
+
+            console.log('🔍 Mobile: Conversation integrity validation complete:', result);
+            return result;
+
+        } catch (error: any) {
+            console.error('❌ Mobile: Conversation integrity validation failed:', error);
+            throw new Error(`Failed to validate conversation integrity: ${error.message}`);
+        }
+    }
+};
+
+// Background cleanup service for periodic ghost conversation maintenance
+export const backgroundCleanupService = {
+    // Run periodic cleanup (can be called by admin or scheduled tasks)
+    async runPeriodicCleanup(): Promise<{
+        timestamp: string;
+        ghostsDetected: number;
+        ghostsCleaned: number;
+        errors: string[];
+        duration: number;
+    }> {
+        const startTime = Date.now();
+        const errors: string[] = [];
+
+        try {
+            console.log('🧹 Mobile: Starting periodic background cleanup...');
+
+            // Detect ghost conversations
+            const ghostConversations = await ghostConversationService.detectGhostConversations();
+            console.log(`🔍 Mobile: Periodic cleanup: Found ${ghostConversations.length} ghost conversations`);
+
+            if (ghostConversations.length === 0) {
+                console.log('✅ Mobile: Periodic cleanup: No ghosts found, system is clean');
+                return {
+                    timestamp: new Date().toISOString(),
+                    ghostsDetected: 0,
+                    ghostsCleaned: 0,
+                    errors: [],
+                    duration: Date.now() - startTime
+                };
+            }
+
+            // Clean up detected ghosts
+            const cleanupResult = await ghostConversationService.cleanupGhostConversations(ghostConversations);
+            console.log(`🧹 Mobile: Periodic cleanup: Cleaned ${cleanupResult.success} ghosts, ${cleanupResult.failed} failed`);
+
+            // Collect any errors
+            if (cleanupResult.errors.length > 0) {
+                errors.push(...cleanupResult.errors);
+            }
+
+            const duration = Date.now() - startTime;
+            console.log(`✅ Mobile: Periodic cleanup completed in ${duration}ms`);
+
+            return {
+                timestamp: new Date().toISOString(),
+                ghostsDetected: ghostConversations.length,
+                ghostsCleaned: cleanupResult.success,
+                errors: errors,
+                duration: duration
+            };
+
+        } catch (error: any) {
+            const duration = Date.now() - startTime;
+            console.error('❌ Mobile: Periodic cleanup failed:', error);
+            errors.push(`Periodic cleanup failed: ${error.message}`);
+
+            return {
+                timestamp: new Date().toISOString(),
+                ghostsDetected: 0,
+                ghostsCleaned: 0,
+                errors: errors,
+                duration: duration
+            };
+        }
+    },
+
+    // Quick health check (lightweight version of integrity validation)
+    async quickHealthCheck(): Promise<{
+        healthy: boolean;
+        totalConversations: number;
+        ghostCount: number;
+        issues: string[];
+    }> {
+        try {
+            console.log('🔍 Mobile: Running quick health check...');
+
+            // Get total conversation count
+            const conversationsSnapshot = await getDocs(collection(db, 'conversations'));
+            const totalConversations = conversationsSnapshot.docs.length;
+
+            if (totalConversations === 0) {
+                console.log('✅ Mobile: Quick health check: No conversations found, system is clean');
+                return {
+                    healthy: true,
+                    totalConversations: 0,
+                    ghostCount: 0,
+                    issues: []
+                };
+            }
+
+            // Sample check: look at first few conversations for obvious issues
+            const sampleSize = Math.min(5, totalConversations);
+            const issues: string[] = [];
+            let ghostCount = 0;
+
+            for (let i = 0; i < sampleSize; i++) {
+                const convDoc = conversationsSnapshot.docs[i];
+                const convData = convDoc.data();
+                const postId = convData.postId;
+
+                if (!postId) {
+                    ghostCount++;
+                    issues.push(`Conversation ${convDoc.id}: Missing postId`);
+                    continue;
+                }
+
+                try {
+                    const postDoc = await getDoc(doc(db, 'posts', postId));
+                    if (!postDoc.exists()) {
+                        ghostCount++;
+                        issues.push(`Conversation ${convDoc.id}: Post ${postId} not found`);
+                    }
+                } catch (error: any) {
+                    ghostCount++;
+                    issues.push(`Conversation ${convDoc.id}: Cannot access post ${postId}`);
+                }
+            }
+
+            // Estimate total ghosts based on sample
+            const estimatedGhosts = Math.ceil((ghostCount / sampleSize) * totalConversations);
+            const healthy = estimatedGhosts === 0;
+
+            console.log(`🔍 Mobile: Quick health check: Estimated ${estimatedGhosts} ghosts out of ${totalConversations} conversations`);
+
+            return {
+                healthy: healthy,
+                totalConversations: totalConversations,
+                ghostCount: estimatedGhosts,
+                issues: issues
+            };
+
+        } catch (error: any) {
+            console.error('❌ Mobile: Quick health check failed:', error);
+            return {
+                healthy: false,
+                totalConversations: 0,
+                ghostCount: 0,
+                issues: [`Health check failed: ${error.message}`]
+            };
+        }
     }
 };
 
@@ -758,6 +1140,8 @@ export const postService = {
     // Delete post
     async deletePost(postId: string): Promise<void> {
         try {
+            console.log('🔧 Mobile: Starting post deletion process for:', postId);
+
             // Get post data to delete associated images
             const post = await this.getPostById(postId);
 
@@ -772,11 +1156,37 @@ export const postService = {
 
             // Delete the post first
             await deleteDoc(doc(db, 'posts', postId));
+            console.log('✅ Mobile: Post deleted successfully');
 
             // Delete all conversations related to this post after post is deleted
             await this.deleteConversationsByPostId(postId);
+            console.log('✅ Mobile: Related conversations deleted successfully');
+
+            // SAFETY NET: Automatic ghost detection and cleanup
+            console.log('🔍 Mobile: Running automatic ghost detection as safety net...');
+            try {
+                const ghostConversations = await ghostConversationService.detectGhostConversations();
+
+                if (ghostConversations.length > 0) {
+                    console.log(`⚠️ Mobile: Safety net detected ${ghostConversations.length} ghost conversations, cleaning up automatically...`);
+
+                    const cleanupResult = await ghostConversationService.cleanupGhostConversations(ghostConversations);
+                    console.log(`✅ Mobile: Safety net cleanup completed: ${cleanupResult.success} cleaned, ${cleanupResult.failed} failed`);
+
+                    if (cleanupResult.errors.length > 0) {
+                        console.warn('⚠️ Mobile: Safety net cleanup had some errors:', cleanupResult.errors);
+                    }
+                } else {
+                    console.log('✅ Mobile: Safety net: No ghost conversations detected');
+                }
+            } catch (ghostError: any) {
+                console.warn('⚠️ Mobile: Safety net ghost detection failed (non-critical):', ghostError.message);
+                // Don't fail the main deletion if ghost detection fails
+            }
+
+            console.log('🎉 Mobile: Post deletion process completed successfully');
         } catch (error: any) {
-            console.error('Error deleting post:', error);
+            console.error('❌ Mobile: Post deletion failed:', error);
             throw new Error(error.message || 'Failed to delete post');
         }
     },
@@ -784,28 +1194,81 @@ export const postService = {
     // Delete all conversations related to a specific post
     async deleteConversationsByPostId(postId: string): Promise<void> {
         try {
-            // Get current user info
-            const currentUser = auth.currentUser;
+            console.log('🔧 Mobile: Starting transaction-based conversation deletion for post:', postId);
 
-            // Query conversations by postId
+            // STEP 1: Query conversations by postId
             const conversationsQuery = query(
                 collection(db, 'conversations'),
                 where('postId', '==', postId)
             );
 
             const conversationsSnapshot = await getDocs(conversationsQuery);
+            console.log(`🔧 Mobile: Found ${conversationsSnapshot.docs.length} conversations to delete`);
 
-            // Delete each conversation (this will automatically delete messages due to subcollection behavior)
-            const deletePromises = conversationsSnapshot.docs.map(doc =>
-                deleteDoc(doc.ref)
-            );
-
-            if (deletePromises.length > 0) {
-                await Promise.all(deletePromises);
+            if (conversationsSnapshot.docs.length === 0) {
+                console.log('✅ Mobile: No conversations found to delete');
+                return;
             }
+
+            // STEP 2: Create a batch operation for atomic deletion
+            const batch = writeBatch(db);
+
+            // STEP 3: Delete messages and conversations in the correct order
+            for (const convDoc of conversationsSnapshot.docs) {
+                const conversationId = convDoc.id;
+                console.log(`🔧 Mobile: Processing conversation ${conversationId} for complete cleanup...`);
+
+                try {
+                    // STEP 3a: Delete all messages in the subcollection first
+                    console.log(`🔧 Mobile: Deleting messages for conversation ${conversationId}...`);
+                    const messagesQuery = query(collection(db, 'conversations', conversationId, 'messages'));
+                    const messagesSnapshot = await getDocs(messagesQuery);
+
+                    if (messagesSnapshot.docs.length > 0) {
+                        console.log(`🔧 Mobile: Found ${messagesSnapshot.docs.length} messages to delete in conversation ${conversationId}`);
+
+                        // Add all messages to the deletion batch
+                        messagesSnapshot.docs.forEach(messageDoc => {
+                            batch.delete(messageDoc.ref);
+                            console.log(`🔧 Mobile: Added message ${messageDoc.id} to deletion batch`);
+                        });
+                    } else {
+                        console.log(`🔧 Mobile: No messages found in conversation ${conversationId}`);
+                    }
+
+                    // STEP 3b: Add conversation document to deletion batch
+                    batch.delete(convDoc.ref);
+                    console.log(`🔧 Mobile: Added conversation ${conversationId} to deletion batch`);
+
+                } catch (error: any) {
+                    console.error(`❌ Mobile: Error processing conversation ${conversationId}:`, error);
+                    throw new Error(`Failed to process conversation ${conversationId}: ${error.message}`);
+                }
+            }
+
+            // STEP 4: Execute the batch operation atomically
+            console.log('🔧 Mobile: Executing batch deletion for messages and conversations...');
+            await batch.commit();
+            console.log('✅ Mobile: Batch deletion completed successfully');
+
+            // STEP 5: Verify deletion was successful
+            console.log('🔧 Mobile: Verifying complete deletion...');
+            const verifyQuery = query(
+                collection(db, 'conversations'),
+                where('postId', '==', postId)
+            );
+            const verifySnapshot = await getDocs(verifyQuery);
+
+            if (verifySnapshot.docs.length > 0) {
+                console.warn('⚠️ Mobile: WARNING: Some conversations still exist after deletion!');
+                throw new Error('Conversation deletion verification failed');
+            }
+
+            console.log('✅ Mobile: Verification successful: All conversations and messages deleted');
+
         } catch (error: any) {
-            console.error('Error deleting conversations for post:', error);
-            // Don't throw error - post deletion should continue even if conversation deletion fails
+            console.error('❌ Mobile: Error deleting conversations for post:', error);
+            throw new Error(`Failed to delete conversations: ${error.message}`);
         }
     },
 

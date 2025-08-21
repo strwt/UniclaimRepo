@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { messageService } from '../utils/firebase';
-import type { Conversation, Message } from '../types/type';
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { messageService } from "../utils/firebase";
+import type { Conversation, Message } from "../types/type";
 
 interface MessageContextType {
   conversations: Conversation[];
@@ -8,6 +8,7 @@ interface MessageContextType {
   sendMessage: (conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string) => Promise<void>;
   createConversation: (postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: any, postOwnerUserData?: any) => Promise<string>;
   getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void) => () => void;
+  refreshConversations: () => Promise<void>; // Add refresh function
 }
 
 const MessageContext = createContext<MessageContextType | undefined>(undefined);
@@ -25,12 +26,26 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
 
     setLoading(true);
+    
+    // Simple listener that automatically handles conversation updates
     const unsubscribe = messageService.getUserConversations(userId, (loadedConversations) => {
+      console.log('🔧 Mobile MessageContext: Received conversations update:', loadedConversations.length);
       setConversations(loadedConversations);
       setLoading(false);
+    }, (error) => {
+      console.error('🔧 Mobile MessageContext: Listener error:', error);
+      setLoading(false);
+      
+      // If there's an error, try to refresh conversations manually
+      if (error?.code === 'permission-denied' || error?.code === 'not-found') {
+        console.log('🔧 Mobile MessageContext: Permission or not-found error, will refresh manually');
+        refreshConversations();
+      }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+    };
   }, [userId]);
 
   const sendMessage = async (conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string): Promise<void> => {
@@ -53,6 +68,27 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     return messageService.getConversationMessages(conversationId, callback);
   };
 
+  // Simple refresh function that fetches current conversations
+  const refreshConversations = async (): Promise<void> => {
+    if (!userId) return;
+    
+    try {
+      console.log('🔧 Mobile MessageContext: Refreshing conversations...');
+      setLoading(true);
+      
+      // Use a one-time query to get current state
+      const currentConversations = await messageService.getCurrentConversations(userId);
+      console.log('🔧 Mobile MessageContext: Refresh result:', currentConversations.length, 'conversations');
+      
+      setConversations(currentConversations);
+      setLoading(false);
+    } catch (error: any) {
+      console.error('🔧 Mobile MessageContext: Refresh failed:', error);
+      setLoading(false);
+      throw new Error(error.message || 'Failed to refresh conversations');
+    }
+  };
+
   return (
     <MessageContext.Provider
       value={{
@@ -61,6 +97,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         sendMessage,
         createConversation,
         getConversationMessages,
+        refreshConversations,
       }}
     >
       {children}
