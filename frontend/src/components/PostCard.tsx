@@ -99,6 +99,68 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
           >
             {post.type}
           </span>
+          
+          {/* Expiry Countdown Badge */}
+          {post.expiryDate && (
+            <>
+              {(() => {
+                try {
+                  const now = new Date();
+                  let expiry: Date;
+                  
+                  // Handle Firebase Timestamp
+                  if (post.expiryDate && typeof post.expiryDate === 'object' && 'seconds' in post.expiryDate) {
+                    // Firebase Timestamp
+                    expiry = new Date(post.expiryDate.seconds * 1000);
+                  } else if (post.expiryDate instanceof Date) {
+                    // Regular Date object
+                    expiry = post.expiryDate;
+                  } else if (post.expiryDate) {
+                    // String or other format
+                    expiry = new Date(post.expiryDate);
+                  } else {
+                    return null;
+                  }
+                  
+                  // Check if date is valid
+                  if (isNaN(expiry.getTime())) {
+                    return null;
+                  }
+                  
+                  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                  
+                  if (daysLeft <= 0) {
+                    return (
+                      <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-red-100 text-red-700">
+                        ⚠️ EXPIRED
+                      </span>
+                    );
+                  } else if (daysLeft <= 3) {
+                    return (
+                      <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-red-100 text-red-700">
+                        ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                      </span>
+                    );
+                  } else if (daysLeft <= 7) {
+                    return (
+                      <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-orange-100 text-orange-700">
+                        ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                      </span>
+                    );
+                  } else {
+                    return (
+                      <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-green-100 text-green-700">
+                        {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                      </span>
+                    );
+                  }
+                } catch (error) {
+                  console.error('Error calculating days left:', error);
+                  return null;
+                }
+              })()}
+            </>
+          )}
         </div>
 
         <h1 className="text-lg font-semibold my-2 truncate max-w-[12rem]">
@@ -142,6 +204,7 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
             __html: highlightAndTruncate(post.description, highlightText),
           }}
         />
+
 
 
       </div>

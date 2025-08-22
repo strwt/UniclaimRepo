@@ -9,6 +9,7 @@ interface AdminPostCardProps {
   onEdit?: (post: Post) => void;
   onDelete?: (post: Post) => void;
   onStatusChange?: (post: Post, status: string) => void;
+  onActivateTicket?: (post: Post) => void;
 }
 
 function formatDateTime(datetime: string | Date) {
@@ -47,7 +48,8 @@ function AdminPostCard({
   highlightText, 
   onEdit, 
   onDelete, 
-  onStatusChange 
+  onStatusChange,
+  onActivateTicket
 }: AdminPostCardProps) {
   const previewUrl = useMemo(() => {
     if (post.images && post.images.length > 0) {
@@ -193,6 +195,22 @@ function AdminPostCard({
           </select>
         </div>
 
+        {/* Activate Ticket Button - Only show for unclaimed items */}
+        {post.movedToUnclaimed && onActivateTicket && (
+          <div className="mb-3">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onActivateTicket(post);
+              }}
+              className="w-full px-3 py-2 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition font-medium"
+              title="Activate Ticket - Move back to active status"
+            >
+              🎫 Activate Ticket
+            </button>
+          </div>
+        )}
+
         <div className="text-sm lg:text-xs flex gap-2">
           {post.location && (
             <p className="font-medium text-black">
@@ -214,6 +232,33 @@ function AdminPostCard({
           }}
           onClick={onClick}
         />
+
+        {/* Expiry Information */}
+        {post.expiryDate && (
+          <div className="mt-2 p-2 bg-gray-50 rounded">
+            <div className="text-xs text-gray-600 mb-1">Expiry Status:</div>
+            {post.isExpired ? (
+              <div className="text-xs text-red-600 font-medium">⚠️ EXPIRED</div>
+            ) : (
+              <div className="text-xs text-gray-700">
+                Expires: {formatDateTime(post.expiryDate)}
+                {(() => {
+                  const now = new Date();
+                  const expiry = post.expiryDate instanceof Date ? post.expiryDate : new Date(post.expiryDate);
+                  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                  
+                  if (daysLeft <= 3) {
+                    return <span className="text-red-600 font-medium"> (⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left)</span>;
+                  } else if (daysLeft <= 7) {
+                    return <span className="text-orange-600 font-medium"> (⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left)</span>;
+                  } else {
+                    return <span className="text-green-600 font-medium"> ({daysLeft} day{daysLeft !== 1 ? 's' : ''} left)</span>;
+                  }
+                })()}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Post ID for admin reference */}
         <div className="mt-2 text-xs text-gray-400">

@@ -21,7 +21,7 @@ function fuzzyMatch(text: string, query: string): boolean {
 export default function AdminHomePage() {
   // ✅ Use the custom hook for real-time posts
   const { posts, loading, error } = usePosts();
-  const [viewType, setViewType] = useState<"all" | "lost" | "found">("all");
+  const [viewType, setViewType] = useState<"all" | "lost" | "found" | "unclaimed">("all");
   const [lastDescriptionKeyword, setLastDescriptionKeyword] = useState("");
   const [rawResults, setRawResults] = useState<Post[] | null>(null); // store-search-result-without-viewType-filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,6 +33,83 @@ export default function AdminHomePage() {
   const [currentPage, setCurrentPage] = useState(1);
   // e change dari pila ka post mu appear pag click and load more button
   const itemsPerPage = 2;
+  
+  // State for user feedback
+  const [isCheckingExpired, setIsCheckingExpired] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  
+  // State for migration
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationCompleted, setMigrationCompleted] = useState(false);
+
+  // Check for expired posts and move them to unclaimed
+  const checkAndMoveExpiredPosts = async () => {
+    if (!posts) return;
+    
+    setIsCheckingExpired(true);
+    setFeedbackMessage(null);
+    
+    try {
+      const now = new Date();
+      const expiredPosts = posts.filter(post => {
+        if (!post.expiryDate || post.movedToUnclaimed) return false;
+        
+        const expiryDate = post.expiryDate instanceof Date 
+          ? post.expiryDate 
+          : new Date(post.expiryDate);
+        
+        return expiryDate < now;
+      });
+
+      if (expiredPosts.length > 0) {
+        console.log(`Found ${expiredPosts.length} expired posts to move to unclaimed`);
+        
+        // Import and use the post service to update expired posts
+        const { postService } = await import('../../utils/firebase');
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const post of expiredPosts) {
+          try {
+            await postService.movePostToUnclaimed(post.id);
+            successCount++;
+          } catch (error) {
+            console.error(`Failed to move post ${post.id} to unclaimed:`, error);
+            errorCount++;
+          }
+        }
+        
+        if (errorCount === 0) {
+          setFeedbackMessage({
+            type: 'success',
+            message: `Successfully moved ${successCount} expired posts to unclaimed status.`
+          });
+        } else {
+          setFeedbackMessage({
+            type: 'error',
+            message: `Moved ${successCount} posts to unclaimed, but ${errorCount} failed.`
+          });
+        }
+      } else {
+        setFeedbackMessage({
+          type: 'success',
+          message: 'No expired posts found. All posts are within their 30-day period.'
+        });
+      }
+    } catch (error) {
+      console.error('Error checking expired posts:', error);
+      setFeedbackMessage({
+        type: 'error',
+        message: `Error checking expired posts: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    } finally {
+      setIsCheckingExpired(false);
+      
+      // Clear feedback message after 5 seconds
+      setTimeout(() => setFeedbackMessage(null), 5000);
+    }
+  };
 
   // Admin functionality handlers
   const handleEditPost = (post: Post) => {
@@ -53,6 +130,85 @@ export default function AdminHomePage() {
     console.log('Status change:', post.id, status);
     // TODO: Implement status update functionality
     alert(`Status updated to: ${status}`);
+  };
+
+  const handleActivateTicket = async (post: Post) => {
+    if (confirm(`Are you sure you want to activate "${post.title}"? This will move it back to active status with a new 30-day period.`)) {
+      try {
+        const { postService } = await import('../../utils/firebase');
+        await postService.activateTicket(post.id);
+        console.log('Ticket activated successfully:', post.title);
+        
+        setFeedbackMessage({
+          type: 'success',
+          message: `"${post.title}" has been activated and moved back to active status with a new 30-day period.`
+        });
+        
+        // Clear feedback message after 5 seconds
+        setTimeout(() => setFeedbackMessage(null), 5000);
+      } catch (error) {
+        console.error('Failed to activate ticket:', error);
+        setFeedbackMessage({
+          type: 'error',
+          message: `Failed to activate ticket: ${error instanceof Error ? error.message : 'Unknown error'}`
+        });
+        
+        // Clear feedback message after 5 seconds
+        setTimeout(() => setFeedbackMessage(null), 5000);
+      }
+    }
+  };
+
+  // Handle migration of existing posts
+  const handleMigrateExistingPosts = async () => {
+    if (confirm('This will migrate all existing posts to include the new 30-day lifecycle fields. This process cannot be undone. Continue?')) {
+      setIsMigrating(true);
+      setFeedbackMessage(null);
+      
+      try {
+        const { postService } = await import('../../utils/firebase');
+        const result = await postService.migrateExistingPosts();
+        
+        console.log('Migration completed:', result);
+        
+        // Create detailed success message
+        let message = `Migration completed successfully!\n\n`;
+        message += `📊 Results:\n`;
+        message += `• Total posts found: ${result.total}\n`;
+        message += `• Posts migrated: ${result.migrated}\n`;
+        message += `• Posts marked as expired: ${result.expired}\n`;
+        message += `• Errors encountered: ${result.errors}\n\n`;
+        
+        if (result.expired > 0) {
+          message += `💡 Next step: Use "Check Expired Posts" to move expired posts to unclaimed status.`;
+        } else {
+          message += `✅ All posts are within their 30-day period.`;
+        }
+        
+        setFeedbackMessage({
+          type: 'success',
+          message: message
+        });
+        
+        // Mark migration as completed
+        setMigrationCompleted(true);
+        
+        // Clear feedback message after 10 seconds (longer for detailed migration results)
+        setTimeout(() => setFeedbackMessage(null), 10000);
+        
+      } catch (error) {
+        console.error('Migration failed:', error);
+        setFeedbackMessage({
+          type: 'error',
+          message: `Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or contact support if the issue persists.`
+        });
+        
+        // Clear feedback message after 10 seconds
+        setTimeout(() => setFeedbackMessage(null), 10000);
+      } finally {
+        setIsMigrating(false);
+      }
+    }
   };
 
   const handleSearch = async (query: string, filters: any) => {
@@ -87,9 +243,11 @@ export default function AdminHomePage() {
   //   (post) => post.type === viewType
   // );
 
-  const postsToDisplay = (rawResults ?? posts ?? []).filter((post) =>
-    viewType === "all" ? true : post.type.toLowerCase() === viewType
-  );
+  const postsToDisplay = (rawResults ?? posts ?? []).filter((post) => {
+    if (viewType === "all") return true;
+    if (viewType === "unclaimed") return post.movedToUnclaimed === true;
+    return post.type.toLowerCase() === viewType;
+  });
 
   return (
     <div className="min-h-screen bg-gray-100 mb-13 font-manrope transition-colors duration-300">
@@ -121,6 +279,70 @@ export default function AdminHomePage() {
 
       {/* Admin Quick Stats */}
       <div className="px-6 mb-4">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-gray-800">Dashboard Overview</h2>
+          <div className="flex gap-2">
+            <button
+              onClick={handleMigrateExistingPosts}
+              disabled={isMigrating || migrationCompleted}
+              className={`px-4 py-2 rounded transition text-sm ${
+                isMigrating 
+                  ? 'bg-purple-300 text-white cursor-not-allowed' 
+                  : migrationCompleted
+                    ? 'bg-green-500 text-white cursor-not-allowed'
+                    : 'bg-purple-500 text-white hover:bg-purple-600'
+              }`}
+              title={migrationCompleted 
+                ? "Migration already completed. All existing posts have been updated." 
+                : "Migrate existing posts to include 30-day lifecycle fields"
+              }
+            >
+              {isMigrating ? '⏳ Migrating...' : migrationCompleted ? '✅ Migration Complete' : '🚀 Migrate Existing Posts'}
+            </button>
+            <button
+              onClick={checkAndMoveExpiredPosts}
+              disabled={isCheckingExpired}
+              className={`px-4 py-2 rounded transition text-sm ${
+                isCheckingExpired 
+                  ? 'bg-orange-300 text-white cursor-not-allowed' 
+                  : 'bg-orange-500 text-white hover:bg-orange-600'
+              }`}
+              title="Check for expired posts and move them to unclaimed"
+            >
+              {isCheckingExpired ? '⏳ Checking...' : '🔍 Check Expired Posts'}
+            </button>
+          </div>
+        </div>
+        
+        {/* Migration Info */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="text-sm text-blue-800">
+            <p className="font-medium mb-1">📋 About Migration:</p>
+            <p>• <strong>Migrate Existing Posts:</strong> Updates all existing posts with new 30-day lifecycle fields</p>
+            <p>• <strong>Check Expired Posts:</strong> Finds posts that have expired and moves them to unclaimed status</p>
+            <p>• <strong>Note:</strong> Run migration first, then check for expired posts</p>
+            
+            {migrationCompleted && (
+              <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded">
+                <p className="text-green-800 font-medium">🎉 Migration Status: COMPLETED</p>
+                <p className="text-green-700 text-xs">Your existing posts now support the 30-day lifecycle system!</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 30-Day System Status */}
+        <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+          <div className="text-sm text-purple-800">
+            <p className="font-medium mb-1">🎯 30-Day Lifecycle System Status:</p>
+            <p>• <strong>Frontend Posts:</strong> ✅ Expiry countdown visible to all users</p>
+            <p>• <strong>Mobile Posts:</strong> ✅ Expiry countdown visible to all users</p>
+            <p>• <strong>Admin Dashboard:</strong> ✅ Full lifecycle management</p>
+            <p>• <strong>User Experience:</strong> ✅ Transparent countdown system</p>
+            <p className="text-purple-700 text-xs mt-2">💡 Users can now see exactly how many days are left before posts expire!</p>
+          </div>
+        </div>
+        
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-blue-600">{posts?.length || 0}</div>
@@ -144,11 +366,41 @@ export default function AdminHomePage() {
             </div>
             <div className="text-sm text-gray-600">Pending</div>
           </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-orange-600">
+              {posts?.filter(p => p.movedToUnclaimed === true).length || 0}
+            </div>
+            <div className="text-sm text-gray-600">Unclaimed</div>
+          </div>
         </div>
+        
+        {/* Feedback Messages */}
+        {feedbackMessage && (
+          <div className={`mt-4 p-3 rounded-lg border ${
+            feedbackMessage.type === 'success' 
+              ? 'bg-green-50 border-green-200 text-green-800' 
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}>
+            <div className="flex items-start gap-2">
+              <span className="text-lg mt-0.5">
+                {feedbackMessage.type === 'success' ? '✅' : '❌'}
+              </span>
+              <div className="font-medium whitespace-pre-line">
+                {feedbackMessage.message}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Lost / Found Toggle */}
+      {/* View Type Tabs */}
       <div className="flex flex-wrap sm:justify-center items-center gap-3 w-full px-6 lg:justify-start lg:gap-3">
+        <div className="w-full lg:w-auto text-center lg:text-left mb-2 lg:mb-0">
+          <span className="text-sm text-gray-600">Current View: </span>
+          <span className="text-sm font-semibold text-blue-600 capitalize">
+            {viewType === "unclaimed" ? "Unclaimed Items" : `${viewType} Item Reports`}
+          </span>
+        </div>
         <button
           className={`px-4 py-2 cursor-pointer lg:px-8 rounded text-[14px] lg:text-base font-medium transition-colors duration-300 ${
             viewType === "all"
@@ -193,13 +445,30 @@ export default function AdminHomePage() {
         >
           Found Item Reports
         </button>
+
+        <button
+          className={`px-4 py-2 cursor-pointer lg:px-8 rounded text-[14px] lg:text-base font-medium transition-colors duration-300 ${
+            viewType === "unclaimed"
+              ? "bg-navyblue text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-blue-200 border-gray-300"
+          }`}
+          onClick={() => {
+            setIsLoading(true);
+            setViewType("unclaimed");
+            setTimeout(() => setIsLoading(false), 200);
+          }}
+        >
+          Unclaimed Items
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-5 mx-6 mt-7 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {/* ✅ Handle Firebase loading state */}
         {loading || isLoading ? (
           <div className="col-span-full flex items-center justify-center h-80">
-            <span className="text-gray-400">Loading {viewType} report items...</span>
+            <span className="text-gray-400">
+              Loading {viewType === "unclaimed" ? "unclaimed" : viewType} report items...
+            </span>
           </div>
         ) : error ? (
           <div className="col-span-full flex items-center justify-center h-80 text-red-500">
@@ -229,6 +498,7 @@ export default function AdminHomePage() {
                 onEdit={handleEditPost}
                 onDelete={handleDeletePost}
                 onStatusChange={handleStatusChange}
+                onActivateTicket={handleActivateTicket}
               />
             ))
         )}

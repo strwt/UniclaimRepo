@@ -911,10 +911,23 @@ export const postService = {
                 creatorId: creatorId, // Add the creator ID
                 images: imageUrls,
                 createdAt: serverTimestamp(),
-                status: 'pending'
+                status: 'pending',
+                // Initialize 30-day lifecycle fields
+                isExpired: false,
+                movedToUnclaimed: false,
+                originalStatus: 'pending'
             };
 
             await setDoc(doc(db, 'posts', postId), post);
+
+            // Set expiry date (30 days from creation) after post is created
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + 30);
+
+            await updateDoc(doc(db, 'posts', postId), {
+                expiryDate: expiryDate
+            });
+
             return postId;
         } catch (error: any) {
             console.error('Error creating post:', error);
@@ -1255,6 +1268,149 @@ export const postService = {
 
             callback(sortedPosts);
         });
+    },
+
+    // Move post to unclaimed status (expired posts)
+    async movePostToUnclaimed(postId: string): Promise<void> {
+        try {
+            const postRef = doc(db, 'posts', postId);
+            const postDoc = await getDoc(postRef);
+
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            const postData = postDoc.data();
+
+            await updateDoc(postRef, {
+                isExpired: true,
+                movedToUnclaimed: true,
+                originalStatus: postData.status || 'pending'
+            });
+
+            console.log(`Post ${postId} moved to unclaimed status`);
+        } catch (error: any) {
+            console.error('Error moving post to unclaimed:', error);
+            throw new Error(error.message || 'Failed to move post to unclaimed');
+        }
+    },
+
+    // Activate ticket (move back to active from unclaimed)
+    async activateTicket(postId: string): Promise<void> {
+        try {
+            const postRef = doc(db, 'posts', postId);
+            const postDoc = await getDoc(postRef);
+
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            const postData = postDoc.data();
+
+            // Calculate new expiry date (30 days from now)
+            const newExpiryDate = new Date();
+            newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+
+            await updateDoc(postRef, {
+                isExpired: false,
+                movedToUnclaimed: false,
+                status: postData.originalStatus || 'pending',
+                expiryDate: newExpiryDate
+            });
+
+            console.log(`Post ${postId} activated and moved back to active status`);
+        } catch (error: any) {
+            console.error('Error activating ticket:', error);
+            throw new Error(error.message || 'Failed to activate ticket');
+        }
+    },
+
+    // Migrate existing posts to include 30-day lifecycle fields
+    async migrateExistingPosts(): Promise<{ total: number; migrated: number; expired: number; errors: number }> {
+        try {
+            console.log('Starting migration of existing posts...');
+
+            // Get all existing posts
+            const postsSnapshot = await getDocs(collection(db, 'posts'));
+            const posts = postsSnapshot.docs;
+
+            let migrated = 0;
+            let expired = 0;
+            let errors = 0;
+
+            console.log(`Found ${posts.length} existing posts to migrate`);
+
+            for (const postDoc of posts) {
+                try {
+                    const postData = postDoc.data();
+
+                    // Skip posts that already have the new fields
+                    if (postData.expiryDate && postData.isExpired !== undefined) {
+                        console.log(`Post ${postDoc.id} already migrated, skipping...`);
+                        continue;
+                    }
+
+                    // Calculate expiry date based on creation date
+                    let expiryDate: Date;
+                    let isExpired: boolean;
+                    let movedToUnclaimed: boolean;
+
+                    if (postData.createdAt) {
+                        const createdAt = postData.createdAt instanceof Date
+                            ? postData.createdAt
+                            : postData.createdAt.toDate
+                                ? postData.createdAt.toDate()
+                                : new Date(postData.createdAt);
+
+                        expiryDate = new Date(createdAt);
+                        expiryDate.setDate(expiryDate.getDate() + 30);
+
+                        // Check if post is already expired
+                        const now = new Date();
+                        isExpired = expiryDate < now;
+                        movedToUnclaimed = isExpired;
+
+                        if (isExpired) {
+                            expired++;
+                        }
+                    } else {
+                        // If no creation date, set expiry to 30 days from now
+                        expiryDate = new Date();
+                        expiryDate.setDate(expiryDate.getDate() + 30);
+                        isExpired = false;
+                        movedToUnclaimed = false;
+                    }
+
+                    // Update the post with new lifecycle fields
+                    await updateDoc(doc(db, 'posts', postDoc.id), {
+                        expiryDate: expiryDate,
+                        isExpired: isExpired,
+                        movedToUnclaimed: movedToUnclaimed,
+                        originalStatus: postData.status || 'pending'
+                    });
+
+                    migrated++;
+                    console.log(`Migrated post ${postDoc.id}: ${isExpired ? 'EXPIRED' : 'ACTIVE'}`);
+
+                } catch (error) {
+                    console.error(`Failed to migrate post ${postDoc.id}:`, error);
+                    errors++;
+                }
+            }
+
+            console.log(`Migration completed: ${migrated} migrated, ${expired} expired, ${errors} errors`);
+
+            return {
+                total: posts.length,
+                migrated,
+                expired,
+                errors
+            };
+
+        } catch (error: any) {
+            console.error('Error during migration:', error);
+            throw new Error(error.message || 'Failed to migrate existing posts');
+        }
     }
 };
 

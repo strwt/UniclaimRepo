@@ -66,16 +66,15 @@ const DropdownWithSearch = ({
 
         <div className="flex items-center gap-2">
           {selected && (
-            <button
-              type="button"
+            <span
               onClick={(e) => {
                 e.stopPropagation();
                 setSelected(null);
               }}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 cursor-pointer"
             >
               <FiX size={16} />
-            </button>
+            </span>
           )}
           {expanded ? (
             <FiChevronUp size={20} className="text-gray-400" />

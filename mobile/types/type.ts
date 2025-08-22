@@ -42,6 +42,11 @@ export interface Post {
   dateTime?: string; // When the item was lost/found
   postedBy?: string; // For backward compatibility
   postedById?: string; // User ID of the poster for messaging
+  // New fields for 30-day lifecycle system
+  expiryDate?: string | Date | any; // When the post expires (30 days from creation)
+  isExpired?: boolean; // Boolean flag for quick filtering
+  movedToUnclaimed?: boolean; // Boolean flag to track if moved to unclaimed
+  originalStatus?: "pending" | "resolved" | "rejected"; // Store the original status before moving to unclaimed
 }
 
 // Message Types

@@ -98,13 +98,67 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
             {post.type === "lost" ? "Lost" : "Found"}
           </Text>
 
-          <Text
-            className={`px-3 py-1 mb-2 rounded-sm font-inter-medium text-xs font-medium ${getCategoryBadgeStyle(
-              post.category
-            )}`}
-          >
-            {post.category}
-          </Text>
+          {/* Expiry Countdown Badge */}
+          {post.expiryDate && (
+            <>
+              {(() => {
+                try {
+                  const now = new Date();
+                  let expiry: Date;
+                  
+                  // Handle Firebase Timestamp
+                  if (post.expiryDate && typeof post.expiryDate === 'object' && 'seconds' in post.expiryDate) {
+                    // Firebase Timestamp
+                    expiry = new Date(post.expiryDate.seconds * 1000);
+                  } else if (post.expiryDate instanceof Date) {
+                    // Regular Date object
+                    expiry = post.expiryDate;
+                  } else if (post.expiryDate) {
+                    // String or other format
+                    expiry = new Date(post.expiryDate);
+                  } else {
+                    return null;
+                  }
+                  
+                  // Check if date is valid
+                  if (isNaN(expiry.getTime())) {
+                    return null;
+                  }
+                  
+                  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                  
+                  if (daysLeft <= 0) {
+                    return (
+                      <Text className="capitalize px-3 py-1 rounded-sm text-xs font-inter-medium bg-red-100 text-red-700">
+                        ⚠️ EXPIRED
+                      </Text>
+                    );
+                  } else if (daysLeft <= 3) {
+                    return (
+                      <Text className="capitalize px-3 py-1 rounded-sm text-xs font-inter-medium bg-red-100 text-red-700">
+                        ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                      </Text>
+                    );
+                  } else if (daysLeft <= 7) {
+                    return (
+                      <Text className="capitalize px-3 py-1 rounded-sm text-xs font-inter-medium bg-orange-100 text-orange-700">
+                        ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                      </Text>
+                    );
+                  } else {
+                    return (
+                      <Text className="capitalize px-3 py-1 rounded-sm text-xs font-inter-medium bg-green-100 text-green-700">
+                        {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                      </Text>
+                    );
+                  }
+                } catch (error) {
+                  console.error('Error calculating days left:', error);
+                  return null;
+                }
+              })()}
+            </>
+          )}
 
           {post.type === "found" && post.foundAction && (
             <Text
@@ -203,6 +257,8 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
         >
           {highlightText(post.description, descriptionSearch)}
         </Text>
+
+
       </View>
     </TouchableOpacity>
   );
