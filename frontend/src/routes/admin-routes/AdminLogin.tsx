@@ -216,15 +216,7 @@ export default function AdminLogin() {
                 Login as user
               </Link>
 
-              {/* Admin Setup Link */}
-              <div className="text-center">
-                <Link 
-                  to="/adminsetup" 
-                  className="text-sm text-blue-600 hover:text-blue-800 underline"
-                >
-                  Need to create admin user? Click here
-                </Link>
-              </div>
+
             </div>
           </div>
         </div>

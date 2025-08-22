@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AdminLogin from "../routes/admin-routes/AdminLogin";
 import AdminHomePage from "../routes/admin-routes/AdminHomePage";
 import AdminProfile from "../routes/admin-routes/AdminProfile";
-import AdminSetup from "../components/AdminSetup";
+
 import Login from "../routes/user-routes/Login";
 import Register from "../routes/user-routes/Register";
 import HomePage from "../routes/user-routes/HomePage";
@@ -62,14 +62,7 @@ function AppRoutesWithAuth() {
             </PageWrapper>
           }
         />
-        <Route
-          path="/adminsetup"
-          element={
-            <PageWrapper title="Admin Setup">
-              <AdminSetup />
-            </PageWrapper>
-          }
-        />
+
 
         {/* Protected routes using MainHome as layout */}
         <Route
