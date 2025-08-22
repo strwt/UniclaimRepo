@@ -9,7 +9,7 @@ import Logo from "../assets/uniclaim_logo.png";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import EmptyProfile from "@/assets/empty_profile.jpg";
+import ProfilePicture from "@/components/ProfilePicture";
 
 interface HomeHeaderProps {
   sideNavClick: () => void;
@@ -26,7 +26,7 @@ export default function HomeHeader({
   const toggleProfileMenu = () => setShowProfileMenu((prev) => !prev);
   const toggleNotif = () => setShowNotif((prev) => !prev);
 
-  const { logout } = useAuth();
+  const { logout, userData } = useAuth();
 
   const navigate = useNavigate();
 
@@ -72,13 +72,14 @@ export default function HomeHeader({
               <button onClick={toggleNotif}>
                 <HiOutlineBell className="size-8 text-white stroke-[1.3px] cursor-pointer hover:text-brand" />
               </button>
-              {/* profile icon */}
+              {/* profile picture */}
               <div className="">
-                <img
-                  src={EmptyProfile}
+                <ProfilePicture
+                  src={userData?.profilePicture}
+                  alt="user-profile"
+                  size="md"
+                  className="cursor-pointer"
                   onClick={toggleProfileMenu}
-                  alt="empty-profile"
-                  className="rounded-full size-10 flex items-center justify-center cursor-pointer"
                 />
               </div>
 

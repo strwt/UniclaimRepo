@@ -1,5 +1,5 @@
 import React from 'react';
-import { DEFAULT_PROFILE_PICTURE } from '@/types/User';
+import EmptyProfile from '@/assets/empty_profile.jpg';
 
 interface ProfilePictureProps {
   src?: string | null;
@@ -8,6 +8,7 @@ interface ProfilePictureProps {
   className?: string;
   fallbackSrc?: string;
   priority?: boolean;
+  onClick?: () => void;
 }
 
 const ProfilePicture: React.FC<ProfilePictureProps> = ({
@@ -15,8 +16,9 @@ const ProfilePicture: React.FC<ProfilePictureProps> = ({
   alt,
   size = 'md',
   className = '',
-  fallbackSrc = DEFAULT_PROFILE_PICTURE,
-  priority = false
+  fallbackSrc = EmptyProfile,
+  priority = false,
+  onClick
 }) => {
   const sizeClasses = {
     xs: 'w-5 h-5',
@@ -30,7 +32,6 @@ const ProfilePicture: React.FC<ProfilePictureProps> = ({
     '5xl': 'w-40 h-40'
   };
 
-  // Just show the image directly - no loading states, no complications
   // Convert empty strings to null so they fall back to default
   const imageSrc = (src && src.trim() !== '') ? src : fallbackSrc;
 
@@ -40,8 +41,8 @@ const ProfilePicture: React.FC<ProfilePictureProps> = ({
       alt={alt}
       className={`${sizeClasses[size]} rounded-full object-cover border border-gray-200 ${className}`}
       loading={priority ? "eager" : "lazy"}
+      onClick={onClick}
       onError={(e) => {
-        // If image fails, fallback to default
         const target = e.target as HTMLImageElement;
         target.src = fallbackSrc;
       }}
