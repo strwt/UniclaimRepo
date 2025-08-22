@@ -3,9 +3,6 @@ import {
   HiOutlineBell,
   HiOutlineUser,
   HiOutlineX,
-  HiOutlineCog,
-  HiOutlineChartBar,
-  HiOutlineUsers,
   HiOutlineShieldCheck,
 } from "react-icons/hi";
 import { IoLogOutOutline } from "react-icons/io5";
@@ -26,11 +23,9 @@ export default function AdminHeader({
 }: AdminHeaderProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
-  const [showQuickActions, setShowQuickActions] = useState(false);
 
   const toggleProfileMenu = () => setShowProfileMenu((prev) => !prev);
   const toggleNotif = () => setShowNotif((prev) => !prev);
-  const toggleQuickActions = () => setShowQuickActions((prev) => !prev);
 
   const { logout, userData } = useAuth();
   const navigate = useNavigate();
@@ -44,20 +39,7 @@ export default function AdminHeader({
     navigate("/");
   };
 
-  const handleSystemSettings = () => {
-    // TODO: Navigate to system settings
-    console.log("Navigate to system settings");
-  };
 
-  const handleUserManagement = () => {
-    // TODO: Navigate to user management
-    console.log("Navigate to user management");
-  };
-
-  const handleAnalytics = () => {
-    // TODO: Navigate to analytics dashboard
-    console.log("Navigate to analytics dashboard");
-  };
 
   return (
     <>
@@ -98,14 +80,6 @@ export default function AdminHeader({
 
             {/* admin-controls-container */}
             <div className="flex items-center gap-4 relative">
-              {/* Quick Actions Button */}
-              <button 
-                onClick={toggleQuickActions}
-                className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              >
-                <HiOutlineCog className="size-4" />
-                <span className="hidden sm:inline">Quick Actions</span>
-              </button>
 
               {/* notification-bell */}
               <button onClick={toggleNotif} className="relative">
@@ -145,29 +119,7 @@ export default function AdminHeader({
                     Admin Profile
                   </button>
                   
-                  <button
-                    onClick={handleSystemSettings}
-                    className="flex items-center px-4 py-2 text-gray-800 hover:bg-gray-100 rounded w-full text-sm"
-                  >
-                    <HiOutlineCog className="size-4 stroke-[1.5px] mr-3" />
-                    System Settings
-                  </button>
-                  
-                  <button
-                    onClick={handleUserManagement}
-                    className="flex items-center px-4 py-2 text-gray-800 hover:bg-gray-100 rounded w-full text-sm"
-                  >
-                    <HiOutlineUsers className="size-4 stroke-[1.5px] mr-3" />
-                    User Management
-                  </button>
-                  
-                  <button
-                    onClick={handleAnalytics}
-                    className="flex items-center px-4 py-2 text-gray-800 hover:bg-gray-100 rounded w-full text-sm"
-                  >
-                    <HiOutlineChartBar className="size-4 stroke-[1.5px] mr-3" />
-                    Analytics
-                  </button>
+
                   
                   <div className="border-t border-gray-100 my-1"></div>
                   
@@ -189,36 +141,7 @@ export default function AdminHeader({
                 </div>
               )}
 
-              {/* Quick Actions Dropdown */}
-              {showQuickActions && (
-                <div className="absolute font-manrope right-0 top-16 p-3 w-64 bg-white shadow-lg rounded-lg z-50 border border-gray-200">
-                  <div className="px-3 py-2 border-b border-gray-100">
-                    <h3 className="text-sm font-medium text-gray-900">Quick Actions</h3>
-                  </div>
-                  
-                  <div className="space-y-2 py-2">
-                    <button className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded w-full text-sm">
-                      <HiOutlineBell className="size-4 mr-3 text-blue-500" />
-                      View Pending Approvals
-                    </button>
-                    
-                    <button className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded w-full text-sm">
-                      <HiOutlineUsers className="size-4 mr-3 text-green-500" />
-                      Active Users: 156
-                    </button>
-                    
-                    <button className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded w-full text-sm">
-                      <HiOutlineChartBar className="size-4 mr-3 text-purple-500" />
-                      System Status: Healthy
-                    </button>
-                    
-                    <button className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded w-full text-sm">
-                      <HiOutlineShieldCheck className="size-4 mr-3 text-amber-500" />
-                      Security: All Clear
-                    </button>
-                  </div>
-                </div>
-              )}
+
             </div>
           </div>
         </div>
@@ -263,13 +186,7 @@ export default function AdminHeader({
           />
         )}
 
-        {/* Quick Actions Overlay */}
-        {showQuickActions && (
-          <div
-            className="fixed inset-0 bg-black/35 z-30"
-            onClick={toggleQuickActions}
-          />
-        )}
+
       </div>
     </>
   );
