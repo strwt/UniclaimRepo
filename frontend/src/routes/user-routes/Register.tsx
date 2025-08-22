@@ -140,6 +140,7 @@ export default function Register() {
                   }}
                   placeholder="Enter your first name"
                   error={regError.firstName}
+                  autocomplete="given-name"
                 />
               </div>
               <div className="w-full">
@@ -157,6 +158,7 @@ export default function Register() {
                   }}
                   placeholder="Enter your last name"
                   error={regError.lastName}
+                  autocomplete="family-name"
                 />
               </div>
             </div>
@@ -176,6 +178,7 @@ export default function Register() {
               }}
               placeholder="Enter your email"
               error={regError.email}
+              autocomplete="email"
             />
 
             <InputField
@@ -192,6 +195,7 @@ export default function Register() {
               }}
               placeholder="Enter your contact number"
               error={regError.contactNum}
+              autocomplete="tel"
             />
 
             <InputField
@@ -208,6 +212,7 @@ export default function Register() {
               }}
               placeholder="Enter your student ID (10 digits)"
               error={regError.studentId}
+              autocomplete="username"
             />
 
             {/* Password */}
@@ -227,6 +232,7 @@ export default function Register() {
               error={regError.password}
               showEyeIcon={true}
               showEyeSlashIcon={true}
+              autocomplete="new-password"
             />
 
             <InputField
@@ -245,6 +251,7 @@ export default function Register() {
               error={regError.confirmPassword}
               showEyeIcon={true}
               showEyeSlashIcon={true}
+              autocomplete="new-password"
             />
 
             {/* Submit Button */}

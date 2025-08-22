@@ -98,6 +98,7 @@ export default function Login() {
                   error={error.email || error.general}
                   showErrorText={!!error.email}
                   inputClass={inputClass}
+                  autocomplete="email" // NEW: Add email autocomplete
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     setEmail(e.target.value);
                     setError((prev) => ({ ...prev, email: "", general: "" }));
@@ -117,6 +118,7 @@ export default function Login() {
                 }}
                 error={error.password}
                 hasGeneralError={!!error.general}
+                autocomplete="current-password" // NEW: Add current-password autocomplete
               />
 
               {/* General error */}

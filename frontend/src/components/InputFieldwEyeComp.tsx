@@ -7,6 +7,7 @@ type Props = {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   error?: string;
   hasGeneralError?: boolean;
+  autocomplete?: string; // NEW: Add autocomplete prop
 };
 
 export default function InputFieldwEyeComp({
@@ -15,6 +16,7 @@ export default function InputFieldwEyeComp({
   onChange,
   error = "",
   hasGeneralError = false,
+  autocomplete, // NEW: Add autocomplete parameter
 }: Props) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -37,6 +39,7 @@ export default function InputFieldwEyeComp({
           className={`${inputClass(
             !!error || !!hasGeneralError
           )} h-11 text-[15px] pl-4 py-2 pr-12`}
+          autoComplete={autocomplete} // NEW: Add autocomplete attribute
         />
         <button
           type="button"

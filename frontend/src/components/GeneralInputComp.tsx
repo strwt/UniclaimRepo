@@ -14,6 +14,7 @@ interface GeneralInputProps {
   showEyeSlashIcon?: boolean;
   baseStyle?: string;
   errorStyle?: string;
+  autocomplete?: string; // NEW: Add autocomplete prop
 }
 
 export default function GeneralInputComp({
@@ -29,6 +30,7 @@ export default function GeneralInputComp({
   showEyeSlashIcon = false,
   baseStyle = "w-full px-4 py-2 h-11 placeholder:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-black",
   errorStyle = "border-red-500 focus:ring-red-500",
+  autocomplete, // NEW: Add autocomplete parameter
 }: GeneralInputProps) {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -55,6 +57,7 @@ export default function GeneralInputComp({
             className={`${baseStyle} ${error ? errorStyle : ""} ${
               showIcon ? "pr-10" : ""
             }`}
+            autoComplete={autocomplete} // NEW: Add autocomplete attribute
           />
           {type === "password" && showIcon && (
             <span
