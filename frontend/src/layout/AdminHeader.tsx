@@ -46,7 +46,7 @@ export default function AdminHeader({
       <div className="">
         {/* header-container */}
         <div className="">
-          <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-gradient-to-r from-navyblue to-blue-800 px-5 py-4 shadow-lg">
+          <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-navyblue px-5 py-4">
             {/* logo-w-text-container */}
             <div className="flex items-center gap-1">
               <img
@@ -68,12 +68,12 @@ export default function AdminHeader({
               {sideBarOpen ? (
                 <HiOutlineMenuAlt2
                   onClick={sideNavClick}
-                  className="size-8 ml-2 lg:ml-17 text-white stroke-1 cursor-pointer hover:text-amber-400 transition-colors"
+                  className="size-8 ml-2 lg:ml-17 text-white stroke-1 cursor-pointer hover:text-brand"
                 />
               ) : (
                 <HiOutlineMenuAlt2
                   onClick={sideNavClick}
-                  className="size-8 lg:ml-7 text-white stroke-[1.5px] cursor-pointer hover:text-amber-400 transition-colors"
+                  className="size-8 lg:ml-7 text-white stroke-[1.5px] cursor-pointer hover:text-brand"
                 />
               )}
             </div>
@@ -83,11 +83,7 @@ export default function AdminHeader({
 
               {/* notification-bell */}
               <button onClick={toggleNotif} className="relative">
-                <HiOutlineBell className="size-8 text-white stroke-[1.3px] cursor-pointer hover:text-amber-400 transition-colors" />
-                {/* Admin notification badge */}
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  3
-                </span>
+                <HiOutlineBell className="size-8 text-white stroke-[1.3px] cursor-pointer hover:text-brand" />
               </button>
 
               {/* profile picture */}
@@ -96,7 +92,7 @@ export default function AdminHeader({
                   src={userData?.profilePicture}
                   alt="admin-profile"
                   size="md"
-                  className="cursor-pointer ring-2 ring-amber-400"
+                  className="cursor-pointer"
                   onClick={toggleProfileMenu}
                 />
               </div>
@@ -163,19 +159,8 @@ export default function AdminHeader({
               <HiOutlineX className="size-6 stroke-[1.5px]" />
             </button>
           </div>
-          <div className="p-4 space-y-3">
-            <div className="p-3 bg-red-50 border-l-4 border-red-400 rounded">
-              <p className="text-sm font-medium text-red-800">3 posts pending approval</p>
-              <p className="text-xs text-red-600">Action required</p>
-            </div>
-            <div className="p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-              <p className="text-sm font-medium text-yellow-800">New user registration</p>
-              <p className="text-xs text-yellow-600">Review required</p>
-            </div>
-            <div className="p-3 bg-green-50 border-l-4 border-green-400 rounded">
-              <p className="text-sm font-medium text-green-800">System backup completed</p>
-              <p className="text-xs text-green-600">2 minutes ago</p>
-            </div>
+          <div className="p-4">
+            <p className="text-gray-500">No new notifications.</p>
           </div>
         </div>
 

@@ -144,23 +144,7 @@ export default function AdminSideNav({
               hoverContainerBgClass="bg-gray-100"
             />
           </div>
-          {isOpen && (
-            <p className="text-sm font-manrope font-semibold mt-6 mb-2">
-              Settings
-            </p>
-          )}
-          <NavText
-            icon={<HiOutlineCog className="size-6 stroke-[1px]" />}
-            label="Admin Profile"
-            to="/admin/profile"
-            isOpen={isOpen}
-            className="hover:bg-gray-100"
-            iconClassName="text-black"
-            textClassName="text-black font-albert-sans"
-            tooltipIconClassName="text-xl"
-            tooltipTextClassName="font-albert-sans text-base"
-            hoverContainerBgClass="bg-gray-100"
-          />
+
         </aside>
 
         {/* ✅ Mobile Sidebar */}
@@ -248,19 +232,7 @@ export default function AdminSideNav({
                 />
               </div>
 
-              <p className="text-base font-semibold mt-8 mb-4.5">Settings</p>
-              <div className="space-y-7">
-                <NavText
-                  icon={<HiOutlineCog className="size-6 stroke-[1.5px]" />}
-                  label="Admin Profile"
-                  to="/admin/profile"
-                  isOpen={isOpen}
-                  onClick={onMobNavClose}
-                  className="hover:bg-gray-50 rounded pl-4 justify-start"
-                  iconClassName="text-black"
-                  textClassName="font-manrope"
-                />
-              </div>
+
             </div>
           </aside>
         </div>
