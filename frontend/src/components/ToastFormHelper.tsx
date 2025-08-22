@@ -37,104 +37,99 @@ const useToastFormHelper = () => {
       hasCoordinatesError,
     ];
 
-    const totalFields = fieldErrors.length;
-    const missingFields = fieldErrors.filter(Boolean).length;
+    // ✅ Check if ANY required field is missing
+    const hasAnyError = fieldErrors.some(Boolean);
+    
+    if (hasAnyError) {
+      // Show individual toasts for missing fields
+      let hasError = false;
 
-    // ✅ All fields are empty
-    if (missingFields === totalFields) {
-      showToast(
-        "error",
-        "Form Incomplete",
-        "Please fill out the entire form before submitting.",
-        6000
-      );
-      return true;
+      // Show individual toasts for missing fields
+      if (hasReportTypeError) {
+        showToast(
+          "error",
+          "Report Type Missing",
+          "Please select whether the item is lost or found.",
+          5000
+        );
+        hasError = true;
+      }
+
+      if (hasTitleError) {
+        showToast(
+          "error",
+          "Title Required",
+          "Please enter the title of your post.",
+          5000
+        );
+        hasError = true;
+      }
+
+      if (hasCategoryError) {
+        showToast(
+          "error",
+          "Item Category Missing",
+          "Choose the category of the item.",
+          5000
+        );
+        hasError = true;
+      }
+
+      if (hasDescriptionError) {
+        showToast(
+          "error",
+          "Description Required",
+          "Please enter a description for the item.",
+          5000
+        );
+        hasError = true;
+      }
+
+      if (hasDateTimeError) {
+        showToast(
+          "error",
+          "Date & Time Required",
+          "Please select when the item was lost or found.",
+          5000
+        );
+        hasError = true;
+      }
+
+      if (hasImageError) {
+        showToast(
+          "error",
+          "Image Upload Required",
+          "Upload at least one image of the item.",
+          5000
+        );
+        hasError = true;
+      }
+
+      if (hasLocationError) {
+        showToast(
+          "error",
+          "Last Location Missing",
+          "Select the last seen location of the item.",
+          5000
+        );
+        hasError = true;
+      }
+
+      if (hasCoordinatesError) {
+        showToast(
+          "error",
+          "Location Pin Required",
+          "Please pin a location on the map.",
+          5000
+        );
+        hasError = true;
+      }
+
+      return true; // Return true to indicate validation failed
     }
 
-    // ✅ Show individual toasts only for missing fields
-    let hasError = false;
-
-    if (hasReportTypeError) {
-      showToast(
-        "error",
-        "Report Type Missing",
-        "Please select whether the item is lost or found.",
-        5000
-      );
-      hasError = true;
-    }
-
-    if (hasTitleError) {
-      showToast(
-        "error",
-        "Title Required",
-        "Please enter the title of your post.",
-        5000
-      );
-      hasError = true;
-    }
-
-    if (hasCategoryError) {
-      showToast(
-        "error",
-        "Item Category Missing",
-        "Choose the category of the item.",
-        5000
-      );
-      hasError = true;
-    }
-
-    if (hasDescriptionError) {
-      showToast(
-        "error",
-        "Description Required",
-        "Please enter a description for the item.",
-        5000
-      );
-      hasError = true;
-    }
-
-    if (hasDateTimeError) {
-      showToast(
-        "error",
-        "Date & Time Required",
-        "Please select when the item was lost or found.",
-        5000
-      );
-      hasError = true;
-    }
-
-    if (hasImageError) {
-      showToast(
-        "error",
-        "Image Upload Required",
-        "Upload at least one image of the item.",
-        5000
-      );
-      hasError = true;
-    }
-
-    if (hasLocationError) {
-      showToast(
-        "error",
-        "Last Location Missing",
-        "Select the last seen location of the item.",
-        5000
-      );
-      hasError = true;
-    }
-
-    if (hasCoordinatesError) {
-      showToast(
-        "error",
-        "Location Pin Required",
-        "Please pin a location on the map.",
-        5000
-      );
-      hasError = true;
-    }
-
-    return hasError;
+    // If no errors, return false to allow submission
+    return false;
   };
 
   return { validateFormErrors };

@@ -52,7 +52,7 @@ const DropdownWithSearch = ({
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className={`w-full flex justify-between items-center bg-gray border rounded text-left focus:outline-none focus-within:ring-2 focus-within:ring-blue-500 ${
+        className={`w-full flex justify-between items-center bg-grayg border rounded text-left focus:outline-none focus-within:ring-2 focus-within:ring-blue-500 ${
           error ? "border-2 border-red-500" : "border border-gray-500"
         } px-4 py-3`}
       >

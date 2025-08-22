@@ -123,20 +123,21 @@ export default function ReportPage() {
       hasDescriptionError: !description.trim(),
       hasDateTimeError: !selectedDateTime.trim(),
       hasImageError: selectedFiles.length === 0,
-              hasLocationError: !selectedLocation,
+      hasLocationError: !selectedLocation,
       hasCoordinatesError: !coordinates,
     };
 
     const hasError = validateFormErrors(errors);
-    if (hasError) return;
+    if (hasError) {
+      setIsSubmitting(false); // Reset submitting state if validation fails
+      return;
+    }
 
     // ✅ Type narrowing to satisfy Post.type
     if (selectedReport !== "lost" && selectedReport !== "found") {
-      showToast(
-        "error",
-        "Report type missing",
-        "Please select Lost or Found item"
-      );
+      // This should never happen since validateFormErrors already checked this
+      console.error('Unexpected: selectedReport validation failed after validateFormErrors passed');
+      setIsSubmitting(false);
       return;
     }
 
@@ -205,6 +206,7 @@ export default function ReportPage() {
   };
 
   // compute errors during render
+  const showReportTypeError = wasSubmitted && !selectedReport;
   const showTitleError = wasSubmitted && !title.trim();
   const showDescriptionError = wasSubmitted && !description.trim();
   const showDateTimeError = wasSubmitted && !selectedDateTime.trim();
@@ -249,7 +251,7 @@ export default function ReportPage() {
             Status of the item
             <span className="text-red-500 ml-1">*</span>
           </h1>
-          <div className="flex gap-3 mt-4 mx-4 lg:mx-6">
+          <div className={`flex gap-3 mt-4 mx-4 lg:mx-6 ${showReportTypeError ? 'border-2 border-red-500 rounded p-2' : ''}`}>
             <button
               type="button"
               className={`p-2 w-full lg:max-w-[12rem] rounded text-md font-medium transition-colors duration-200 ${
@@ -284,6 +286,11 @@ export default function ReportPage() {
               </span>
             </button>
           </div>
+          {showReportTypeError && (
+            <p className="text-red-500 text-sm mx-4 mt-2 lg:mx-6">
+              Please select whether the item is lost or found
+            </p>
+          )}
         </div>
 
         <div className="bg-gray-300 h-[1px] mx-4 mt-5 lg:mx-6" />
