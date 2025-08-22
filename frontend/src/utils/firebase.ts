@@ -6,6 +6,7 @@ import {
     signInWithEmailAndPassword,
     signOut,
     updateProfile,
+    sendEmailVerification,
     type User as FirebaseUser,
     type UserCredential
 } from 'firebase/auth';
@@ -84,6 +85,7 @@ export interface UserData {
     studentId: string;
     profilePicture?: string;
     profileImageUrl?: string; // Added to support mobile app field name
+    role?: 'user' | 'admin'; // User role for access control
     createdAt: any;
     updatedAt: any;
 }
@@ -177,6 +179,88 @@ export const authService = {
             }, { merge: true });
         } catch (error: any) {
             throw new Error(error.message || 'Failed to update user data');
+        }
+    },
+
+    // Get current authenticated user
+    getCurrentUser(): FirebaseUser | null {
+        return auth.currentUser;
+    },
+
+    // Check if user is admin
+    async isAdmin(uid: string): Promise<boolean> {
+        try {
+            const userData = await this.getUserData(uid);
+            return userData?.role === 'admin';
+        } catch (error: any) {
+            console.error('Error checking admin status:', error);
+            return false;
+        }
+    },
+
+    // Create admin user (for initial setup)
+    async createAdminUser(
+        email: string,
+        password: string,
+        firstName: string,
+        lastName: string,
+        contactNum: string,
+        studentId: string
+    ): Promise<{ user: FirebaseUser; userData: UserData }> {
+        try {
+            // Create user with email and password
+            const userCredential: UserCredential = await createUserWithEmailAndPassword(
+                auth,
+                email,
+                password
+            );
+
+            const user = userCredential.user;
+
+            // Update user profile with display name
+            await updateProfile(user, {
+                displayName: `${firstName} ${lastName}`
+            });
+
+            // Create admin user document in Firestore
+            const userData: UserData = {
+                uid: user.uid,
+                email: user.email!,
+                firstName,
+                lastName,
+                contactNum,
+                studentId,
+                role: 'admin', // Set as admin
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
+
+            await setDoc(doc(db, 'users', user.uid), userData);
+
+            return { user, userData };
+        } catch (error: any) {
+            throw new Error(error.message || 'Admin user creation failed');
+        }
+    },
+
+    // Force email verification (for development)
+    async forceEmailVerification(email: string, password: string): Promise<void> {
+        try {
+            // Sign in to get the user
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            // Force email verification
+            if (!user.emailVerified) {
+                // This will send a verification email
+                await sendEmailVerification(user);
+                console.log('Verification email sent to:', email);
+            }
+
+            // Sign out after sending verification
+            await signOut(auth);
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to send verification email');
         }
     }
 };

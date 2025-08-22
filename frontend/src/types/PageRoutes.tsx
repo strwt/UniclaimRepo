@@ -2,10 +2,16 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 // screens
 import AdminLogin from "../routes/admin-routes/AdminLogin";
+import AdminHomePage from "../routes/admin-routes/AdminHomePage";
+import AdminProfile from "../routes/admin-routes/AdminProfile";
+import AdminSetup from "../components/AdminSetup";
 import Login from "../routes/user-routes/Login";
 import Register from "../routes/user-routes/Register";
 import HomePage from "../routes/user-routes/HomePage";
 import MainHome from "../routes/user-routes/MainHome";
+
+// layouts
+import AdminLayout from "../layout/AdminLayout";
 import GeoLocation from "../routes/user-routes/GeolocationWithMap";
 import SendEmail from "../routes/user-routes/SendEmail";
 import Success from "../routes/user-routes/Success";
@@ -53,6 +59,14 @@ function AppRoutesWithAuth() {
           element={
             <PageWrapper title="Admin Login">
               <AdminLogin />
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/adminsetup"
+          element={
+            <PageWrapper title="Admin Setup">
+              <AdminSetup />
             </PageWrapper>
           }
         />
@@ -143,6 +157,33 @@ function AppRoutesWithAuth() {
             element={
               <PageWrapper title="Messages">
                 <MessagesPage />
+              </PageWrapper>
+            }
+          />
+        </Route>
+
+        {/* Admin routes */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route
+            index
+            element={
+              <PageWrapper title="Admin Home">
+                <AdminHomePage />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <PageWrapper title="Admin Profile">
+                <AdminProfile />
               </PageWrapper>
             }
           />

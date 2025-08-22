@@ -4,11 +4,13 @@ import { useNavigate, Link } from "react-router-dom";
 import InputFieldComp from "../../components/InputFieldComp";
 import PasswordInput from "../../components/InputFieldwEyeComp";
 import { useAuth } from "@/context/AuthContext";
+import { authService } from "@/utils/firebase";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState({ email: "", password: "", general: "" });
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // const { isAuthenticated, login } = useAuth();
   // const navigate = useNavigate();
@@ -58,7 +60,25 @@ export default function Login() {
     if (isValid) {
       try {
         await login(trimmedEmail, trimmedPassword);
-        navigate("/"); // navigate to dashboard
+        
+        // Check if user is admin and redirect accordingly
+        const currentUser = authService.getCurrentUser();
+        if (currentUser) {
+          const isAdmin = await authService.isAdmin(currentUser.uid);
+          if (isAdmin) {
+            // Admin user - redirect to admin dashboard
+            setIsRedirecting(true);
+            setTimeout(() => {
+              navigate("/admin");
+            }, 1500); // 1.5 second delay to show message
+          } else {
+            // Regular user - redirect to user dashboard
+            navigate("/");
+          }
+        } else {
+          // Fallback to user dashboard
+          navigate("/");
+        }
       } catch (error: any) {
         setError((prev) => ({ ...prev, general: error.message }));
       }
@@ -128,6 +148,15 @@ export default function Login() {
                 </p>
               )}
 
+              {/* Admin redirect message */}
+              {isRedirecting && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                  <p className="text-sm text-blue-800 text-center">
+                    🎉 Welcome Admin! Redirecting you to the admin dashboard...
+                  </p>
+                </div>
+              )}
+
               <Link
                 to="/"
                 className="text-manrope my-4 flex justify-end text-sm text-black hover:text-brand hover:underline"
@@ -138,17 +167,22 @@ export default function Login() {
               <div className="space-y-5">
                 <button
                   className={`w-full py-2 text-white rounded-lg transition-all duration-200 ${
-                    loading 
+                    loading || isRedirecting
                       ? "bg-gray-400 cursor-not-allowed" 
                       : "bg-brand hover:bg-teal-600 hover:cursor-pointer"
                   }`}
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || isRedirecting}
                 >
                   {loading ? (
                     <div className="flex items-center justify-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       <span>Logging in...</span>
+                    </div>
+                  ) : isRedirecting ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Redirecting to Admin Dashboard...</span>
                     </div>
                   ) : (
                     "Login"

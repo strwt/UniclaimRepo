@@ -3,6 +3,8 @@ import EmailInputField from "../../../src/components/InputFieldComp";
 import PasswordInput from "../../../src/components/InputFieldwEyeComp";
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { authService } from "../../../src/utils/firebase";
+import { useAuth } from "../../../src/context/AuthContext";
 
 export default function AdminLogin() {
   const [adminEmail, setAdminEmail] = useState("");
@@ -13,6 +15,8 @@ export default function AdminLogin() {
     adminGeneral: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   //height vh fit
   useEffect(() => {
@@ -29,11 +33,25 @@ export default function AdminLogin() {
     };
   }, []);
 
-  // dummy valid user credentials
-  const validAdminEmail = "admin";
-  const validAdminPassword = "admin";
+  // Check if user is already logged in and is admin
+  useEffect(() => {
+    if (user) {
+      checkAdminStatus();
+    }
+  }, [user]);
 
-  const navigate = useNavigate(); // Initialize the navigate function
+  const checkAdminStatus = async () => {
+    if (user) {
+      try {
+        const isAdmin = await authService.isAdmin(user.uid);
+        if (isAdmin) {
+          navigate("/admin");
+        }
+      } catch (error) {
+        console.error("Error checking admin status:", error);
+      }
+    }
+  };
 
   //error handling here
   const handleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -58,34 +76,42 @@ export default function AdminLogin() {
       if (!emailRegex.test(trimmedAdminEmail))
         newError.adminEmail = "Invalid email format";
 
-      if (trimmedAdminPassword.length < 1)
-        newError.adminPassword = "Password must be at least 8 characters";
-    }
-
-    const noInputErrors = !newError.adminEmail && !newError.adminPassword;
-
-    if (noInputErrors) {
-      const isEmailValid = trimmedAdminEmail === validAdminEmail;
-      const isPasswordValid = trimmedAdminPassword === validAdminPassword;
-
-      if (!isEmailValid || !isPasswordValid)
-        newError.adminGeneral = "Invalid email or password";
+      if (trimmedAdminPassword.length < 6)
+        newError.adminPassword = "Password must be at least 6 characters";
     }
 
     // gamiton ang mga errors
     setAdminError(newError);
 
     const isValid =
-      !newError.adminEmail && !newError.adminPassword && !newError.adminGeneral;
+      !newError.adminEmail && !newError.adminPassword;
     
     if (isValid) {
       try {
         setIsLoading(true);
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        navigate("/home");
-      } catch (error) {
-        console.error("Login error:", error);
+        
+        // Use real Firebase authentication
+        await authService.login(trimmedAdminEmail, trimmedAdminPassword);
+        
+        // Check if user is admin
+        const currentUser = authService.getCurrentUser();
+        if (currentUser) {
+          const isAdmin = await authService.isAdmin(currentUser.uid);
+          if (isAdmin) {
+            navigate("/admin");
+          } else {
+            setAdminError(prev => ({
+              ...prev,
+              adminGeneral: "Access denied. This account is not an admin."
+            }));
+          }
+        }
+        
+      } catch (error: any) {
+        setAdminError(prev => ({
+          ...prev,
+          adminGeneral: error.message || "Login failed. Please check your credentials."
+        }));
       } finally {
         setIsLoading(false);
       }
@@ -189,6 +215,16 @@ export default function AdminLogin() {
               >
                 Login as user
               </Link>
+
+              {/* Admin Setup Link */}
+              <div className="text-center">
+                <Link 
+                  to="/adminsetup" 
+                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  Need to create admin user? Click here
+                </Link>
+              </div>
             </div>
           </div>
         </div>
