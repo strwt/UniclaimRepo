@@ -1066,8 +1066,35 @@ export const postService = {
 
             // Handle image updates if needed
             if (updates.images) {
-                const imageUrls = await imageService.uploadImages(updates.images as string[]);
-                updateData.images = imageUrls;
+                // Separate new images (local URIs) from existing images (Cloudinary URLs)
+                const existingImages: string[] = [];
+                const newImages: string[] = [];
+
+                updates.images.forEach((image: string | File) => {
+                    const imageStr = typeof image === 'string' ? image : image.name;
+                    if (imageStr.startsWith('http') || imageStr.startsWith('https')) {
+                        // This is an existing Cloudinary URL - keep as is
+                        existingImages.push(imageStr);
+                    } else {
+                        // This is a new local image - needs to be uploaded
+                        newImages.push(imageStr);
+                    }
+                });
+
+                // Only upload new images
+                let finalImages = [...existingImages];
+                if (newImages.length > 0) {
+                    const uploadedUrls = await imageService.uploadImages(newImages);
+                    finalImages = [...existingImages, ...uploadedUrls];
+                }
+
+                updateData.images = finalImages;
+
+                console.log('Image update details:', {
+                    existing: existingImages.length,
+                    new: newImages.length,
+                    final: finalImages.length
+                });
             }
 
             await updateDoc(doc(db, 'posts', postId), updateData);

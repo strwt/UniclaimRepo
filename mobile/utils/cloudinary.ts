@@ -423,6 +423,68 @@ export const deleteOldProfilePicture = async (oldProfileImageUrl: string): Promi
     }
 };
 
+// Function to clean up removed post images from Cloudinary
+export const cleanupRemovedPostImages = async (
+    originalImages: (string | File)[],
+    updatedImages: (string | File)[]
+): Promise<{ deleted: string[], failed: string[], success: boolean }> => {
+    try {
+        // Convert all images to strings for comparison
+        const originalUrls = originalImages.map(img =>
+            typeof img === 'string' ? img : img.name
+        );
+        const updatedUrls = updatedImages.map(img =>
+            typeof img === 'string' ? img : img.name
+        );
+
+        // Find images that were removed (in original but not in updated)
+        const removedImages = originalUrls.filter(url => !updatedUrls.includes(url));
+
+        // Only process Cloudinary URLs
+        const cloudinaryRemovedImages = removedImages.filter(url =>
+            url.includes('cloudinary.com')
+        );
+
+        if (cloudinaryRemovedImages.length === 0) {
+            console.log('No Cloudinary images were removed');
+            return { deleted: [], failed: [], success: true };
+        }
+
+        console.log(`Found ${cloudinaryRemovedImages.length} Cloudinary images to delete:`, cloudinaryRemovedImages);
+
+        const deleted: string[] = [];
+        const failed: string[] = [];
+
+        // Delete each removed image
+        for (const imageUrl of cloudinaryRemovedImages) {
+            try {
+                const publicId = extractPublicIdFromUrl(imageUrl);
+
+                if (publicId) {
+                    await cloudinaryService.deleteImage(publicId);
+                    deleted.push(imageUrl);
+                    console.log(`Successfully deleted removed post image: ${publicId}`);
+                } else {
+                    console.log(`Could not extract public ID from: ${imageUrl}`);
+                    failed.push(imageUrl);
+                }
+            } catch (error: any) {
+                console.error(`Failed to delete image ${imageUrl}:`, error.message);
+                failed.push(imageUrl);
+            }
+        }
+
+        const success = failed.length === 0;
+        console.log(`Post image cleanup completed. Deleted: ${deleted.length}, Failed: ${failed.length}`);
+
+        return { deleted, failed, success };
+
+    } catch (error: any) {
+        console.error('Error during post image cleanup:', error.message);
+        return { deleted: [], failed: [], success: false };
+    }
+};
+
 // Test function specifically for testing image deletion
 export const testImageDeletion = async (publicId: string = 'posts/test_image') => {
     try {

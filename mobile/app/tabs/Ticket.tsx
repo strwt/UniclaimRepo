@@ -6,6 +6,7 @@ import { useUserPostsWithSet } from "@/hooks/usePosts";
 import type { Post } from "@/types/type";
 import { auth } from "@/utils/firebase";
 import { postService } from "@/utils/firebase";
+import EditTicketModal from "@/components/EditTicketModal";
 
 export default function Ticket() {
   const { userData, loading: authLoading } = useAuth();
@@ -13,6 +14,11 @@ export default function Ticket() {
   const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
   const [searchText, setSearchText] = useState("");
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
+  
+  // Edit modal state
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isUpdatingPost, setIsUpdatingPost] = useState(false);
 
   // Filter posts based on selected tab and search
   const filteredPosts = posts.filter((post) => {
@@ -62,6 +68,43 @@ export default function Ticket() {
         }
       ]
     );
+  };
+
+  // Edit ticket handlers
+  const handleEditPost = (post: Post) => {
+    setEditingPost(post);
+    setIsEditModalVisible(true);
+  };
+
+  const handleUpdatePost = async (updatedPost: Post) => {
+    try {
+      setIsUpdatingPost(true);
+      
+      // Call Firebase service to update the post
+      await postService.updatePost(updatedPost.id, updatedPost);
+      
+      // Update local state after successful update
+      setPosts((prevPosts: Post[]) => 
+        prevPosts.map((p: Post) => 
+          p.id === updatedPost.id ? updatedPost : p
+        )
+      );
+      
+      // Close modal and show success message
+      setIsEditModalVisible(false);
+      setEditingPost(null);
+      Alert.alert("Success", "Ticket updated successfully!");
+    } catch (error) {
+      console.error('Error updating post:', error);
+      Alert.alert("Error", "Failed to update ticket. Please try again.");
+    } finally {
+      setIsUpdatingPost(false);
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalVisible(false);
+    setEditingPost(null);
   };
 
   // Show loading state while checking auth
@@ -183,6 +226,7 @@ export default function Ticket() {
                   key={post.id} 
                   post={post} 
                   onDelete={handleDeletePost}
+                  onEdit={handleEditPost}
                   isDeleting={deletingPostId === post.id}
                 />
               ))}
@@ -190,6 +234,17 @@ export default function Ticket() {
           )}
         </ScrollView>
       </View>
+
+      {/* Edit Ticket Modal */}
+      {editingPost && (
+        <EditTicketModal
+          post={editingPost}
+          isVisible={isEditModalVisible}
+          onClose={handleCloseEditModal}
+          onSave={handleUpdatePost}
+          isSaving={isUpdatingPost}
+        />
+      )}
     </PageLayout>
   );
 }
@@ -198,10 +253,12 @@ export default function Ticket() {
 const TicketCard = ({ 
   post, 
   onDelete, 
+  onEdit,
   isDeleting 
 }: { 
   post: Post; 
   onDelete: (id: string) => void;
+  onEdit: (post: Post) => void;
   isDeleting: boolean;
 }) => {
   const getStatusColor = (status: string) => {
@@ -320,20 +377,33 @@ const TicketCard = ({
           </View>
         </View>
 
-        {/* Delete Button */}
-        <TouchableOpacity
-          onPress={() => onDelete(post.id)}
-          className="mt-4 bg-red-500 rounded-md h-[3.3rem] px-4 justify-center items-center"
-          disabled={isDeleting}
-        >
-          {isDeleting ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
+        {/* Action Buttons */}
+        <View className="flex-row gap-3 mt-4">
+          {/* Edit Button */}
+          <TouchableOpacity
+            onPress={() => onEdit(post)}
+            className="flex-1 bg-teal-500 rounded-md h-[3.3rem] px-4 justify-center items-center"
+          >
             <Text className="text-white font-manrope-medium text-base">
-              Delete Ticket
+              Edit Ticket
             </Text>
-          )}
-        </TouchableOpacity>
+          </TouchableOpacity>
+
+          {/* Delete Button */}
+          <TouchableOpacity
+            onPress={() => onDelete(post.id)}
+            className="flex-1 bg-red-500 rounded-md h-[3.3rem] px-4 justify-center items-center"
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text className="text-white font-manrope-medium text-base">
+                Delete Ticket
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
