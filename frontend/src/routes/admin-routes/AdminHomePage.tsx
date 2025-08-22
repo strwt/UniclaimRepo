@@ -38,9 +38,7 @@ export default function AdminHomePage() {
   const [isCheckingExpired, setIsCheckingExpired] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   
-  // State for migration
-  const [isMigrating, setIsMigrating] = useState(false);
-  const [migrationCompleted, setMigrationCompleted] = useState(false);
+
 
   // Check for expired posts and move them to unclaimed
   const checkAndMoveExpiredPosts = async () => {
@@ -159,57 +157,7 @@ export default function AdminHomePage() {
     }
   };
 
-  // Handle migration of existing posts
-  const handleMigrateExistingPosts = async () => {
-    if (confirm('This will migrate all existing posts to include the new 30-day lifecycle fields. This process cannot be undone. Continue?')) {
-      setIsMigrating(true);
-      setFeedbackMessage(null);
-      
-      try {
-        const { postService } = await import('../../utils/firebase');
-        const result = await postService.migrateExistingPosts();
-        
-        console.log('Migration completed:', result);
-        
-        // Create detailed success message
-        let message = `Migration completed successfully!\n\n`;
-        message += `📊 Results:\n`;
-        message += `• Total posts found: ${result.total}\n`;
-        message += `• Posts migrated: ${result.migrated}\n`;
-        message += `• Posts marked as expired: ${result.expired}\n`;
-        message += `• Errors encountered: ${result.errors}\n\n`;
-        
-        if (result.expired > 0) {
-          message += `💡 Next step: Use "Check Expired Posts" to move expired posts to unclaimed status.`;
-        } else {
-          message += `✅ All posts are within their 30-day period.`;
-        }
-        
-        setFeedbackMessage({
-          type: 'success',
-          message: message
-        });
-        
-        // Mark migration as completed
-        setMigrationCompleted(true);
-        
-        // Clear feedback message after 10 seconds (longer for detailed migration results)
-        setTimeout(() => setFeedbackMessage(null), 10000);
-        
-      } catch (error) {
-        console.error('Migration failed:', error);
-        setFeedbackMessage({
-          type: 'error',
-          message: `Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or contact support if the issue persists.`
-        });
-        
-        // Clear feedback message after 10 seconds
-        setTimeout(() => setFeedbackMessage(null), 10000);
-      } finally {
-        setIsMigrating(false);
-      }
-    }
-  };
+
 
   const handleSearch = async (query: string, filters: any) => {
     setLastDescriptionKeyword(filters.description || "");
@@ -283,23 +231,6 @@ export default function AdminHomePage() {
           <h2 className="text-lg font-semibold text-gray-800">Dashboard Overview</h2>
           <div className="flex gap-2">
             <button
-              onClick={handleMigrateExistingPosts}
-              disabled={isMigrating || migrationCompleted}
-              className={`px-4 py-2 rounded transition text-sm ${
-                isMigrating 
-                  ? 'bg-purple-300 text-white cursor-not-allowed' 
-                  : migrationCompleted
-                    ? 'bg-green-500 text-white cursor-not-allowed'
-                    : 'bg-purple-500 text-white hover:bg-purple-600'
-              }`}
-              title={migrationCompleted 
-                ? "Migration already completed. All existing posts have been updated." 
-                : "Migrate existing posts to include 30-day lifecycle fields"
-              }
-            >
-              {isMigrating ? '⏳ Migrating...' : migrationCompleted ? '✅ Migration Complete' : '🚀 Migrate Existing Posts'}
-            </button>
-            <button
               onClick={checkAndMoveExpiredPosts}
               disabled={isCheckingExpired}
               className={`px-4 py-2 rounded transition text-sm ${
@@ -314,34 +245,9 @@ export default function AdminHomePage() {
           </div>
         </div>
         
-        {/* Migration Info */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">📋 About Migration:</p>
-            <p>• <strong>Migrate Existing Posts:</strong> Updates all existing posts with new 30-day lifecycle fields</p>
-            <p>• <strong>Check Expired Posts:</strong> Finds posts that have expired and moves them to unclaimed status</p>
-            <p>• <strong>Note:</strong> Run migration first, then check for expired posts</p>
-            
-            {migrationCompleted && (
-              <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded">
-                <p className="text-green-800 font-medium">🎉 Migration Status: COMPLETED</p>
-                <p className="text-green-700 text-xs">Your existing posts now support the 30-day lifecycle system!</p>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* 30-Day System Status */}
-        <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-          <div className="text-sm text-purple-800">
-            <p className="font-medium mb-1">🎯 30-Day Lifecycle System Status:</p>
-            <p>• <strong>Frontend Posts:</strong> ✅ Expiry countdown visible to all users</p>
-            <p>• <strong>Mobile Posts:</strong> ✅ Expiry countdown visible to all users</p>
-            <p>• <strong>Admin Dashboard:</strong> ✅ Full lifecycle management</p>
-            <p>• <strong>User Experience:</strong> ✅ Transparent countdown system</p>
-            <p className="text-purple-700 text-xs mt-2">💡 Users can now see exactly how many days are left before posts expire!</p>
-          </div>
-        </div>
+
+
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
