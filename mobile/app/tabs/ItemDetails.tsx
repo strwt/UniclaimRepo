@@ -75,10 +75,10 @@ export default function ItemDetails({
   const itemCategory = ["Student Essentials", "Gadgets", "Personal Belongings"];
 
   const locationOptions = [
-    "Library",
-    "Canteen",
-    "Gym",
-    "Main Entrance",
+      "Library",
+  "Canteen",
+  "Gymnasium",
+  "Main Entrance",
     "Computer Laboratory",
     "Science Building",
     "Engineering Hall",

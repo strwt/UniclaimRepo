@@ -22,7 +22,7 @@ const categories = [
 const locations = [
   "Library",
   "Cafeteria",
-  "Gym",
+  "Gymnasium",
   "Admin Office",
   "Science Building",
 ];

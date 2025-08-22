@@ -16,7 +16,7 @@ const categories = ["Student Essentials", "Gadgets", "Personal Belongings"];
 const locationOptions = [
   "Library",
   "Canteen",
-  "Gym",
+  "Gymnasium",
   "Main Entrance",
   "Computer Laboratory",
   "Science Building",

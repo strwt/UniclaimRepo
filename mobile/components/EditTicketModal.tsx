@@ -22,7 +22,7 @@ import { cleanupRemovedPostImages } from '@/utils/cloudinary';
 const locationOptions = [
   "Library",
   "Canteen",
-  "Gym",
+  "Gymnasium",
   "Main Entrance",
   "Computer Laboratory",
   "Science Building",
