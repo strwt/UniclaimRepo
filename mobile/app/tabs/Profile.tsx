@@ -90,9 +90,9 @@ export default function Profile() {
                 try {
                   const deletionSuccess = await deleteOldProfilePicture(userData.profileImageUrl);
                   if (deletionSuccess) {
-                    console.log('Old profile picture deleted successfully');
+                    // Old profile picture deleted successfully
                   } else {
-                    console.log('Failed to delete old profile picture, but continuing with profile update');
+                    // Failed to delete old profile picture, but continuing with profile update
                   }
                 } catch (deleteError: any) {
                   console.error('Error deleting old profile picture:', deleteError.message);
@@ -114,9 +114,9 @@ export default function Profile() {
               try {
                 const deletionSuccess = await deleteOldProfilePicture(userData.profileImageUrl);
                 if (deletionSuccess) {
-                  console.log('Old profile picture deleted successfully');
+                  // Old profile picture deleted successfully
                 } else {
-                  console.log('Failed to delete old profile picture, but continuing with profile update');
+                  // Failed to delete old profile picture, but continuing with profile update
                 }
               } catch (deleteError: any) {
                 console.error('Error deleting old profile picture:', deleteError.message);
@@ -136,9 +136,9 @@ export default function Profile() {
             try {
               const deletionSuccess = await deleteOldProfilePicture(userData.profileImageUrl);
               if (deletionSuccess) {
-                console.log('Old profile picture deleted successfully after removal');
+                // Old profile picture deleted successfully after removal
               } else {
-                console.log('Failed to delete old profile picture after removal, but continuing with profile update');
+                // Failed to delete old profile picture after removal, but continuing with profile update
               }
             } catch (deleteError: any) {
               console.error('Error deleting old profile picture after removal:', deleteError.message);
@@ -179,7 +179,7 @@ export default function Profile() {
 
       Alert.alert(
         "Success", 
-        "Profile updated successfully! All your posts and conversations have been updated with the new information."
+        "Profile updated successfully!"
       );
       setIsEditing(false);
       setHasImageChanged(false);

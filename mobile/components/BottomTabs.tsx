@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Screens
 import HomeScreen from "../app/tabs/Home";
@@ -28,28 +29,7 @@ export default function CustomTabs() {
   const insets = useSafeAreaInsets();
   const TAB_BAR_HEIGHT = 50;
   const previousTabRef = useRef(currentTab);
-
-  useEffect(() => {
-    const keyboardShow = Keyboard.addListener("keyboardDidShow", () =>
-      setIsKeyboardVisible(true)
-    );
-    const keyboardHide = Keyboard.addListener("keyboardDidHide", () =>
-      setIsKeyboardVisible(false)
-    );
-
-    return () => {
-      keyboardShow.remove();
-      keyboardHide.remove();
-    };
-  }, []);
-
-  // Handle tab change with smooth transition
-  const handleTabChange = (newTab: string) => {
-    if (newTab !== currentTab) {
-      previousTabRef.current = currentTab;
-      setCurrentTab(newTab);
-    }
-  };
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const tabs: TabConfig[] = [
     {
@@ -88,6 +68,64 @@ export default function CustomTabs() {
       component: ProfileScreen,
     },
   ];
+
+  // Load saved tab state on component mount
+  useEffect(() => {
+    const loadSavedTab = async () => {
+      try {
+        const savedTab = await AsyncStorage.getItem('lastActiveTab');
+        if (savedTab && tabs.some(tab => tab.key === savedTab)) {
+          setCurrentTab(savedTab);
+        }
+      } catch (error) {
+        console.log('Error loading saved tab:', error);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+    
+    loadSavedTab();
+  }, []);
+
+  useEffect(() => {
+    const keyboardShow = Keyboard.addListener("keyboardDidShow", () =>
+      setIsKeyboardVisible(true)
+    );
+    const keyboardHide = Keyboard.addListener("keyboardDidHide", () =>
+      setIsKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardShow.remove();
+      keyboardHide.remove();
+    };
+  }, []);
+
+  // Handle tab change with smooth transition
+  const handleTabChange = async (newTab: string) => {
+    if (newTab !== currentTab) {
+      previousTabRef.current = currentTab;
+      setCurrentTab(newTab);
+      
+      // Save the new tab state to AsyncStorage
+      try {
+        await AsyncStorage.setItem('lastActiveTab', newTab);
+      } catch (error) {
+        console.log('Error saving tab state:', error);
+      }
+    }
+  };
+
+  // Don't render content until tab state is loaded
+  if (!isInitialized) {
+    return (
+      <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+        <View className="flex-1 items-center justify-center">
+          <Text>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
