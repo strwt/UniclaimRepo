@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 
 // screens
-import SideNav from "./SideNav";
+import AdminSideNav from "./AdminSideNav";
 import AdminHeader from "./AdminHeader";
 import Footer from "./FooterComp";
 
@@ -17,7 +17,7 @@ export default function AdminLayout() {
           isSideBarOpen ? "md:basis-0" : "md:basis-0"
         } bg-red-100 md:block`}
       >
-        <SideNav
+        <AdminSideNav
           isOpen={isSideBarOpen}
           onClose={() => setIsSideBarOpen(false)}
           isSideNavMobileOpen={isSideBarOpen}
@@ -27,7 +27,7 @@ export default function AdminLayout() {
 
       {/* Mobile Sidebar */}
       <div>
-        <SideNav
+        <AdminSideNav
           isOpen={isSideBarOpen}
           onClose={() => setIsSideBarOpen(false)}
           isSideNavMobileOpen={isSideBarOpen}
