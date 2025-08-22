@@ -26,17 +26,19 @@ service cloud.firestore {
     
     // Posts collection rules
     match /posts/{postId} {
-      // Anyone can read posts (for browsing lost and found items)
-      allow read: if request.auth != null;
+      // Only non-banned users can read posts
+      allow read: if request.auth != null && !isUserBanned();
       
-      // Only authenticated users can create posts
+      // Only non-banned users can create posts
       allow create: if request.auth != null 
         && request.auth.uid != null
+        && !isUserBanned()
         && isValidPost(request.resource.data);
       
-      // Users can update their own posts
+      // Users can update their own posts (but not when banned)
       allow update: if request.auth != null 
         && request.auth.uid != null
+        && !isUserBanned()
         && resource.data.user.email == request.auth.token.email;
       
       // Users can delete their own posts, or admins can delete any post
@@ -46,25 +48,25 @@ service cloud.firestore {
     
     // SIMPLIFIED: Conversations collection for messaging
     match /conversations/{conversationId} {
-      // Allow reading for querying purposes (needed for postId queries during deletion)
-      allow read: if request.auth != null;
+      // Only non-banned users can read conversations
+      allow read: if request.auth != null && !isUserBanned();
       
-      // Users can write conversations they participate in
+      // Users can write conversations they participate in (but not when banned)
       allow write: if request.auth != null && 
+        !isUserBanned() &&
         request.auth.uid in resource.data.participants;
       
-      // Allow creating new conversations (participant validation handled in app code)
-      allow create: if request.auth != null;
+      // Allow creating new conversations (but not when banned)
+      allow create: if request.auth != null && !isUserBanned();
       
       // Allow deleting conversations when deleting posts (post owner can delete related conversations)
       // Also allow any authenticated user to delete conversations for cleanup (simplified for reliability)
-      allow delete: if request.auth != null;
+      allow delete: if request.auth != null && !isUserBanned();
       
       // Messages subcollection - SIMPLIFIED
       match /messages/{messageId} {
-        // Simplified permissions - allow any authenticated user to read/write/delete
-        // This prevents permission errors during deletion operations
-        allow read, write, delete: if request.auth != null;
+        // Only non-banned users can access messages
+        allow read, write, delete: if request.auth != null && !isUserBanned();
       }
     }
     
@@ -83,6 +85,13 @@ service cloud.firestore {
     function isAdmin() {
       // Add more admin emails as needed
       return request.auth.token.email in ['admin@ustp.edu.ph', 'superadmin@ustp.edu.ph','admin@uniclaim.com'];
+    }
+    
+    // NEW: Check if current user is banned
+    function isUserBanned() {
+      return request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'banned';
     }
   }
 }

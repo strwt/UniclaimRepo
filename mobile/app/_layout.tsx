@@ -30,7 +30,7 @@ const AppContent = ({
   hasPassedIndex: boolean;
   setHasPassedIndex: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isBanned } = useAuth();
 
   // If user is authenticated, skip onboarding and index screens
   useEffect(() => {
@@ -42,6 +42,20 @@ const AppContent = ({
   // Show loading screen while auth state is being determined
   if (loading) {
     return <LoadingScreen />;
+  }
+
+  // NEW: If user is banned, show login screen
+  if (isBanned) {
+    return (
+      <MessageProvider userId={null}>
+        <Navigation
+          hasSeenOnBoarding={hasSeenOnBoarding}
+          setHasSeenOnBoarding={setHasSeenOnBoarding}
+          hasPassedIndex={hasPassedIndex}
+          setHasPassedIndex={setHasPassedIndex}
+        />
+      </MessageProvider>
+    );
   }
 
   return (

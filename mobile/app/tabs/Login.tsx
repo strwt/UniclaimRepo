@@ -14,11 +14,12 @@ import {
 import type { RootStackParamList } from "../../types/type";
 import { useAuth } from "../../context/AuthContext";
 import { getFirebaseErrorMessage } from "../../utils/firebase";
+import Toast from "../../components/Toast";
 
 export default function Login() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { login, loading } = useAuth();
+  const { login, loading, isBanned, banInfo } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,9 +32,31 @@ export default function Login() {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [generalError, setGeneralError] = useState("");
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<'success' | 'error' | 'warning' | 'info'>('error');
+
+  // NEW: Get ban details for display
+  const getBanDetails = () => {
+    if (!banInfo) return { reason: 'No reason provided', duration: 'Unknown' };
+    
+    const reason = banInfo.reason || 'No reason provided';
+    const duration = banInfo.duration || 'Unknown';
+    const endDate = banInfo.banEndDate;
+    
+    return { reason, duration, endDate };
+  };
+
+  const { reason, duration, endDate } = getBanDetails();
 
   const validateEmail = (value: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  const showToastMessage = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+  };
 
   const handleLogin = async () => {
     let valid = true;
@@ -62,6 +85,13 @@ export default function Login() {
     try {
       setIsLoading(true);
       await login(email, password);
+      
+      // Check if user got banned during login
+      if (isBanned) {
+        showToastMessage('This account has been banned. Please contact an administrator or try a different account.', 'warning');
+        return;
+      }
+      
       // Navigation will be handled by AuthContext/navigation logic
       navigation.navigate("RootBottomTabs");
     } catch (error: any) {
@@ -79,9 +109,37 @@ export default function Login() {
           Welcome Back
         </Text>
         <Text className="text-base font-manrope-medium text-black mt-1">
-          Hi, Welcome back, you’ve been missed
+          Hi, Welcome back, you've been missed
         </Text>
       </View>
+
+      {/* NEW: Ban Message Display */}
+      {isBanned && (
+        <View className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <Text className="text-lg font-manrope-bold text-red-600 mb-2 text-center">
+            Account Banned
+          </Text>
+          <Text className="text-sm font-manrope-medium text-red-700 mb-2">
+            The current account has been suspended from using the app.
+          </Text>
+          <View className="bg-white p-3 rounded border border-red-100">
+            <Text className="text-xs font-manrope-medium text-gray-700 mb-1">
+              <Text className="font-manrope-bold">Reason:</Text> {reason}
+            </Text>
+            <Text className="text-xs font-manrope-medium text-gray-700 mb-1">
+              <Text className="font-manrope-bold">Duration:</Text> {duration}
+            </Text>
+            {endDate && (
+              <Text className="text-xs font-manrope-medium text-gray-700">
+                <Text className="font-manrope-bold">Until:</Text> {new Date(endDate.seconds * 1000).toLocaleDateString()}
+              </Text>
+            )}
+          </View>
+          <Text className="text-xs font-manrope-medium text-red-600 mt-2 text-center">
+            You can login with a different account, or contact an administrator if you believe this was an error.
+          </Text>
+        </View>
+      )}
 
       {/* General Error */}
       {generalError !== "" && (
@@ -214,6 +272,12 @@ export default function Login() {
           </Text>
         </Pressable>
       </View>
+      <Toast
+        visible={showToast}
+        message={toastMessage}
+        type={toastType}
+        onClose={() => setShowToast(false)}
+      />
     </SafeAreaView>
   );
 }

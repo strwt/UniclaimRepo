@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, authService, UserData, db } from '../utils/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -109,11 +110,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string): Promise<void> => {
     try {
       setLoading(true);
-      await authService.login(email, password);
-      // onAuthStateChanged will handle updating the state
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Get user data to check ban status
+      const userData = await authService.getUserData(user.uid);
+      
+      if (userData && userData.status === 'banned') {
+        // User is banned, logout immediately
+        await authService.logout();
+        setIsBanned(true);
+        setBanInfo(userData.banInfo || {});
+        setShowBanNotification(false);
+        // Don't throw error - let the component handle it
+        return;
+      }
+      
+      // User is not banned, proceed with login
+      setUser(user);
+      setUserData(userData);
+      setIsAuthenticated(true);
+      setIsBanned(false);
+      setBanInfo(null);
+      setShowBanNotification(false);
+      
     } catch (error: any) {
+      console.error('Login error:', error);
+      throw error;
+    } finally {
       setLoading(false);
-      throw new Error(error.message);
     }
   };
 
@@ -157,19 +182,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Logout user immediately
       await authService.logout();
       
-      // Reset all auth state
+      // Reset all auth state completely
       setUser(null);
       setUserData(null);
       setIsAuthenticated(false);
       setIsBanned(true);
       setBanInfo(bannedUserData.banInfo || {});
       
-      // Show ban notification for mobile
-      setShowBanNotification(true);
+      // Don't show ban notification - user will be redirected to login
+      setShowBanNotification(false);
+      
+      // Force navigation to login by setting user to null
+      // This will trigger the navigation logic to redirect to login
       console.log('User logged out due to ban (mobile):', bannedUserData.banInfo);
       
     } catch (error) {
       console.error('Error during immediate ban logout (mobile):', error);
+      // Even if logout fails, reset the state to force redirect
+      setUser(null);
+      setUserData(null);
+      setIsAuthenticated(false);
+      setIsBanned(true);
+      setBanInfo(bannedUserData.banInfo || {});
     }
   };
 

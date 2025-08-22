@@ -7,6 +7,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../context/AuthContext";
 
 // Screens
 import HomeScreen from "../app/tabs/Home";
@@ -30,6 +31,20 @@ export default function CustomTabs() {
   const TAB_BAR_HEIGHT = 50;
   const previousTabRef = useRef(currentTab);
   const [isInitialized, setIsInitialized] = useState(false);
+  const { isBanned } = useAuth();
+
+  // NEW: Redirect banned users to login
+  useEffect(() => {
+    if (isBanned) {
+      // User is banned, but don't try to navigate since the parent components handle this
+      console.log('User is banned in BottomTabs, redirecting via parent components');
+    }
+  }, [isBanned]);
+
+  // NEW: Don't render tabs if user is banned
+  if (isBanned) {
+    return null; // This will trigger the parent navigation logic
+  }
 
   const tabs: TabConfig[] = [
     {

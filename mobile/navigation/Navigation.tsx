@@ -1,6 +1,6 @@
 // Navigation.tsx
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { RootStackParamList } from "../types/type";
 import { useAuth } from "../context/AuthContext";
 
@@ -54,11 +54,35 @@ export default function Navigation({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, isBanned } = useAuth();
 
-  // If user is authenticated, skip onboarding and index screens
+  // If user is banned, redirect to login
   const shouldShowOnboarding = !hasSeenOnBoarding && !user;
   const shouldShowIndex = !hasPassedIndex && !user;
+  
+  // NEW: Check if user is banned and redirect to login
+  const shouldRedirectToLogin = user && isBanned;
+
+  // NEW: Handle redirect when user gets banned
+  useEffect(() => {
+    if (user && isBanned) {
+      // User is banned, but don't try to navigate since we're already handling it in the component structure
+      console.log('User is banned, redirecting to login via component structure');
+    }
+  }, [user, isBanned]);
+
+  // NEW: Prevent banned users from accessing main app
+  if (user && isBanned) {
+    // Force redirect to login for banned users
+    return (
+      <Stack.Navigator
+        initialRouteName="Login"
+        screenOptions={{ headerShown: false, animation: "fade" }}
+      >
+        <Stack.Screen name="Login" component={withScreenWrapper(Login)} />
+      </Stack.Navigator>
+    );
+  }
 
   const initial = shouldShowOnboarding
     ? "OnBoarding"
