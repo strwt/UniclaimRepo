@@ -30,7 +30,6 @@ export default function PostModal({ post, onClose }: PostModalProps) {
   const [imageLoadingError, setImageLoadingError] = useState<string | null>(null);
   const inactivityIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastInteractionTimeRef = useRef<number>(Date.now());
-  const imageLoadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if current user is the creator of the post
   const isCurrentUserCreator = userData?.uid === post.creatorId;
@@ -78,12 +77,6 @@ export default function PostModal({ post, onClose }: PostModalProps) {
   }, []);
 
   useEffect(() => {
-    // Clear any existing timeout
-    if (imageLoadingTimeoutRef.current) {
-      clearTimeout(imageLoadingTimeoutRef.current);
-      imageLoadingTimeoutRef.current = null;
-    }
-
     setImageLoadingError(null);
 
     try {
@@ -93,12 +86,8 @@ export default function PostModal({ post, onClose }: PostModalProps) {
 
       setImageUrls(urls);
 
-      // Set a timeout to detect if images are taking too long to load
-      imageLoadingTimeoutRef.current = setTimeout(() => {
-        if (imageUrls.length === 0) {
-          setImageLoadingError("Images taking too long to load");
-        }
-      }, 10000); // 10 second timeout
+      // Remove the problematic timeout that was causing false warnings
+      // Images are processed immediately, so no need for a loading timeout
 
       return () => {
         urls.forEach((url) => {
@@ -114,9 +103,6 @@ export default function PostModal({ post, onClose }: PostModalProps) {
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
-      if (imageLoadingTimeoutRef.current) {
-        clearTimeout(imageLoadingTimeoutRef.current);
-      }
       if (inactivityIntervalRef.current) {
         clearInterval(inactivityIntervalRef.current);
       }
@@ -248,7 +234,7 @@ export default function PostModal({ post, onClose }: PostModalProps) {
           </div>
         )}
 
-        {/* Image loading error display */}
+        {/* Image loading error display - only show for actual errors */}
         {imageLoadingError && (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
             <div className="flex items-center justify-between">
