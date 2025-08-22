@@ -88,6 +88,16 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
 
       <View className="p-3">
         <View className="flex-row items-center gap-2">
+          {/* Category Badge */}
+          <Text
+            className={`self-start px-3 py-1 mb-2 rounded-sm text-xs font-inter-medium ${
+              getCategoryBadgeStyle(post.category)
+            }`}
+          >
+            {post.category}
+          </Text>
+
+          {/* Type Badge */}
           <Text
             className={`self-start px-3 py-1 mb-2 rounded-sm text-xs font-inter-medium ${
               post.type === "lost"
@@ -127,31 +137,31 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
                   
                   const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
                   
-                  if (daysLeft <= 0) {
-                    return (
-                      <Text className="capitalize px-3 py-1 rounded-sm text-xs font-inter-medium bg-red-100 text-red-700">
-                        ⚠️ EXPIRED
-                      </Text>
-                    );
-                  } else if (daysLeft <= 3) {
-                    return (
-                      <Text className="capitalize px-3 py-1 rounded-sm text-xs font-inter-medium bg-red-100 text-red-700">
-                        ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
-                      </Text>
-                    );
-                  } else if (daysLeft <= 7) {
-                    return (
-                      <Text className="capitalize px-3 py-1 rounded-sm text-xs font-inter-medium bg-orange-100 text-orange-700">
-                        ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
-                      </Text>
-                    );
-                  } else {
-                    return (
-                      <Text className="capitalize px-3 py-1 rounded-sm text-xs font-inter-medium bg-green-100 text-green-700">
-                        {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
-                      </Text>
-                    );
-                  }
+                                      if (daysLeft <= 0) {
+                      return (
+                        <Text className="capitalize px-3 py-1 mb-2 rounded-sm text-xs font-inter-medium bg-red-100 text-red-700">
+                          ⚠️ EXPIRED
+                        </Text>
+                      );
+                    } else if (daysLeft <= 3) {
+                      return (
+                        <Text className="capitalize px-3 py-1 mb-2 rounded-sm text-xs font-inter-medium bg-red-100 text-red-700">
+                          ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                        </Text>
+                      );
+                    } else if (daysLeft <= 7) {
+                      return (
+                        <Text className="capitalize px-3 py-1 mb-2 rounded-sm text-xs font-inter-medium bg-orange-100 text-orange-700">
+                          ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                        </Text>
+                      );
+                    } else {
+                      return (
+                        <Text className="capitalize px-3 py-1 mb-2 rounded-sm text-xs font-inter-medium bg-green-100 text-green-700">
+                          {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                        </Text>
+                      );
+                    }
                 } catch (error) {
                   console.error('Error calculating days left:', error);
                   return null;
