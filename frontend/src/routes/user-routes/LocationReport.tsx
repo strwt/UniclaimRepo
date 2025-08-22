@@ -1,10 +1,10 @@
 // src/routes/user-routes/LocationReport.tsx
-import { FiChevronDown } from "react-icons/fi";
 import USTPCDOMapLoc from "@/components/USTPCDOMap";
+import DropdownWithSearch from "@/components/DropdownWithSearch";
 
 interface LocationProps {
-  selectedLocation: string;
-  setSelectedLocation: (val: string) => void;
+  selectedLocation: string | null;
+  setSelectedLocation: (val: string | null) => void;
   locationError?: boolean;
   coordinates: { lat: number; lng: number } | null;
   setCoordinates: (val: { lat: number; lng: number } | null) => void;
@@ -15,10 +15,22 @@ const locations = [
   "Canteen",
   "Gymnasium",
   "Main Entrance",
-  "Hallway",
-  "Computer Lab",
-  "Classroom 101",
-  "Parking Lot",
+  "Computer Laboratory",
+  "Science Building",
+  "Engineering Hall",
+  "Student Lounge",
+  "Registrar Office",
+  "Clinic",
+  "Parking Lot A",
+  "Parking Lot B",
+  "Auditorium",
+  "Basketball Court",
+  "Swimming Pool Area",
+  "Admin Office",
+  "Dormitory",
+  "Innovation Hub",
+  "Covered Court",
+  "Security Office",
 ];
 
 const LocationReport = ({
@@ -35,25 +47,14 @@ const LocationReport = ({
       <p className="my-3 text-[14px]">Last seen location</p>
 
       <div className="relative">
-        <select
-          name="last_seen_location"
-          value={selectedLocation}
-          onChange={(e) => setSelectedLocation(e.target.value)}
-          className={`w-full text-sm appearance-none p-3 rounded text-black focus:outline-none focus:ring-black ${
-            locationError ? "border-2 border-red-500" : "border border-gray-500"
-          }`}
-        >
-          <option value="" disabled>
-            Select location ...
-          </option>
-          {locations.map((loc) => (
-            <option key={loc} value={loc}>
-              {loc}
-            </option>
-          ))}
-        </select>
-
-        <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
+        <DropdownWithSearch
+          label=""
+          data={locations}
+          selected={selectedLocation}
+          setSelected={setSelectedLocation}
+          placeholder="Select location ..."
+          error={locationError}
+        />
       </div>
 
       <div className="mt-4">

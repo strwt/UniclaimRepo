@@ -38,7 +38,7 @@ export default function ReportPage() {
   const [description, setDescription] = useState<string>("");
   const [wasSubmitted, setWasSubmitted] = useState(false);
   const { validateFormErrors } = useToastFormHelper();
-  const [selectedLocation, setSelectedLocation] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const { showToast } = useToast();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -123,7 +123,7 @@ export default function ReportPage() {
       hasDescriptionError: !description.trim(),
       hasDateTimeError: !selectedDateTime.trim(),
       hasImageError: selectedFiles.length === 0,
-      hasLocationError: !selectedLocation.trim(),
+              hasLocationError: !selectedLocation,
       hasCoordinatesError: !coordinates,
     };
 
@@ -156,7 +156,7 @@ export default function ReportPage() {
         title: title.trim(),
         description: description.trim(),
         category: activeCategory,
-        location: selectedLocation,
+        location: selectedLocation || "",
         type: selectedReport,
         images: selectedFiles,
         dateTime: selectedDateTime,
@@ -187,7 +187,7 @@ export default function ReportPage() {
       setTitle("");
       setDescription("");
       setSelectedReport(null);
-      setSelectedLocation("");
+              setSelectedLocation(null);
       setCoordinates(null);
       setActiveCategory("");
       setSelectedDateTime("");
@@ -209,7 +209,7 @@ export default function ReportPage() {
   const showDescriptionError = wasSubmitted && !description.trim();
   const showDateTimeError = wasSubmitted && !selectedDateTime.trim();
   const showImageError = wasSubmitted && selectedFiles.length === 0;
-  const showLocationError = wasSubmitted && !selectedLocation.trim();
+  const showLocationError = wasSubmitted && !selectedLocation;
 
   // Show loading state while checking auth
   if (loading) {

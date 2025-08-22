@@ -1,6 +1,31 @@
 import { FiX } from "react-icons/fi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Post } from "@/types/Post";
+import DropdownWithSearch from "./DropdownWithSearch";
+
+// Location options - same as used in mobile version
+const locationOptions = [
+  "Library",
+  "Canteen",
+  "Gymnasium",
+  "Main Entrance",
+  "Computer Laboratory",
+  "Science Building",
+  "Engineering Hall",
+  "Student Lounge",
+  "Registrar Office",
+  "Clinic",
+  "Parking Lot A",
+  "Parking Lot B",
+  "Auditorium",
+  "Basketball Court",
+  "Swimming Pool Area",
+  "Admin Office",
+  "Dormitory",
+  "Innovation Hub",
+  "Covered Court",
+  "Security Office",
+];
 
 interface TicketModalProps {
   post: Post;
@@ -29,15 +54,25 @@ const TicketModal = ({
 
   const [editedTitle, setEditedTitle] = useState(post.title);
   const [editedDescription, setEditedDescription] = useState(post.description);
-  const [editedLocation, setEditedLocation] = useState(post.location);
-  const [editedStatus, setEditedStatus] = useState<
-    "pending" | "resolved" | "rejected"
-  >(post.status || "pending");
+  const [editedLocation, setEditedLocation] = useState<string | null>(
+    locationOptions.includes(post.location) ? post.location : null
+  );
   const [editedDateTime, setEditedDateTime] = useState(
     typeof post.createdAt === "string"
       ? post.createdAt.slice(0, 16)
       : new Date(post.createdAt || "").toISOString().slice(0, 16)
   );
+
+  // Reset form when post changes
+  useEffect(() => {
+    setEditedTitle(post.title);
+    setEditedDescription(post.description);
+    setEditedLocation(
+      locationOptions.includes(post.location) ? post.location : null
+    );
+    setEditedImages(post.images);
+    setNewImageFiles([]);
+  }, [post]);
 
   const previewImages = editedImages.map((img) =>
     typeof img === "string" ? img : URL.createObjectURL(img)
@@ -78,8 +113,8 @@ const TicketModal = ({
       ...post,
       title: editedTitle,
       description: editedDescription,
-      location: editedLocation,
-      status: editedStatus,
+      location: editedLocation || "",
+      status: post.status, // Keep original status - users cannot change it
       createdAt: editedDateTime,
       images: editedImages,
     };
@@ -105,22 +140,7 @@ const TicketModal = ({
     },
   ];
 
-  const selectFields = [
-    {
-      value: editedLocation,
-      onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
-        setEditedLocation(e.target.value),
-      options: ["", "Gate A", "Canteen", "Library"],
-      label: "Location",
-    },
-    {
-      value: editedStatus,
-      onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
-        setEditedStatus(e.target.value as "pending" | "resolved" | "rejected"),
-      options: ["pending", "resolved", "rejected"],
-      label: "Status",
-    },
-  ];
+  // Status field removed - users cannot change ticket status
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -227,20 +247,16 @@ const TicketModal = ({
                   />
                 ))}
 
-                {selectFields.map((field, idx) => (
-                  <select
-                    key={idx}
-                    value={field.value}
-                    onChange={field.onChange}
-                    className="w-full border px-3 py-1 rounded"
-                  >
-                    {field.options.map((opt, i) => (
-                      <option key={i} value={opt}>
-                        {opt === "" ? `Select ${field.label}` : opt}
-                      </option>
-                    ))}
-                  </select>
-                ))}
+                {/* Location Dropdown */}
+                <div className="col-span-full">
+                  <DropdownWithSearch
+                    label="Last seen location"
+                    data={locationOptions}
+                    selected={editedLocation}
+                    setSelected={setEditedLocation}
+                    placeholder="Select a location"
+                  />
+                </div>
 
                 <textarea
                   value={editedDescription}
