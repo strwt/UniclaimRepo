@@ -9,8 +9,12 @@ export interface User {
   contactNum: string;
   studentId: string;
   profilePicture?: string;
+  profileImageUrl?: string;
   createdAt?: any;
   updatedAt?: any;
+  status?: 'active' | 'banned';
+  banInfo?: any;
+  role?: 'user' | 'admin';
 }
 
 // Re-export UserData from firebase utils for consistency

@@ -3,12 +3,25 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Users can read and write their own user document
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow users to read their own document (even when banned)
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow users to write their own document (but not when banned)
+      allow write: if request.auth != null && request.auth.uid == userId && 
+        resource.data.status != 'banned';
       
       // Allow reading basic profile info for all authenticated users
       // This enables profile picture recovery in conversations and is safe
       // since only basic profile information (name, profile picture) is exposed
       allow read: if request.auth != null;
+      
+      // Allow admins to update user status (for banning/unbanning)
+      allow update: if request.auth != null && isAdmin();
+    }
+    
+    // User bans collection - only admins can access
+    match /userBans/{banId} {
+      allow read, write: if request.auth != null && isAdmin();
     }
     
     // Posts collection rules
@@ -69,7 +82,7 @@ service cloud.firestore {
     
     function isAdmin() {
       // Add more admin emails as needed
-      return request.auth.token.email in ['admin@ustp.edu.ph', 'superadmin@ustp.edu.ph'];
+      return request.auth.token.email in ['admin@ustp.edu.ph', 'superadmin@ustp.edu.ph','admin@uniclaim.com'];
     }
   }
 }

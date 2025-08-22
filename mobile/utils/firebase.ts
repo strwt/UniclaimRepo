@@ -92,6 +92,8 @@ export interface UserData {
     contactNum: string;
     studentId: string; // Required field for student ID
     profilePicture?: string; // Standardized field name to match web version
+    status?: 'active' | 'banned'; // User account status
+    banInfo?: any; // Ban information
     createdAt: any;
     updatedAt: any;
 }

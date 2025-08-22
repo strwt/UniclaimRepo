@@ -86,6 +86,8 @@ export interface UserData {
     profilePicture?: string;
     profileImageUrl?: string; // Added to support mobile app field name
     role?: 'user' | 'admin'; // User role for access control
+    status?: 'active' | 'banned'; // User account status
+    banInfo?: any; // Ban information
     createdAt: any;
     updatedAt: any;
 }
