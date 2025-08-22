@@ -141,7 +141,7 @@ export default function Chat() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
-      <View className="bg-white border-b border-gray-200 p-4 flex-row items-center">
+      <View className="bg-white border-b border-gray-200 pt-10 pb-4 px-4 flex-row items-center">
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
           className="mr-3"
