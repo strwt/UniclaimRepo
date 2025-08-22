@@ -34,100 +34,29 @@ export default function AdminHomePage() {
   // e change dari pila ka post mu appear pag click and load more button
   const itemsPerPage = 2;
   
-  // State for user feedback
-  const [isCheckingExpired, setIsCheckingExpired] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  
 
 
-  // Check for expired posts and move them to unclaimed
-  const checkAndMoveExpiredPosts = async () => {
-    if (!posts) return;
-    
-    setIsCheckingExpired(true);
-    setFeedbackMessage(null);
-    
-    try {
-      const now = new Date();
-      const expiredPosts = posts.filter(post => {
-        if (!post.expiryDate || post.movedToUnclaimed) return false;
-        
-        const expiryDate = post.expiryDate instanceof Date 
-          ? post.expiryDate 
-          : new Date(post.expiryDate);
-        
-        return expiryDate < now;
-      });
 
-      if (expiredPosts.length > 0) {
-        console.log(`Found ${expiredPosts.length} expired posts to move to unclaimed`);
-        
-        // Import and use the post service to update expired posts
-        const { postService } = await import('../../utils/firebase');
-        
-        let successCount = 0;
-        let errorCount = 0;
-        
-        for (const post of expiredPosts) {
-          try {
-            await postService.movePostToUnclaimed(post.id);
-            successCount++;
-          } catch (error) {
-            console.error(`Failed to move post ${post.id} to unclaimed:`, error);
-            errorCount++;
-          }
-        }
-        
-        if (errorCount === 0) {
-          setFeedbackMessage({
-            type: 'success',
-            message: `Successfully moved ${successCount} expired posts to unclaimed status.`
-          });
-        } else {
-          setFeedbackMessage({
-            type: 'error',
-            message: `Moved ${successCount} posts to unclaimed, but ${errorCount} failed.`
-          });
-        }
-      } else {
-        setFeedbackMessage({
-          type: 'success',
-          message: 'No expired posts found. All posts are within their 30-day period.'
-        });
-      }
-    } catch (error) {
-      console.error('Error checking expired posts:', error);
-      setFeedbackMessage({
-        type: 'error',
-        message: `Error checking expired posts: ${error instanceof Error ? error.message : 'Unknown error'}`
-      });
-    } finally {
-      setIsCheckingExpired(false);
-      
-      // Clear feedback message after 5 seconds
-      setTimeout(() => setFeedbackMessage(null), 5000);
-    }
-  };
 
   // Admin functionality handlers
   const handleEditPost = (post: Post) => {
     console.log('Edit post:', post);
     // TODO: Implement edit functionality
-    alert(`Edit functionality for post: ${post.title}`);
+    // For now, just log the action
   };
 
   const handleDeletePost = (post: Post) => {
     if (confirm(`Are you sure you want to delete "${post.title}"?`)) {
       console.log('Delete post:', post);
       // TODO: Implement delete functionality
-      alert(`Delete functionality for post: ${post.title}`);
+      // For now, just log the action
     }
   };
 
   const handleStatusChange = (post: Post, status: string) => {
     console.log('Status change:', post.id, status);
     // TODO: Implement status update functionality
-    alert(`Status updated to: ${status}`);
+    // For now, just log the action
   };
 
   const handleActivateTicket = async (post: Post) => {
@@ -136,23 +65,8 @@ export default function AdminHomePage() {
         const { postService } = await import('../../utils/firebase');
         await postService.activateTicket(post.id);
         console.log('Ticket activated successfully:', post.title);
-        
-        setFeedbackMessage({
-          type: 'success',
-          message: `"${post.title}" has been activated and moved back to active status with a new 30-day period.`
-        });
-        
-        // Clear feedback message after 5 seconds
-        setTimeout(() => setFeedbackMessage(null), 5000);
       } catch (error) {
         console.error('Failed to activate ticket:', error);
-        setFeedbackMessage({
-          type: 'error',
-          message: `Failed to activate ticket: ${error instanceof Error ? error.message : 'Unknown error'}`
-        });
-        
-        // Clear feedback message after 5 seconds
-        setTimeout(() => setFeedbackMessage(null), 5000);
       }
     }
   };
@@ -227,22 +141,8 @@ export default function AdminHomePage() {
 
       {/* Admin Quick Stats */}
       <div className="px-6 mb-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-800">Dashboard Overview</h2>
-          <div className="flex gap-2">
-            <button
-              onClick={checkAndMoveExpiredPosts}
-              disabled={isCheckingExpired}
-              className={`px-4 py-2 rounded transition text-sm ${
-                isCheckingExpired 
-                  ? 'bg-orange-300 text-white cursor-not-allowed' 
-                  : 'bg-orange-500 text-white hover:bg-orange-600'
-              }`}
-              title="Check for expired posts and move them to unclaimed"
-            >
-              {isCheckingExpired ? '⏳ Checking...' : '🔍 Check Expired Posts'}
-            </button>
-          </div>
         </div>
         
 
@@ -279,24 +179,6 @@ export default function AdminHomePage() {
             <div className="text-sm text-gray-600">Unclaimed</div>
           </div>
         </div>
-        
-        {/* Feedback Messages */}
-        {feedbackMessage && (
-          <div className={`mt-4 p-3 rounded-lg border ${
-            feedbackMessage.type === 'success' 
-              ? 'bg-green-50 border-green-200 text-green-800' 
-              : 'bg-red-50 border-red-200 text-red-800'
-          }`}>
-            <div className="flex items-start gap-2">
-              <span className="text-lg mt-0.5">
-                {feedbackMessage.type === 'success' ? '✅' : '❌'}
-              </span>
-              <div className="font-medium whitespace-pre-line">
-                {feedbackMessage.message}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* View Type Tabs */}

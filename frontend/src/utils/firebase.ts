@@ -827,7 +827,7 @@ export const postService = {
         }
     },
 
-    // Get all posts with real-time updates
+    // Get all posts with real-time updates (DEPRECATED - use getActivePosts for better performance)
     getAllPosts(callback: (posts: Post[]) => void) {
         const q = query(
             collection(db, 'posts')
@@ -851,6 +851,71 @@ export const postService = {
             callback(sortedPosts);
         }, (error) => {
             console.error('PostService: Error fetching posts:', error);
+            callback([]);
+        });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
+    },
+
+    // Get only active (non-expired) posts with real-time updates - OPTIMIZED FOR PERFORMANCE
+    getActivePosts(callback: (posts: Post[]) => void) {
+        const now = new Date();
+
+        // Create query for active posts only
+        const q = query(
+            collection(db, 'posts'),
+            where('movedToUnclaimed', '==', false), // Only posts not moved to unclaimed
+            // Note: We can't use where('expiryDate', '>', now) in the same query with movedToUnclaimed
+            // due to Firestore limitations, so we'll filter expiryDate in the callback
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            // Filter out expired posts on the client side (this is fast since we're only processing ~20-50 posts)
+            const activePosts = posts.filter(post => {
+                if (post.movedToUnclaimed) return false;
+
+                // Check if post has expired
+                if (post.expiryDate) {
+                    let expiryDate: Date;
+
+                    // Handle Firebase Timestamp
+                    if (post.expiryDate && typeof post.expiryDate === 'object' && 'seconds' in post.expiryDate) {
+                        expiryDate = new Date(post.expiryDate.seconds * 1000);
+                    } else if (post.expiryDate instanceof Date) {
+                        expiryDate = post.expiryDate;
+                    } else {
+                        expiryDate = new Date(post.expiryDate);
+                    }
+
+                    // Return false if post has expired
+                    if (expiryDate < now) return false;
+                }
+
+                return true;
+            });
+
+            // Sort posts by createdAt (most recent first)
+            const sortedPosts = activePosts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime();
+            });
+
+            callback(sortedPosts);
+        }, (error) => {
+            console.error('PostService: Error fetching active posts:', error);
             callback([]);
         });
 
