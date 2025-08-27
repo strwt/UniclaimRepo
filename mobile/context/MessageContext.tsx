@@ -11,6 +11,7 @@ interface MessageContextType {
   getConversation: (conversationId: string) => Promise<any>; // Add getConversation function
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>; // New: Delete message function
   refreshConversations: () => Promise<void>; // Add refresh function
+  confirmHandoverIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm ID photo function
 }
 
 const MessageContext = createContext<MessageContextType | undefined>(undefined);
@@ -84,6 +85,14 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
   };
 
+  const confirmHandoverIdPhoto = async (conversationId: string, messageId: string): Promise<void> => {
+    try {
+      await messageService.confirmHandoverIdPhoto(conversationId, messageId, userId!);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to confirm handover ID photo');
+    }
+  };
+
   // Simple refresh function that fetches current conversations
   const refreshConversations = async (): Promise<void> => {
     if (!userId) return;
@@ -114,6 +123,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         getConversation,
         deleteMessage,
         refreshConversations,
+        confirmHandoverIdPhoto,
       }}
     >
       {children}

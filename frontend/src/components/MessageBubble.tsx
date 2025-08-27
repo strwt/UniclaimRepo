@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { Message } from '@/types/Post';
 import ProfilePicture from './ProfilePicture';
 import { useMessage } from '../context/MessageContext';
+import ImagePicker from './ImagePicker';
 
 interface MessageBubbleProps {
   message: Message;
@@ -20,9 +21,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   currentUserId,
   onHandoverResponse
 }) => {
-  const { deleteMessage, updateHandoverResponse } = useMessage();
+  const { deleteMessage, updateHandoverResponse, confirmHandoverIdPhoto } = useMessage();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showIdPhotoModal, setShowIdPhotoModal] = useState(false);
+  const [selectedIdPhoto, setSelectedIdPhoto] = useState<File | null>(null);
+  const [isUploadingIdPhoto, setIsUploadingIdPhoto] = useState(false);
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '';
     
@@ -34,13 +38,81 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     if (!onHandoverResponse) return;
     
     try {
-      // Update the handover message with the response
+      // If accepting, show ID photo modal
+      if (status === 'accepted') {
+        setShowIdPhotoModal(true);
+        return;
+      }
+      
+      // For rejection, proceed as normal
       await updateHandoverResponse(conversationId, message.id, status);
       
       // Call the callback to update UI
       onHandoverResponse(message.id, status);
     } catch (error) {
       console.error('Failed to update handover response:', error);
+    }
+  };
+
+  const handleIdPhotoUpload = async (photoFile: File) => {
+    try {
+      setIsUploadingIdPhoto(true);
+      
+      console.log('📸 Starting ID photo upload...', photoFile.name);
+      
+      // Upload ID photo to Cloudinary
+      const { cloudinaryService } = await import('../utils/cloudinary');
+      const uploadedUrl = await cloudinaryService.uploadImage(photoFile, 'id_photos');
+      
+      console.log('✅ ID photo uploaded successfully:', uploadedUrl);
+      
+      // Update handover response with ID photo
+      const { messageService } = await import('../utils/firebase');
+      await messageService.updateHandoverResponse(
+        conversationId,
+        message.id,
+        'accepted',
+        currentUserId,
+        uploadedUrl
+      );
+      
+      console.log('✅ Handover response updated with ID photo');
+      
+      // Call the callback to update UI
+      onHandoverResponse(message.id, 'accepted');
+      
+      // Close modal and reset state
+      setShowIdPhotoModal(false);
+      setSelectedIdPhoto(null);
+      
+      // Show success message
+      alert('ID photo uploaded successfully! The item owner will now review and confirm.');
+      
+    } catch (error: any) {
+      console.error('❌ Failed to upload ID photo:', error);
+      
+      let errorMessage = 'Failed to upload ID photo. Please try again.';
+      
+      if (error.message?.includes('Network request failed')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.message?.includes('Cloudinary cloud name not configured')) {
+        errorMessage = 'Cloudinary not configured. Please contact support.';
+      } else if (error.message?.includes('Upload preset not configured')) {
+        errorMessage = 'Upload configuration error. Please contact support.';
+      }
+      
+      alert('Upload Error: ' + errorMessage);
+    } finally {
+      setIsUploadingIdPhoto(false);
+    }
+  };
+
+  const handleConfirmIdPhoto = async () => {
+    try {
+      await confirmHandoverIdPhoto(conversationId, message.id);
+    } catch (error: any) {
+      console.error('Failed to confirm ID photo:', error);
+      alert('Failed to confirm ID photo. Please try again.');
     }
   };
 
@@ -64,8 +136,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     const handoverData = message.handoverData;
     if (!handoverData) return null;
 
-    // Only show buttons if the handover is still pending and current user is not the sender
+    // Show different UI based on status and user role
     const canRespond = handoverData.status === 'pending' && !isOwnMessage;
+    const canConfirm = handoverData.status === 'pending_confirmation' && isOwnMessage;
+    const isCompleted = handoverData.status === 'accepted' || handoverData.status === 'rejected';
 
     return (
       <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -73,6 +147,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           <strong>Handover Request:</strong> {handoverData.postTitle}
         </div>
         
+        {/* Show ID photo if uploaded */}
+        {handoverData.idPhotoUrl && (
+          <div className="mb-3 p-2 bg-white rounded border">
+            <div className="text-xs text-gray-600 mb-1">ID Photo:</div>
+            <img 
+              src={handoverData.idPhotoUrl} 
+              alt="ID Photo"
+              className="w-20 h-12 rounded object-cover"
+            />
+          </div>
+        )}
+        
+        {/* Action buttons */}
         {canRespond ? (
           <div className="flex gap-2">
             <button
@@ -88,12 +175,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               Reject
             </button>
           </div>
+        ) : canConfirm ? (
+          <div className="flex gap-2">
+            <button
+              onClick={handleConfirmIdPhoto}
+              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-md hover:bg-blue-600 transition-colors"
+            >
+              Confirm ID Photo
+            </button>
+          </div>
         ) : (
           <div className="text-xs text-blue-600">
             Status: <span className="capitalize font-medium">{handoverData.status}</span>
-            {handoverData.status !== 'pending' && (
+            {isCompleted && handoverData.respondedAt && (
               <span className="ml-2">
-                {handoverData.respondedAt && `at ${formatTime(handoverData.respondedAt)}`}
+                at {formatTime(handoverData.respondedAt)}
+              </span>
+            )}
+            {handoverData.status === 'accepted' && handoverData.idPhotoConfirmed && (
+              <span className="ml-2 text-green-600">
+                ✓ ID Photo Confirmed
               </span>
             )}
           </div>
@@ -136,8 +237,22 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     );
   };
 
+  // ID Photo Modal using ImagePicker component
+  const renderIdPhotoModal = () => {
+    if (!showIdPhotoModal) return null;
+    
+    return (
+      <ImagePicker
+        onImageSelect={handleIdPhotoUpload}
+        onClose={() => setShowIdPhotoModal(false)}
+        isUploading={isUploadingIdPhoto}
+      />
+    );
+  };
+
   return (
     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-3`}>
+      {renderIdPhotoModal()}
       <div className={`max-w-xs lg:max-w-md ${isOwnMessage ? 'order-2' : 'order-1'}`}>
         {showSenderName && !isOwnMessage && (
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-1 ml-2">

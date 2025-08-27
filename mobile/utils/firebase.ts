@@ -397,17 +397,25 @@ export const messageService = {
         }
     },
 
-    // Update handover response
-    async updateHandoverResponse(conversationId: string, messageId: string, status: 'accepted' | 'rejected', responderId: string): Promise<void> {
+    // Update handover response with ID photo
+    async updateHandoverResponse(conversationId: string, messageId: string, status: 'accepted' | 'rejected', responderId: string, idPhotoUrl?: string): Promise<void> {
         try {
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
 
-            // Update the handover message with the response
-            await updateDoc(messageRef, {
+            // Update the handover message with the response and ID photo
+            const updateData: any = {
                 'handoverData.status': status,
                 'handoverData.respondedAt': serverTimestamp(),
                 'handoverData.responderId': responderId
-            });
+            };
+
+            // If accepting with ID photo, add the photo URL and change status to pending confirmation
+            if (status === 'accepted' && idPhotoUrl) {
+                updateData['handoverData.idPhotoUrl'] = idPhotoUrl;
+                updateData['handoverData.status'] = 'pending_confirmation'; // New status for photo confirmation
+            }
+
+            await updateDoc(messageRef, updateData);
 
             // Note: No new chat bubble is created - only the status is updated
             // The existing handover request message will show the updated status
@@ -415,6 +423,25 @@ export const messageService = {
         } catch (error: any) {
             console.error('❌ Mobile: Failed to update handover response:', error);
             throw new Error(error.message || 'Failed to update handover response');
+        }
+    },
+
+    // Confirm ID photo for handover
+    async confirmHandoverIdPhoto(conversationId: string, messageId: string, confirmBy: string): Promise<void> {
+        try {
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+
+            // Update the handover message to confirm the ID photo
+            await updateDoc(messageRef, {
+                'handoverData.idPhotoConfirmed': true,
+                'handoverData.idPhotoConfirmedAt': serverTimestamp(),
+                'handoverData.idPhotoConfirmedBy': confirmBy,
+                'handoverData.status': 'accepted' // Final status after confirmation
+            });
+
+        } catch (error: any) {
+            console.error('❌ Mobile: Failed to confirm handover ID photo:', error);
+            throw new Error(error.message || 'Failed to confirm handover ID photo');
         }
     },
 

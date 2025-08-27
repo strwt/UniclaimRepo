@@ -8,7 +8,8 @@ import {
   TextInput, 
   KeyboardAvoidingView, 
   Platform,
-  Alert
+  Alert,
+  Image
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMessage } from "@/context/MessageContext";
 import { useAuth } from "@/context/AuthContext";
 import type { Message, RootStackParamList } from "@/types/type";
+import ImagePicker from "@/components/ImagePicker";
 
 type ChatRouteProp = RouteProp<RootStackParamList, 'Chat'>;
 type ChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Chat'>;
@@ -33,8 +35,11 @@ const MessageBubble = ({
   currentUserId: string;
   onHandoverResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
 }) => {
-  const { deleteMessage } = useMessage();
+  const { deleteMessage, confirmHandoverIdPhoto } = useMessage();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showIdPhotoModal, setShowIdPhotoModal] = useState(false);
+  const [selectedIdPhoto, setSelectedIdPhoto] = useState<string | null>(null);
+  const [isUploadingIdPhoto, setIsUploadingIdPhoto] = useState(false);
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -45,7 +50,13 @@ const MessageBubble = ({
     if (!onHandoverResponse) return;
     
     try {
-      // Update the handover message with the response
+      // If accepting, show ID photo modal
+      if (status === 'accepted') {
+        setShowIdPhotoModal(true);
+        return;
+      }
+      
+      // For rejection, proceed as normal
       const { messageService } = await import('@/utils/firebase');
       await messageService.updateHandoverResponse(
         conversationId,
@@ -58,6 +69,68 @@ const MessageBubble = ({
       onHandoverResponse(message.id, status);
     } catch (error) {
       console.error('Failed to update handover response:', error);
+    }
+  };
+
+  const handleIdPhotoUpload = async (photoUri: string) => {
+    try {
+      setIsUploadingIdPhoto(true);
+      
+      console.log('📸 Starting ID photo upload...', photoUri);
+      
+      // Upload ID photo to Cloudinary
+      const { cloudinaryService } = await import('@/utils/cloudinary');
+      const uploadedUrl = await cloudinaryService.uploadImage(photoUri, 'id_photos');
+      
+      console.log('✅ ID photo uploaded successfully:', uploadedUrl);
+      
+      // Update handover response with ID photo
+      const { messageService } = await import('@/utils/firebase');
+      await messageService.updateHandoverResponse(
+        conversationId,
+        message.id,
+        'accepted',
+        currentUserId,
+        uploadedUrl
+      );
+      
+      console.log('✅ Handover response updated with ID photo');
+      
+      // Call the callback to update UI
+      onHandoverResponse(message.id, 'accepted');
+      
+      // Close modal and reset state
+      setShowIdPhotoModal(false);
+      setSelectedIdPhoto(null);
+      
+      // Show success message
+      Alert.alert('Success', 'ID photo uploaded successfully! The item owner will now review and confirm.');
+      
+    } catch (error: any) {
+      console.error('❌ Failed to upload ID photo:', error);
+      
+      let errorMessage = 'Failed to upload ID photo. Please try again.';
+      
+      if (error.message?.includes('Network request failed')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.message?.includes('Cloudinary cloud name not configured')) {
+        errorMessage = 'Cloudinary not configured. Please contact support.';
+      } else if (error.message?.includes('Upload preset not configured')) {
+        errorMessage = 'Upload configuration error. Please contact support.';
+      }
+      
+      Alert.alert('Upload Error', errorMessage);
+    } finally {
+      setIsUploadingIdPhoto(false);
+    }
+  };
+
+  const handleConfirmIdPhoto = async () => {
+    try {
+      await confirmHandoverIdPhoto(conversationId, message.id);
+    } catch (error: any) {
+      console.error('Failed to confirm ID photo:', error);
+      Alert.alert('Error', 'Failed to confirm ID photo. Please try again.');
     }
   };
 
@@ -96,8 +169,10 @@ const MessageBubble = ({
     const handoverData = message.handoverData;
     if (!handoverData) return null;
 
-    // Only show buttons if the handover is still pending and current user is not the sender
+    // Show different UI based on status and user role
     const canRespond = handoverData.status === 'pending' && !isOwnMessage;
+    const canConfirm = handoverData.status === 'pending_confirmation' && isOwnMessage;
+    const isCompleted = handoverData.status === 'accepted' || handoverData.status === 'rejected';
 
     return (
       <View className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -105,6 +180,19 @@ const MessageBubble = ({
           <Text className="font-bold">Handover Request:</Text> {handoverData.postTitle}
         </Text>
         
+        {/* Show ID photo if uploaded */}
+        {handoverData.idPhotoUrl && (
+          <View className="mb-3 p-2 bg-white rounded border">
+            <Text className="text-xs text-gray-600 mb-1">ID Photo:</Text>
+            <Image 
+              source={{ uri: handoverData.idPhotoUrl }} 
+              className="w-20 h-12 rounded"
+              resizeMode="cover"
+            />
+          </View>
+        )}
+        
+        {/* Action buttons */}
         {canRespond ? (
           <View className="flex-row gap-2">
             <TouchableOpacity
@@ -120,12 +208,26 @@ const MessageBubble = ({
               <Text className="text-white text-xs">Reject</Text>
             </TouchableOpacity>
           </View>
+        ) : canConfirm ? (
+          <View className="flex-row gap-2">
+            <TouchableOpacity
+              onPress={handleConfirmIdPhoto}
+              className="px-3 py-1 bg-blue-500 rounded-md"
+            >
+              <Text className="text-white text-xs">Confirm ID Photo</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <Text className="text-xs text-blue-600">
             Status: <Text className="capitalize font-medium">{handoverData.status}</Text>
-            {handoverData.status !== 'pending' && handoverData.respondedAt && (
+            {isCompleted && handoverData.respondedAt && (
               <Text className="ml-2">
                 at {formatTime(handoverData.respondedAt)}
+              </Text>
+            )}
+            {handoverData.status === 'accepted' && handoverData.idPhotoConfirmed && (
+              <Text className="ml-2 text-green-600">
+                ✓ ID Photo Confirmed
               </Text>
             )}
           </Text>
@@ -170,8 +272,22 @@ const MessageBubble = ({
     );
   };
 
+  // ID Photo Modal using ImagePicker component
+  const renderIdPhotoModal = () => {
+    if (!showIdPhotoModal) return null;
+    
+    return (
+      <ImagePicker
+        onImageSelect={handleIdPhotoUpload}
+        onClose={() => setShowIdPhotoModal(false)}
+        isUploading={isUploadingIdPhoto}
+      />
+    );
+  };
+
   return (
     <View className={`mb-3 ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+      {renderIdPhotoModal()}
       <View 
         className={`max-w-[80%] rounded-2xl px-4 py-3 ${
           isOwnMessage 

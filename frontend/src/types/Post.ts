@@ -45,10 +45,15 @@ export interface Message {
   handoverData?: {
     postId: string;
     postTitle: string;
-    status: "pending" | "accepted" | "rejected";
+    status: "pending" | "accepted" | "rejected" | "pending_confirmation";
     requestedAt: any;
     respondedAt?: any;
     responseMessage?: string;
+    // New fields for ID photo verification
+    idPhotoUrl?: string; // URL of the uploaded ID photo
+    idPhotoConfirmed?: boolean; // Whether the item owner confirmed the ID photo
+    idPhotoConfirmedAt?: any; // When the ID photo was confirmed
+    idPhotoConfirmedBy?: string; // User ID who confirmed the ID photo
   };
 }
 

@@ -13,6 +13,7 @@ interface MessageContextType {
   markMessageAsRead: (conversationId: string, messageId: string) => Promise<void>;
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>; // New: Delete message function
   updateHandoverResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update handover response
+  confirmHandoverIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm ID photo function
   refreshConversations: () => Promise<void>; // Simplified refresh function
 }
 
@@ -106,6 +107,14 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
   };
 
+  const confirmHandoverIdPhoto = async (conversationId: string, messageId: string): Promise<void> => {
+    try {
+      await messageService.confirmHandoverIdPhoto(conversationId, messageId, userId!);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to confirm handover ID photo');
+    }
+  };
+
   // Simple refresh function that fetches current conversations
   const refreshConversations = async (): Promise<void> => {
     if (!userId) return;
@@ -137,6 +146,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         markMessageAsRead,
         deleteMessage,
         updateHandoverResponse,
+        confirmHandoverIdPhoto,
         refreshConversations,
       }}
     >
