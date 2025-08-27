@@ -3,7 +3,6 @@ import {
   HiOutlineHome,
   HiOutlineX,
   HiOutlineUsers,
-  HiOutlineDocumentText,
   HiOutlineTicket,
   HiOutlineChartBar,
   HiOutlineCog,
@@ -95,30 +94,8 @@ export default function AdminSideNav({
               tooltipTextClassName="text-navyblue text-base"
               hoverContainerBgClass="bg-gray-100"
             />
-            <NavText
-              icon={<HiOutlineDocumentText className="size-6 stroke-[1.5px]" />}
-              label="Manage Posts"
-              to="/admin/posts"
-              isOpen={isOpen}
-              className="hover:bg-gray-100"
-              iconClassName="text-black"
-              textClassName="text-black"
-              tooltipIconClassName="text-navyblue text-xl"
-              tooltipTextClassName="text-navyblue text-base"
-              hoverContainerBgClass="bg-gray-100"
-            />
-            <NavText
-              icon={<HiOutlineTicket className="size-6 stroke-[1.5px]" />}
-              label="Manage Tickets"
-              to="/admin/tickets"
-              isOpen={isOpen}
-              className="hover:bg-gray-100"
-              iconClassName="text-black"
-              textClassName="text-black"
-              tooltipIconClassName="text-navyblue text-xl"
-              tooltipTextClassName="text-navyblue text-base"
-              hoverContainerBgClass="bg-gray-100"
-            />
+
+
             <NavText
               icon={<HiOutlineChartBar className="size-6 stroke-[1.5px]" />}
               label="Analytics"
@@ -179,26 +156,8 @@ export default function AdminSideNav({
                   iconClassName="text-black"
                   textClassName="font-manrope"
                 />
-                <NavText
-                  icon={<HiOutlineDocumentText className="size-6 stroke-[1.5px]" />}
-                  label="Manage Posts"
-                  to="/admin/posts"
-                  isOpen={isOpen}
-                  onClick={onMobNavClose}
-                  className="hover:bg-gray-50 rounded pl-4 justify-start"
-                  iconClassName="text-black"
-                  textClassName="font-manrope"
-                />
-                <NavText
-                  icon={<HiOutlineTicket className="size-6 stroke-[1.5px]" />}
-                  label="Manage Tickets"
-                  to="/admin/tickets"
-                  isOpen={isOpen}
-                  onClick={onMobNavClose}
-                  className="hover:bg-gray-50 rounded pl-4 justify-start"
-                  iconClassName="text-black"
-                  textClassName="font-manrope"
-                />
+
+
                 <NavText
                   icon={<HiOutlineChartBar className="size-6 stroke-[1.5px]" />}
                   label="Analytics"
