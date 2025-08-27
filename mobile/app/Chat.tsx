@@ -33,6 +33,8 @@ const MessageBubble = ({
   currentUserId: string;
   onHandoverResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
 }) => {
+  const { deleteMessage } = useMessage();
+  const [isDeleting, setIsDeleting] = useState(false);
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -57,6 +59,35 @@ const MessageBubble = ({
     } catch (error) {
       console.error('Failed to update handover response:', error);
     }
+  };
+
+  const handleDeleteMessage = async () => {
+    if (!isOwnMessage) return;
+    
+    Alert.alert(
+      'Delete Message',
+      'This action cannot be undone. Are you sure you want to delete this message?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsDeleting(true);
+              await deleteMessage(conversationId, message.id);
+            } catch (error: any) {
+              Alert.alert('Error', `Failed to delete message: ${error.message}`);
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const renderHandoverRequest = () => {
@@ -161,9 +192,26 @@ const MessageBubble = ({
         {renderHandoverResponse()}
         {renderSystemMessage()}
       </View>
-      <Text className="text-xs text-gray-500 mt-1 mx-2">
-        {formatTime(message.timestamp)}
-      </Text>
+      <View className="flex-row items-center justify-between mt-1 mx-2">
+        <Text className="text-xs text-gray-500">
+          {formatTime(message.timestamp)}
+        </Text>
+        
+        {/* Delete button for own messages */}
+        {isOwnMessage && (
+          <TouchableOpacity
+            onPress={handleDeleteMessage}
+            disabled={isDeleting}
+            className="ml-2 p-1"
+          >
+            <Ionicons 
+              name="trash-outline" 
+              size={16} 
+              color={isDeleting ? "#9ca3af" : "#ef4444"} 
+            />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 };

@@ -63,10 +63,27 @@ service cloud.firestore {
       // Also allow any authenticated user to delete conversations for cleanup (simplified for reliability)
       allow delete: if request.auth != null && !isUserBanned();
       
-      // Messages subcollection - SIMPLIFIED
+      // Messages subcollection - RESTRICTED deletion
       match /messages/{messageId} {
-        // Only non-banned users can access messages
-        allow read, write, delete: if request.auth != null && !isUserBanned();
+        // Users can read messages in conversations they participate in
+        allow read: if request.auth != null && 
+          !isUserBanned() && 
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        
+        // Users can create messages in conversations they participate in
+        allow create: if request.auth != null && 
+          !isUserBanned() && 
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        
+        // Users can ONLY delete their own messages
+        allow delete: if request.auth != null && 
+          !isUserBanned() && 
+          resource.data.senderId == request.auth.uid;
+        
+        // Users can update their own messages (for editing)
+        allow update: if request.auth != null && 
+          !isUserBanned() && 
+          resource.data.senderId == request.auth.uid;
       }
     }
     

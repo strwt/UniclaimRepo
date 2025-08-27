@@ -706,6 +706,34 @@ export const messageService = {
         } catch (error: any) {
             throw new Error(error.message || 'Failed to update post status');
         }
+    },
+
+    // Delete a message (only the sender can delete their own messages)
+    async deleteMessage(conversationId: string, messageId: string, currentUserId: string): Promise<void> {
+        try {
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+
+            // Get the message to verify ownership
+            const messageDoc = await getDoc(messageRef);
+            if (!messageDoc.exists()) {
+                throw new Error('Message not found');
+            }
+
+            const messageData = messageDoc.data();
+
+            // Security check: Only the sender can delete their message
+            if (messageData.senderId !== currentUserId) {
+                throw new Error('You can only delete your own messages');
+            }
+
+            // Delete the message
+            await deleteDoc(messageRef);
+            console.log(`✅ Message ${messageId} deleted successfully`);
+
+        } catch (error: any) {
+            console.error('❌ Failed to delete message:', error);
+            throw new Error(error.message || 'Failed to delete message');
+        }
     }
 };
 

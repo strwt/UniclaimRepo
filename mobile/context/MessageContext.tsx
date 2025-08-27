@@ -9,6 +9,7 @@ interface MessageContextType {
   createConversation: (postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: any, postOwnerUserData?: any) => Promise<string>;
   getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void) => () => void;
   getConversation: (conversationId: string) => Promise<any>; // Add getConversation function
+  deleteMessage: (conversationId: string, messageId: string) => Promise<void>; // New: Delete message function
   refreshConversations: () => Promise<void>; // Add refresh function
 }
 
@@ -75,6 +76,14 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
   };
 
+  const deleteMessage = async (conversationId: string, messageId: string): Promise<void> => {
+    try {
+      await messageService.deleteMessage(conversationId, messageId, userId!);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to delete message');
+    }
+  };
+
   // Simple refresh function that fetches current conversations
   const refreshConversations = async (): Promise<void> => {
     if (!userId) return;
@@ -103,6 +112,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         createConversation,
         getConversationMessages,
         getConversation,
+        deleteMessage,
         refreshConversations,
       }}
     >

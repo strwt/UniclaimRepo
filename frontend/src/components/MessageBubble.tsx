@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Message } from '@/types/Post';
 import ProfilePicture from './ProfilePicture';
-import { messageService } from '../utils/firebase';
+import { useMessage } from '../context/MessageContext';
 
 interface MessageBubbleProps {
   message: Message;
@@ -20,6 +20,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   currentUserId,
   onHandoverResponse
 }) => {
+  const { deleteMessage, updateHandoverResponse } = useMessage();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '';
     
@@ -32,17 +35,27 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     
     try {
       // Update the handover message with the response
-      await messageService.updateHandoverResponse(
-        conversationId,
-        message.id,
-        status,
-        currentUserId
-      );
+      await updateHandoverResponse(conversationId, message.id, status);
       
       // Call the callback to update UI
       onHandoverResponse(message.id, status);
     } catch (error) {
       console.error('Failed to update handover response:', error);
+    }
+  };
+
+  const handleDeleteMessage = async () => {
+    if (!isOwnMessage) return;
+    
+    try {
+      setIsDeleting(true);
+      await deleteMessage(conversationId, message.id);
+      setShowDeleteConfirm(false);
+    } catch (error: any) {
+      console.error('Failed to delete message:', error);
+      alert(`Failed to delete message: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -156,17 +169,58 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         <div className={`text-xs text-gray-400 mt-1 ${
           isOwnMessage ? 'text-right mr-2' : 'ml-2'
         }`}>
-          {formatTime(message.timestamp)}
-          {isOwnMessage && (
-            <span className="ml-2">
-              {message.readBy && message.readBy.length > 1 ? (
-                <span className="text-blue-500" title="Read">✓✓</span>
-              ) : (
-                <span className="text-gray-400" title="Delivered">✓</span>
+          <div className="flex items-center justify-between">
+            <div>
+              {formatTime(message.timestamp)}
+              {isOwnMessage && (
+                <span className="ml-2">
+                  {message.readBy && message.readBy.length > 1 ? (
+                    <span className="text-blue-500" title="Read">✓✓</span>
+                  ) : (
+                    <span className="text-gray-400" title="Delivered">✓</span>
+                  )}
+                </span>
               )}
-            </span>
-          )}
+            </div>
+            
+            {/* Delete button for own messages */}
+            {isOwnMessage && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="ml-2 text-red-400 hover:text-red-600 transition-colors"
+                title="Delete message"
+              >
+                🗑️
+              </button>
+            )}
+          </div>
         </div>
+        
+        {/* Delete confirmation dialog */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-4 rounded-lg shadow-lg max-w-sm mx-4">
+              <h3 className="text-lg font-semibold mb-2">Delete Message?</h3>
+              <p className="text-gray-600 mb-4">This action cannot be undone.</p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-3 py-1 text-gray-600 hover:text-gray-800 transition-colors"
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteMessage}
+                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

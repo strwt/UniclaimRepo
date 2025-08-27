@@ -52,11 +52,28 @@ coverage/
 *.lcov
 test-results/
 
+# Test and debug files
+test-*.js
+test-*.html
+test-*.tsx
+test-*.ts
+test-*.jsx
+debug-*.js
+debug-*.html
+debug-*.tsx
+debug-*.ts
+debug-*.jsx
+debug-*.js
+debug-*.html
+
 # Temporary files
 *.tmp
 *.temp
 *.swp
 *~
+
+# Documentation files
+*.md
 
 # Sensitive data
 secrets/
