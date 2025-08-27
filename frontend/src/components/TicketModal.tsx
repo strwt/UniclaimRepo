@@ -230,6 +230,17 @@ const TicketModal = ({
           )}
         </div>
 
+        {/* Found Action Badge - only show for found items */}
+        {post.type === "found" && post.foundAction && (
+          <div className="mt-4 flex justify-center">
+            <span className="px-3 py-2 rounded-md font-medium bg-blue-100 text-blue-700 text-sm">
+              {post.foundAction === "keep" ? "Keep" : 
+               post.foundAction === "turnover to OSA" ? "Turnover to OSA" : 
+               "Turnover to Campus Security"}
+            </span>
+          </div>
+        )}
+
         {/* Info Section */}
         <div className="space-y-2 mt-5">
           {isEditing ? (
@@ -293,6 +304,23 @@ const TicketModal = ({
                   <div className="bg-gray-100 p-2 lg:h-44 rounded border-gray-300">
                     <p className="text-[12px]">{post.description}</p>
                   </div>
+                  
+                  {/* Found Action Information - only show for found items */}
+                  {post.type === "found" && post.foundAction && (
+                    <>
+                      <h1 className="text-sm mt-3 mb-2">Found Item Action</h1>
+                      <div className="bg-blue-100 p-2 rounded border-blue-300">
+                        <p className="text-[12px] text-blue-700 font-medium">
+                          {post.foundAction === "keep" 
+                            ? "The finder will keep this item and return it themselves"
+                            : post.foundAction === "turnover to OSA"
+                            ? "This item will be turned over to the OSA office"
+                            : "This item will be turned over to Campus Security"
+                          }
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               <h1 className="text-sm mt-7">Contact Details</h1>

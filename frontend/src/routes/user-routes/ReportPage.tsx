@@ -5,6 +5,7 @@ import MobileNavText from "@/components/NavHeadComp";
 import { useToast } from "@/context/ToastContext";
 import { useAuth } from "@/context/AuthContext";
 import ItemInfoForm from "@/components/ItemInfoForm";
+import FoundActionModal from "@/components/FoundActionModal";
 import SuccessPic from "@/assets/success.png";
 // import { useNavigate } from "react-router-dom";
 import type { Post } from "@/types/Post";
@@ -41,6 +42,10 @@ export default function ReportPage() {
   const { showToast } = useToast();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // New state for found action modal
+  const [showFoundActionModal, setShowFoundActionModal] = useState(false);
+  const [selectedFoundAction, setSelectedFoundAction] = useState<"keep" | "turnover to OSA" | "turnover to Campus Security" | null>(null);
 
   useEffect(() => {
     if (showSuccessModal) {
@@ -89,11 +94,22 @@ export default function ReportPage() {
     setSelectedFiles((prev) => prev.filter((file) => file.name !== name));
   };
 
+  const handleFoundActionSelect = (action: "keep" | "turnover to OSA" | "turnover to Campus Security") => {
+    setSelectedFoundAction(action);
+    setShowFoundActionModal(false);
+  };
+
   const handleReportClick = (type: "lost" | "found") => {
     if (selectedReport === type) {
       setSelectedReport(null); // 👈 deselect if same type is clicked again
+      if (type === "found") {
+        setSelectedFoundAction(null); // Clear found action when deselecting
+      }
     } else {
       setSelectedReport(type);
+      if (type === "found") {
+        setShowFoundActionModal(true); // Show modal for found items
+      }
     }
     setWasSubmitted(false);
   };
@@ -172,6 +188,11 @@ export default function ReportPage() {
         status: "pending",
       };
 
+      // Add found action if this is a found item
+      if (selectedReport === "found" && selectedFoundAction) {
+        createdPost.foundAction = selectedFoundAction;
+      }
+
       // Only add optional fields if they have valid values
       if (coordinates) {
         createdPost.coordinates = coordinates;
@@ -187,11 +208,12 @@ export default function ReportPage() {
       setTitle("");
       setDescription("");
       setSelectedReport(null);
-              setSelectedLocation(null);
+      setSelectedLocation(null);
       setCoordinates(null);
       setActiveCategory("");
       setSelectedDateTime("");
       setSelectedFiles([]);
+      setSelectedFoundAction(null);
       setWasSubmitted(false);
       setShowSuccessModal(true);
       
@@ -278,7 +300,9 @@ export default function ReportPage() {
               onClick={() => handleReportClick("found")}
             >
               <span className="flex items-center justify-center gap-1">
-                Found Item
+                {selectedReport === "found" && selectedFoundAction
+                  ? `Found (${selectedFoundAction === "keep" ? "Keep" : selectedFoundAction === "turnover to OSA" ? "OSA" : "Campus Security"})`
+                  : "Found Item"}
                 {selectedReport === "found" && (
                   <FiX className="w-4 h-4 text-white" />
                 )}
@@ -374,6 +398,19 @@ export default function ReportPage() {
           </button>
         </div>
       </form>
+      {/* Found Action Modal */}
+      <FoundActionModal
+        isOpen={showFoundActionModal}
+        onClose={() => setShowFoundActionModal(false)}
+        onCancel={() => {
+          setShowFoundActionModal(false);
+          setSelectedReport(null); // Reset found item selection
+          setSelectedFoundAction(null); // Reset selected action
+        }}
+        onActionSelect={handleFoundActionSelect}
+        selectedAction={selectedFoundAction}
+      />
+
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 bg-opacity-40">
           <div className="flex flex-col items-center justify-center text-center bg-white rounded p-5 w-90 max-w-lg">

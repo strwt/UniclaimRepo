@@ -277,6 +277,15 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
             >
               {post.type}
             </span>
+            
+            {/* Found Action Badge - only show for found items with action */}
+            {post.type === "found" && post.foundAction && (
+              <span className="px-2 py-1 rounded-[3px] font-medium bg-blue-100 text-blue-700">
+                {post.foundAction === "keep" ? "Keep" : 
+                 post.foundAction === "turnover to OSA" ? "Turnover to OSA" : 
+                 "Turnover to Campus Security"}
+              </span>
+            )}
           </div>
         </div>
 
@@ -295,6 +304,23 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
             <div className="bg-gray-50 border border-gray-400 rounded py-2 px-2 h-52 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
               <p className="text-[13px] text-gray-600">{post.description}</p>
             </div>
+
+            {/* Found Action Information - only show for found items */}
+            {post.type === "found" && post.foundAction && (
+              <>
+                <p className="text-[13px] mt-3 mb-2">Found Item Action</p>
+                <div className="bg-blue-50 border border-blue-200 rounded py-2 px-2">
+                  <p className="text-[13px] text-blue-700 font-medium">
+                    {post.foundAction === "keep" 
+                      ? "The finder will keep this item and return it themselves"
+                      : post.foundAction === "turnover to OSA"
+                      ? "This item will be turned over to the OSA office"
+                      : "This item will be turned over to Campus Security"
+                    }
+                  </p>
+                </div>
+              </>
+            )}
 
             <div className="">
               {post.coordinates && (

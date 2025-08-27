@@ -100,6 +100,15 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
             {post.type}
           </span>
           
+          {/* Found Action Badge - only show for found items with action */}
+          {post.type === "found" && post.foundAction && (
+            <span className="px-2 py-1 rounded-[3px] font-medium bg-blue-100 text-blue-700 text-[11px]">
+              {post.foundAction === "keep" ? "Keep" : 
+               post.foundAction === "turnover to OSA" ? "OSA" : 
+               "Campus Security"}
+            </span>
+          )}
+          
           {/* Expiry Countdown Badge */}
           {post.expiryDate && (
             <>

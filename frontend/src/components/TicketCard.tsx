@@ -49,6 +49,17 @@ const TicketCard = ({ post, onClick }: PostCardProps) => {
               : "Unknown date"}
           </p>
         </div>
+        
+        {/* Found Action Display - only show for found items */}
+        {post.type === "found" && post.foundAction && (
+          <div className="mb-2">
+            <span className="text-xs text-blue-600 font-medium">
+              Action: {post.foundAction === "keep" ? "Keep" : 
+                       post.foundAction === "turnover to OSA" ? "Turnover to OSA" : 
+                       "Turnover to Campus Security"}
+            </span>
+          </div>
+        )}
         <span className="text-sm text-gray-600 truncate font-inter">
           {post.description}
         </span>
