@@ -143,11 +143,13 @@
 </head>
 
 <body>
-    <h1>🧪 Handover Implementation Test</h1>
+    <h1>🧪 Handover Implementation Test - UPDATED BEHAVIOR</h1>
 
     <div class="test-section">
         <h2>Test Message Types</h2>
-        <p>This page tests the different message types and handover functionality we implemented.</p>
+        <p><strong>NEW BEHAVIOR:</strong> When rejecting/accepting handover requests, no new chat bubble is created.
+            The status is updated directly in the existing handover request message.</p>
+        <p>This prevents chat clutter and provides a cleaner user experience.</p>
 
         <div class="test-button" onclick="testRegularMessage()">Test Regular Message</div>
         <div class="test-button" onclick="testHandoverRequest()">Test Handover Request</div>
@@ -323,7 +325,7 @@
         function handleHandoverResponse(messageId, status) {
             log(`Handover response: ${status} for message ${messageId}`);
 
-            // Update the existing message status
+            // Update the existing message status (NEW BEHAVIOR: No new chat bubble)
             const messages = document.querySelectorAll('.message-bubble');
             messages.forEach(bubble => {
                 const handoverRequest = bubble.querySelector('.handover-request');
@@ -342,19 +344,9 @@
                 }
             });
 
-            // Add response message
-            const responseMessage = {
-                id: messageId++,
-                text: `Handover request ${status}`,
-                timestamp: new Date(),
-                messageType: 'handover_response',
-                handoverData: {
-                    status: status,
-                    respondedAt: new Date(),
-                    responderId: 'current_user'
-                }
-            };
-            addMessage(responseMessage, true);
+            // NEW BEHAVIOR: No new response message is created
+            // The status is updated directly in the existing handover request
+            log(`✅ Status updated to "${status}" - No new chat bubble created`);
         }
 
         function clearMessages() {

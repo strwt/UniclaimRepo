@@ -409,33 +409,8 @@ export const messageService = {
                 'handoverData.responderId': responderId
             });
 
-            // Send a response message to confirm the action
-            const messagesRef = collection(db, 'conversations', conversationId, 'messages');
-            const responseMessage = {
-                senderId: responderId,
-                senderName: 'System',
-                senderProfilePicture: null,
-                text: `Handover request ${status}`,
-                timestamp: serverTimestamp(),
-                readBy: [responderId],
-                messageType: "handover_response",
-                handoverData: {
-                    status,
-                    respondedAt: serverTimestamp(),
-                    responderId
-                }
-            };
-
-            await addDoc(messagesRef, responseMessage);
-
-            // Update last message in conversation
-            await updateDoc(doc(db, 'conversations', conversationId), {
-                lastMessage: {
-                    text: responseMessage.text,
-                    senderId: responseMessage.senderId,
-                    timestamp: responseMessage.timestamp
-                }
-            });
+            // Note: No new chat bubble is created - only the status is updated
+            // The existing handover request message will show the updated status
 
         } catch (error: any) {
             console.error('❌ Mobile: Failed to update handover response:', error);
