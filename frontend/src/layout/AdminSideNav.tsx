@@ -131,18 +131,7 @@ export default function AdminSideNav({
               tooltipTextClassName="text-navyblue text-base"
               hoverContainerBgClass="bg-gray-100"
             />
-            <NavText
-              icon={<HiOutlineEnvelope className="size-6 stroke-[1.5px]" />}
-              label="Contact Support"
-              to="/admin/support"
-              isOpen={isOpen}
-              className="hover:bg-gray-100"
-              iconClassName="text-black"
-              textClassName="text-black"
-              tooltipIconClassName="text-navyblue text-xl"
-              tooltipTextClassName="text-navyblue text-base"
-              hoverContainerBgClass="bg-gray-100"
-            />
+
           </div>
 
         </aside>
@@ -220,16 +209,7 @@ export default function AdminSideNav({
                   iconClassName="text-black"
                   textClassName="font-manrope"
                 />
-                <NavText
-                  icon={<HiOutlineEnvelope className="size-6 stroke-[1.5px]" />}
-                  label="Contact Support"
-                  to="/admin/support"
-                  isOpen={isOpen}
-                  onClick={onMobNavClose}
-                  className="hover:bg-gray-50 rounded pl-4 justify-start"
-                  iconClassName="text-black"
-                  textClassName="font-manrope"
-                />
+
               </div>
 
 
