@@ -252,6 +252,24 @@ export const messageService = {
     // Create a new conversation
     async createConversation(postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: UserData, postOwnerUserData?: any): Promise<string> {
         try {
+            // Fetch post details to get type, status, and creator ID
+            let postType: "lost" | "found" = "lost";
+            let postStatus: "pending" | "resolved" | "rejected" = "pending";
+            let postCreatorId = postOwnerId; // Default to post owner ID
+
+            try {
+                const postDoc = await getDoc(doc(db, 'posts', postId));
+                if (postDoc.exists()) {
+                    const postData = postDoc.data();
+                    postType = postData.type || "lost";
+                    postStatus = postData.status || "pending";
+                    postCreatorId = postData.creatorId || postOwnerId;
+                }
+            } catch (error) {
+                console.warn('Could not fetch post data:', error);
+                // Continue with default values if fetch fails
+            }
+
             // Simple duplicate check: get all user conversations and filter in JavaScript
             const userConversationsQuery = query(
                 collection(db, 'conversations'),
@@ -269,6 +287,10 @@ export const messageService = {
             const conversationData = {
                 postId,
                 postTitle,
+                // New fields for handover button functionality
+                postType,
+                postStatus,
+                postCreatorId,
                 participants: {
                     [currentUserId]: {
                         uid: currentUserId,

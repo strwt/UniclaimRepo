@@ -272,6 +272,24 @@ export const messageService = {
     // Create a new conversation
     async createConversation(postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: UserData, postOwnerUserData?: any): Promise<string> {
         try {
+            // Fetch post details to get type, status, and creator ID
+            let postType: "lost" | "found" = "lost";
+            let postStatus: "pending" | "resolved" | "rejected" = "pending";
+            let postCreatorId = postOwnerId; // Default to post owner ID
+
+            try {
+                const postDoc = await getDoc(doc(db, 'posts', postId));
+                if (postDoc.exists()) {
+                    const postData = postDoc.data();
+                    postType = postData.type || "lost";
+                    postStatus = postData.status || "pending";
+                    postCreatorId = postData.creatorId || postOwnerId;
+                }
+            } catch (error) {
+                console.warn('Could not fetch post data:', error);
+                // Continue with default values if fetch fails
+            }
+
             // Use passed post owner user data or fallback to fetching from users collection
             let postOwnerFirstName = '';
             let postOwnerLastName = '';
@@ -344,6 +362,10 @@ export const messageService = {
             const conversationData = {
                 postId,
                 postTitle,
+                // New fields for handover button functionality
+                postType,
+                postStatus,
+                postCreatorId,
                 participants: {
                     [currentUserId]: {
                         uid: currentUserId,
@@ -547,6 +569,62 @@ export const messageService = {
             }
         } catch (error: any) {
             throw new Error(error.message || 'Failed to mark message as read');
+        }
+    },
+
+    // Update existing conversations with missing post data
+    async updateConversationPostData(conversationId: string): Promise<void> {
+        try {
+            const conversationRef = doc(db, 'conversations', conversationId);
+            const conversationDoc = await getDoc(conversationRef);
+
+            if (!conversationDoc.exists()) {
+                throw new Error('Conversation not found');
+            }
+
+            const conversationData = conversationDoc.data();
+
+            // Check if conversation already has the new fields
+            if (conversationData.postType && conversationData.postStatus && conversationData.postCreatorId) {
+                return; // Already updated
+            }
+
+            // Fetch post data to populate missing fields
+            const postId = conversationData.postId;
+            if (!postId) {
+                throw new Error('Conversation missing postId');
+            }
+
+            const postDoc = await getDoc(doc(db, 'posts', postId));
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            const postData = postDoc.data();
+
+            // Update conversation with missing fields
+            await updateDoc(conversationRef, {
+                postType: postData.type || "lost",
+                postStatus: postData.status || "pending",
+                postCreatorId: postData.creatorId || conversationData.participants?.[Object.keys(conversationData.participants)[0]]?.uid
+            });
+
+            console.log(`✅ Updated conversation ${conversationId} with post data`);
+        } catch (error: any) {
+            console.error('❌ Failed to update conversation post data:', error);
+            throw new Error(error.message || 'Failed to update conversation post data');
+        }
+    },
+
+    // Update post status
+    async updatePostStatus(postId: string, status: 'pending' | 'resolved' | 'rejected'): Promise<void> {
+        try {
+            await updateDoc(doc(db, 'posts', postId), {
+                status,
+                updatedAt: serverTimestamp()
+            });
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to update post status');
         }
     }
 };

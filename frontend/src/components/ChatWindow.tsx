@@ -5,6 +5,7 @@ import MessageBubble from './MessageBubble';
 import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import ProfilePicture from './ProfilePicture';
+import { messageService } from '../utils/firebase';
 
 interface ChatWindowProps {
   conversation: Conversation | null;
@@ -15,6 +16,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { sendMessage, getConversationMessages, markConversationAsRead } = useMessage();
   const { userData } = useAuth();
@@ -48,6 +50,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
     return () => unsubscribe();
   }, [conversation, getConversationMessages, markConversationAsRead, userData]);
+
+  // Update existing conversations with missing post data
+  useEffect(() => {
+    if (!conversation || !userData) return;
+
+    // Check if conversation has the new fields, if not, update it
+    if (!conversation.postType || !conversation.postStatus || !conversation.postCreatorId) {
+      messageService.updateConversationPostData(conversation.id)
+        .catch(error => {
+          console.error('Failed to update conversation post data:', error);
+        });
+    }
+  }, [conversation, userData]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +107,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     return otherParticipant ? (otherParticipant[1].profilePicture || otherParticipant[1].profileImageUrl) : null;
   };
 
+  // Check if handover button should be shown
+  const shouldShowHandoverButton = () => {
+    if (!conversation || !userData) return false;
+    
+    // Only show for lost items
+    if (conversation.postType !== 'lost') return false;
+    
+    // Only show if post is still pending
+    if (conversation.postStatus !== 'pending') return false;
+    
+    // Don't show if current user is the post creator
+    if (conversation.postCreatorId === userData.uid) return false;
+    
+    return true;
+  };
+
   if (!conversation) {
     return (
       <div className="flex-1 flex items-center justify-center  mt-50">
@@ -108,17 +139,28 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     <div className="flex-1 flex flex-col bg-white h-full  mt-11.5">
       {/* Chat Header */}
       <div className="p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-        <h3 className="font-semibold text-gray-900">{conversation.postTitle}</h3>
-                 <div className="flex items-center gap-3 mt-1">
-           <ProfilePicture
-             src={getOtherParticipantProfilePicture(conversation)}
-             alt="participant profile"
-             size="sm"
-           />
-           <p className="text-sm text-gray-500">
-             {getOtherParticipantName(conversation)}
-           </p>
-         </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-gray-900">{conversation.postTitle}</h3>
+            <div className="flex items-center gap-3 mt-1">
+              <ProfilePicture
+                src={getOtherParticipantProfilePicture(conversation)}
+                alt="participant profile"
+                size="sm"
+              />
+              <p className="text-sm text-gray-500">
+                {getOtherParticipantName(conversation)}
+              </p>
+            </div>
+          </div>
+          
+          {/* Handover Item Button */}
+          {shouldShowHandoverButton() && (
+            <button className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+              Handover Item
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages Area */}

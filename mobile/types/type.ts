@@ -64,6 +64,10 @@ export interface Conversation {
   id: string;
   postId: string;
   postTitle: string;
+  // New fields for handover button functionality
+  postType: "lost" | "found";
+  postStatus?: "pending" | "resolved" | "rejected";
+  postCreatorId: string;
   participants: {
     [userId: string]: {
       uid: string;
