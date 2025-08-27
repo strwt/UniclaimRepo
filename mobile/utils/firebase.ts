@@ -575,6 +575,23 @@ export const messageService = {
                 throw new Error('You can only delete your own messages');
             }
 
+            // NEW: Extract and delete images from Cloudinary before deleting the message
+            try {
+                const { extractMessageImages, deleteMessageImages } = await import('./cloudinary');
+                const imageUrls = extractMessageImages(messageData);
+
+                if (imageUrls.length > 0) {
+                    const imageDeletionResult = await deleteMessageImages(imageUrls);
+
+                    if (!imageDeletionResult.success) {
+                        console.warn(`Image deletion completed with some failures. Deleted: ${imageDeletionResult.deleted.length}, Failed: ${imageDeletionResult.failed.length}`);
+                    }
+                }
+            } catch (imageError: any) {
+                console.warn('Failed to delete images from Cloudinary, but continuing with message deletion:', imageError.message);
+                // Continue with message deletion even if image deletion fails
+            }
+
             // Delete the message
             await deleteDoc(messageRef);
 

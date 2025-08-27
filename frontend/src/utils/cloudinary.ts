@@ -396,4 +396,117 @@ export const cloudinaryService = {
     }
 };
 
+// Helper function to extract public ID from Cloudinary URL
+export const extractPublicIdFromUrl = (url: string): string | null => {
+    try {
+        if (!url || !url.includes('cloudinary.com')) {
+            return null;
+        }
+
+        // Handle different Cloudinary URL formats
+        const urlParts = url.split('/');
+        const uploadIndex = urlParts.findIndex(part => part === 'upload');
+
+        if (uploadIndex === -1) {
+            return null;
+        }
+
+        // Extract everything after 'upload' and before any version number
+        const pathAfterUpload = urlParts.slice(uploadIndex + 1);
+
+        // Find the first part that contains the folder structure
+        let publicId = '';
+
+        for (let i = 0; i < pathAfterUpload.length; i++) {
+            const part = pathAfterUpload[i];
+
+            // Skip version numbers (they start with 'v' followed by numbers)
+            if (part.startsWith('v') && /^\d+$/.test(part.substring(1))) {
+                continue;
+            }
+
+            // Build the public ID from this point
+            publicId = pathAfterUpload.slice(i).join('/');
+            break;
+        }
+
+        // Remove file extension if present
+        if (publicId) {
+            publicId = publicId.replace(/\.[^/.]+$/, '');
+        }
+
+        return publicId || null;
+    } catch (error) {
+        console.error('Error extracting public ID from URL:', error);
+        return null;
+    }
+};
+
+// Function to extract image URLs from messages
+export const extractMessageImages = (message: any): string[] => {
+    try {
+        const imageUrls: string[] = [];
+
+        // Check if message has handover data with ID photo
+        if (message.handoverData && message.handoverData.idPhotoUrl) {
+            const idPhotoUrl = message.handoverData.idPhotoUrl;
+
+            // Only include Cloudinary URLs
+            if (idPhotoUrl && typeof idPhotoUrl === 'string' && idPhotoUrl.includes('cloudinary.com')) {
+                imageUrls.push(idPhotoUrl);
+            }
+        }
+
+        // Check for other potential image fields (future extensibility)
+        // This could include message attachments, profile pictures, etc.
+
+        return imageUrls;
+    } catch (error) {
+        console.error('Error extracting message images:', error);
+        return [];
+    }
+};
+
+// Function to delete images from Cloudinary
+export const deleteMessageImages = async (imageUrls: string[]): Promise<{ deleted: string[], failed: string[], success: boolean }> => {
+    try {
+        if (!imageUrls || imageUrls.length === 0) {
+            return { deleted: [], failed: [], success: true };
+        }
+
+        const deleted: string[] = [];
+        const failed: string[] = [];
+
+        // Process each image URL
+        for (const imageUrl of imageUrls) {
+            try {
+                // Extract public ID from URL
+                const publicId = extractPublicIdFromUrl(imageUrl);
+
+                if (!publicId) {
+                    console.warn('Could not extract public ID from URL:', imageUrl);
+                    failed.push(imageUrl);
+                    continue;
+                }
+
+                // Delete the image from Cloudinary
+                await cloudinaryService.deleteImage(publicId);
+                deleted.push(imageUrl);
+
+            } catch (error: any) {
+                console.error('Failed to delete image:', imageUrl, error.message);
+                failed.push(imageUrl);
+            }
+        }
+
+        const success = failed.length === 0;
+
+        return { deleted, failed, success };
+
+    } catch (error: any) {
+        console.error('Error during message image cleanup:', error.message);
+        return { deleted: [], failed: [], success: false };
+    }
+};
+
 export default cloudinaryService;
