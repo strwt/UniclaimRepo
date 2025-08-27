@@ -9,6 +9,7 @@ import ProfilePicture from "./ProfilePicture";
 interface PostModalProps {
   post: Post;
   onClose: () => void;
+  hideSendMessage?: boolean; // Add optional prop to hide send message button
 }
 
 function formatDateTime(datetime: string | Date) {
@@ -19,7 +20,7 @@ function formatDateTime(datetime: string | Date) {
   });
 }
 
-export default function PostModal({ post, onClose }: PostModalProps) {
+export default function PostModal({ post, onClose, hideSendMessage }: PostModalProps) {
   const { userData } = useAuth(); // Get current user data
   const navigate = useNavigate(); // Add navigation hook
   const { createConversation } = useMessage(); // Add message context
@@ -181,7 +182,7 @@ export default function PostModal({ post, onClose }: PostModalProps) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {!isCurrentUserCreator && (
+            {!isCurrentUserCreator && !hideSendMessage && (
               <button 
                 onClick={handleSendMessage}
                 disabled={isCreatingConversation}

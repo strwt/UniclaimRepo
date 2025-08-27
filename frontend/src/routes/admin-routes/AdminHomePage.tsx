@@ -297,7 +297,7 @@ export default function AdminHomePage() {
       )}
 
       {selectedPost && (
-        <PostModal post={selectedPost} onClose={() => setSelectedPost(null)} />
+        <PostModal post={selectedPost} onClose={() => setSelectedPost(null)} hideSendMessage={true} />
       )}
     </div>
   );
