@@ -550,10 +550,8 @@ export const messageService = {
 
             // Delete the message
             await deleteDoc(messageRef);
-            console.log(`✅ Mobile: Message ${messageId} deleted successfully`);
 
         } catch (error: any) {
-            console.error('❌ Mobile: Failed to delete message:', error);
             throw new Error(error.message || 'Failed to delete message');
         }
     }

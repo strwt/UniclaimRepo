@@ -52,7 +52,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       await deleteMessage(conversationId, message.id);
       setShowDeleteConfirm(false);
     } catch (error: any) {
-      console.error('Failed to delete message:', error);
       alert(`Failed to delete message: ${error.message}`);
     } finally {
       setIsDeleting(false);
