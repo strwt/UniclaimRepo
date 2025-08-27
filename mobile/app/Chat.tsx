@@ -20,11 +20,123 @@ import type { Message, RootStackParamList } from "@/types/type";
 type ChatRouteProp = RouteProp<RootStackParamList, 'Chat'>;
 type ChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Chat'>;
 
-const MessageBubble = ({ message, isOwnMessage }: { message: Message; isOwnMessage: boolean }) => {
+const MessageBubble = ({ 
+  message, 
+  isOwnMessage, 
+  conversationId, 
+  currentUserId, 
+  onHandoverResponse 
+}: { 
+  message: Message; 
+  isOwnMessage: boolean;
+  conversationId: string;
+  currentUserId: string;
+  onHandoverResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
+}) => {
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleHandoverResponse = async (status: 'accepted' | 'rejected') => {
+    if (!onHandoverResponse) return;
+    
+    try {
+      // Update the handover message with the response
+      const { messageService } = await import('@/utils/firebase');
+      await messageService.updateHandoverResponse(
+        conversationId,
+        message.id,
+        status,
+        currentUserId
+      );
+      
+      // Call the callback to update UI
+      onHandoverResponse(message.id, status);
+    } catch (error) {
+      console.error('Failed to update handover response:', error);
+    }
+  };
+
+  const renderHandoverRequest = () => {
+    if (message.messageType !== 'handover_request') return null;
+    
+    const handoverData = message.handoverData;
+    if (!handoverData) return null;
+
+    // Only show buttons if the handover is still pending and current user is not the sender
+    const canRespond = handoverData.status === 'pending' && !isOwnMessage;
+
+    return (
+      <View className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <Text className="text-sm text-blue-800 mb-2">
+          <Text className="font-bold">Handover Request:</Text> {handoverData.postTitle}
+        </Text>
+        
+        {canRespond ? (
+          <View className="flex-row gap-2">
+            <TouchableOpacity
+              onPress={() => handleHandoverResponse('accepted')}
+              className="px-3 py-1 bg-green-500 rounded-md"
+            >
+              <Text className="text-white text-xs">Accept</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleHandoverResponse('rejected')}
+              className="px-3 py-1 bg-red-500 rounded-md"
+            >
+              <Text className="text-white text-xs">Reject</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <Text className="text-xs text-blue-600">
+            Status: <Text className="capitalize font-medium">{handoverData.status}</Text>
+            {handoverData.status !== 'pending' && handoverData.respondedAt && (
+              <Text className="ml-2">
+                at {formatTime(handoverData.respondedAt)}
+              </Text>
+            )}
+          </Text>
+        )}
+      </View>
+    );
+  };
+
+  const renderHandoverResponse = () => {
+    if (message.messageType !== 'handover_response') return null;
+    
+    const handoverData = message.handoverData;
+    if (!handoverData) return null;
+
+    const statusColor = handoverData.status === 'accepted' ? 'text-green-600' : 'text-red-600';
+    const statusIcon = handoverData.status === 'accepted' ? '✅' : '❌';
+
+    return (
+      <View className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+        <View className={`flex-row items-center gap-2`}>
+          <Text>{statusIcon}</Text>
+          <Text className={`text-sm ${statusColor} capitalize font-medium`}>
+            {handoverData.status}
+          </Text>
+          {handoverData.responseMessage && (
+            <Text className="text-gray-600 text-sm">- {handoverData.responseMessage}</Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const renderSystemMessage = () => {
+    if (message.messageType !== 'system') return null;
+    
+    return (
+      <View className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+        <Text className="text-sm text-yellow-800">
+          <Text className="font-medium">System:</Text> {message.text}
+        </Text>
+      </View>
+    );
   };
 
   return (
@@ -43,6 +155,11 @@ const MessageBubble = ({ message, isOwnMessage }: { message: Message; isOwnMessa
         >
           {message.text}
         </Text>
+        
+        {/* Render special message types */}
+        {renderHandoverRequest()}
+        {renderHandoverResponse()}
+        {renderSystemMessage()}
       </View>
       <Text className="text-xs text-gray-500 mt-1 mx-2">
         {formatTime(message.timestamp)}
@@ -168,6 +285,31 @@ export default function Chat() {
     }
   };
 
+  const handleHandoverResponse = (messageId: string, status: 'accepted' | 'rejected') => {
+    // This function will be called when a handover response is made
+    // The actual update is handled in the MessageBubble component
+    console.log(`Handover response: ${status} for message ${messageId}`);
+  };
+
+  const handleHandoverRequest = async () => {
+    if (!conversationId || !user || !userData) return;
+
+    try {
+      const { messageService } = await import('@/utils/firebase');
+      await messageService.sendHandoverRequest(
+        conversationId,
+        user.uid,
+        `${userData.firstName} ${userData.lastName}`,
+        userData.profilePicture || '',
+        conversationData?.postId || '',
+        postTitle
+      );
+    } catch (error: any) {
+      console.error('Failed to send handover request:', error);
+      Alert.alert('Error', 'Failed to send handover request. Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
@@ -194,10 +336,7 @@ export default function Chat() {
         {shouldShowHandoverButton() && (
           <TouchableOpacity 
             className="ml-3 px-4 py-2 bg-green-500 rounded-lg"
-            onPress={() => {
-              // TODO: Implement handover functionality
-              Alert.alert('Handover Item', 'Handover functionality will be implemented in the next step.');
-            }}
+            onPress={handleHandoverRequest}
           >
             <Text className="text-white font-medium text-sm">Handover</Text>
           </TouchableOpacity>
@@ -231,6 +370,9 @@ export default function Chat() {
               <MessageBubble
                 message={item}
                 isOwnMessage={item.senderId === user.uid}
+                conversationId={conversationId}
+                currentUserId={user?.uid || ''}
+                onHandoverResponse={handleHandoverResponse}
               />
             )}
             contentContainerStyle={{ padding: 16 }}

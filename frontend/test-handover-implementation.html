@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handover Implementation Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-bubble {
+            max-width: 400px;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .message-own {
+            background: #3b82f6;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-other {
+            background: #e5e7eb;
+            color: #1f2937;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+
+        .handover-request {
+            margin-top: 12px;
+            padding: 12px;
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+            border-radius: 8px;
+        }
+
+        .handover-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-accept {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-accept:hover {
+            background: #059669;
+        }
+
+        .btn-reject {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-reject:hover {
+            background: #dc2626;
+        }
+
+        .handover-response {
+            margin-top: 8px;
+            padding: 8px;
+            background: #f9fafb;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .system-message {
+            margin-top: 8px;
+            padding: 8px;
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .status-pending {
+            color: #1d4ed8;
+        }
+
+        .status-accepted {
+            color: #059669;
+        }
+
+        .status-rejected {
+            color: #dc2626;
+        }
+
+        .test-button {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        .test-button:hover {
+            background: #2563eb;
+        }
+
+        .log {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🧪 Handover Implementation Test</h1>
+
+    <div class="test-section">
+        <h2>Test Message Types</h2>
+        <p>This page tests the different message types and handover functionality we implemented.</p>
+
+        <div class="test-button" onclick="testRegularMessage()">Test Regular Message</div>
+        <div class="test-button" onclick="testHandoverRequest()">Test Handover Request</div>
+        <div class="test-button" onclick="testHandoverResponse()">Test Handover Response</div>
+        <div class="test-button" onclick="testSystemMessage()">Test System Message</div>
+        <div class="test-button" onclick="clearMessages()">Clear Messages</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Message Display</h2>
+        <div id="messageContainer"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Log</h2>
+        <div id="logContainer" class="log"></div>
+    </div>
+
+    <script>
+        let messageId = 1;
+
+        function log(message) {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            logContainer.innerHTML += `[${timestamp}] ${message}\n`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function createMessageBubble(message, isOwnMessage) {
+            const bubble = document.createElement('div');
+            bubble.className = `message-bubble ${isOwnMessage ? 'message-own' : 'message-other'}`;
+
+            // Message text
+            const text = document.createElement('div');
+            text.textContent = message.text;
+            bubble.appendChild(text);
+
+            // Special message type rendering
+            if (message.messageType === 'handover_request') {
+                const handoverDiv = document.createElement('div');
+                handoverDiv.className = 'handover-request';
+
+                const title = document.createElement('div');
+                title.innerHTML = `<strong>Handover Request:</strong> ${message.handoverData.postTitle}`;
+                handoverDiv.appendChild(title);
+
+                if (message.handoverData.status === 'pending' && !isOwnMessage) {
+                    const buttons = document.createElement('div');
+                    buttons.className = 'handover-buttons';
+
+                    const acceptBtn = document.createElement('button');
+                    acceptBtn.className = 'btn btn-accept';
+                    acceptBtn.textContent = 'Accept';
+                    acceptBtn.onclick = () => handleHandoverResponse(message.id, 'accepted');
+
+                    const rejectBtn = document.createElement('button');
+                    rejectBtn.className = 'btn btn-reject';
+                    rejectBtn.textContent = 'Reject';
+                    rejectBtn.onclick = () => handleHandoverResponse(message.id, 'rejected');
+
+                    buttons.appendChild(acceptBtn);
+                    buttons.appendChild(rejectBtn);
+                    handoverDiv.appendChild(buttons);
+                } else {
+                    const status = document.createElement('div');
+                    status.className = `status-${message.handoverData.status}`;
+                    status.innerHTML = `Status: <span class="capitalize">${message.handoverData.status}</span>`;
+                    if (message.handoverData.status !== 'pending' && message.handoverData.respondedAt) {
+                        status.innerHTML += ` at ${new Date(message.handoverData.respondedAt).toLocaleTimeString()}`;
+                    }
+                    handoverDiv.appendChild(status);
+                }
+
+                bubble.appendChild(handoverDiv);
+            }
+
+            if (message.messageType === 'handover_response') {
+                const responseDiv = document.createElement('div');
+                responseDiv.className = 'handover-response';
+
+                const icon = message.handoverData.status === 'accepted' ? '✅' : '❌';
+                const color = message.handoverData.status === 'accepted' ? 'status-accepted' : 'status-rejected';
+
+                responseDiv.innerHTML = `
+                    <span>${icon}</span>
+                    <span class="${color} capitalize">${message.handoverData.status}</span>
+                    ${message.handoverData.responseMessage ? `- ${message.handoverData.responseMessage}` : ''}
+                `;
+
+                bubble.appendChild(responseDiv);
+            }
+
+            if (message.messageType === 'system') {
+                const systemDiv = document.createElement('div');
+                systemDiv.className = 'system-message';
+                systemDiv.innerHTML = `<strong>System:</strong> ${message.text}`;
+                bubble.appendChild(systemDiv);
+            }
+
+            // Timestamp
+            const timestamp = document.createElement('div');
+            timestamp.style.fontSize = '12px';
+            timestamp.style.opacity = '0.7';
+            timestamp.style.marginTop = '8px';
+            timestamp.textContent = new Date(message.timestamp).toLocaleTimeString();
+            bubble.appendChild(timestamp);
+
+            return bubble;
+        }
+
+        function addMessage(message, isOwnMessage = false) {
+            const container = document.getElementById('messageContainer');
+            const bubble = createMessageBubble(message, isOwnMessage);
+            container.appendChild(bubble);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function testRegularMessage() {
+            const message = {
+                id: messageId++,
+                text: 'This is a regular text message',
+                timestamp: new Date(),
+                messageType: 'text'
+            };
+            addMessage(message, false);
+            log('Added regular message');
+        }
+
+        function testHandoverRequest() {
+            const message = {
+                id: messageId++,
+                text: 'I would like to handover the item "Lost Phone" to you.',
+                timestamp: new Date(),
+                messageType: 'handover_request',
+                handoverData: {
+                    postId: 'post_123',
+                    postTitle: 'Lost Phone',
+                    status: 'pending',
+                    requestedAt: new Date()
+                }
+            };
+            addMessage(message, false);
+            log('Added handover request message');
+        }
+
+        function testHandoverResponse() {
+            const message = {
+                id: messageId++,
+                text: 'Handover request accepted',
+                timestamp: new Date(),
+                messageType: 'handover_response',
+                handoverData: {
+                    status: 'accepted',
+                    respondedAt: new Date(),
+                    responderId: 'user_456'
+                }
+            };
+            addMessage(message, true);
+            log('Added handover response message');
+        }
+
+        function testSystemMessage() {
+            const message = {
+                id: messageId++,
+                text: 'Item has been successfully handed over',
+                timestamp: new Date(),
+                messageType: 'system'
+            };
+            addMessage(message, false);
+            log('Added system message');
+        }
+
+        function handleHandoverResponse(messageId, status) {
+            log(`Handover response: ${status} for message ${messageId}`);
+
+            // Update the existing message status
+            const messages = document.querySelectorAll('.message-bubble');
+            messages.forEach(bubble => {
+                const handoverRequest = bubble.querySelector('.handover-request');
+                if (handoverRequest) {
+                    const statusDiv = handoverRequest.querySelector('.status-pending');
+                    if (statusDiv) {
+                        statusDiv.className = `status-${status}`;
+                        statusDiv.innerHTML = `Status: <span class="capitalize">${status}</span> at ${new Date().toLocaleTimeString()}`;
+                    }
+
+                    // Remove buttons
+                    const buttons = handoverRequest.querySelector('.handover-buttons');
+                    if (buttons) {
+                        buttons.remove();
+                    }
+                }
+            });
+
+            // Add response message
+            const responseMessage = {
+                id: messageId++,
+                text: `Handover request ${status}`,
+                timestamp: new Date(),
+                messageType: 'handover_response',
+                handoverData: {
+                    status: status,
+                    respondedAt: new Date(),
+                    responderId: 'current_user'
+                }
+            };
+            addMessage(responseMessage, true);
+        }
+
+        function clearMessages() {
+            document.getElementById('messageContainer').innerHTML = '';
+            document.getElementById('logContainer').innerHTML = '';
+            messageId = 1;
+            log('Cleared all messages');
+        }
+
+        // Initialize with some test messages
+        window.onload = function () {
+            log('Handover implementation test page loaded');
+            log('Click the test buttons to see different message types in action');
+        };
+    </script>
+</body>
+
+</html>

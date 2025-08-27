@@ -87,6 +87,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     }
   };
 
+  const handleHandoverResponse = (messageId: string, status: 'accepted' | 'rejected') => {
+    // This function will be called when a handover response is made
+    // The actual update is handled in the MessageBubble component
+    console.log(`Handover response: ${status} for message ${messageId}`);
+  };
+
+  const handleHandoverRequest = async () => {
+    if (!conversation || !userData) return;
+
+    try {
+      await messageService.sendHandoverRequest(
+        conversation.id,
+        userData.uid,
+        `${userData.firstName} ${userData.lastName}`,
+        userData.profilePicture || userData.profileImageUrl || '',
+        conversation.postId,
+        conversation.postTitle
+      );
+    } catch (error) {
+      console.error('Failed to send handover request:', error);
+      // You could add a toast notification here
+    }
+  };
+
   const getOtherParticipantName = (conversation: Conversation) => {
     if (!userData) return 'Unknown User';
     
@@ -156,7 +180,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
           
           {/* Handover Item Button */}
           {shouldShowHandoverButton() && (
-            <button className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+            <button 
+              onClick={handleHandoverRequest}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
               Handover Item
             </button>
           )}
@@ -191,6 +218,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
                 message={message}
                 isOwnMessage={message.senderId === userData?.uid}
                 showSenderName={Object.keys(conversation.participants).length > 2}
+                conversationId={conversation.id}
+                currentUserId={userData?.uid || ''}
+                onHandoverResponse={handleHandoverResponse}
               />
             ))}
             <div ref={messagesEndRef} />

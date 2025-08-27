@@ -334,7 +334,8 @@ export const messageService = {
                 senderProfilePicture: senderProfilePicture || null, // Ensure null instead of undefined
                 text,
                 timestamp: serverTimestamp(),
-                readBy: [senderId]
+                readBy: [senderId],
+                messageType: "text" // Default message type
             };
 
             await addDoc(messagesRef, messageData);
@@ -356,6 +357,89 @@ export const messageService = {
                 details: error.details
             });
             throw new Error(error.message || 'Failed to send message');
+        }
+    },
+
+    // Send a handover request message
+    async sendHandoverRequest(conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string): Promise<void> {
+        try {
+            const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+            const handoverMessage = {
+                senderId,
+                senderName,
+                senderProfilePicture: senderProfilePicture || null,
+                text: `I would like to handover the item "${postTitle}" to you.`,
+                timestamp: serverTimestamp(),
+                readBy: [senderId],
+                messageType: "handover_request",
+                handoverData: {
+                    postId,
+                    postTitle,
+                    status: "pending",
+                    requestedAt: serverTimestamp()
+                }
+            };
+
+            await addDoc(messagesRef, handoverMessage);
+
+            // Update last message in conversation
+            await updateDoc(doc(db, 'conversations', conversationId), {
+                lastMessage: {
+                    text: handoverMessage.text,
+                    senderId,
+                    timestamp: handoverMessage.timestamp
+                }
+            });
+
+        } catch (error: any) {
+            console.error('❌ Mobile: Failed to send handover request:', error);
+            throw new Error(error.message || 'Failed to send handover request');
+        }
+    },
+
+    // Update handover response
+    async updateHandoverResponse(conversationId: string, messageId: string, status: 'accepted' | 'rejected', responderId: string): Promise<void> {
+        try {
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+
+            // Update the handover message with the response
+            await updateDoc(messageRef, {
+                'handoverData.status': status,
+                'handoverData.respondedAt': serverTimestamp(),
+                'handoverData.responderId': responderId
+            });
+
+            // Send a response message to confirm the action
+            const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+            const responseMessage = {
+                senderId: responderId,
+                senderName: 'System',
+                senderProfilePicture: null,
+                text: `Handover request ${status}`,
+                timestamp: serverTimestamp(),
+                readBy: [responderId],
+                messageType: "handover_response",
+                handoverData: {
+                    status,
+                    respondedAt: serverTimestamp(),
+                    responderId
+                }
+            };
+
+            await addDoc(messagesRef, responseMessage);
+
+            // Update last message in conversation
+            await updateDoc(doc(db, 'conversations', conversationId), {
+                lastMessage: {
+                    text: responseMessage.text,
+                    senderId: responseMessage.senderId,
+                    timestamp: responseMessage.timestamp
+                }
+            });
+
+        } catch (error: any) {
+            console.error('❌ Mobile: Failed to update handover response:', error);
+            throw new Error(error.message || 'Failed to update handover response');
         }
     },
 

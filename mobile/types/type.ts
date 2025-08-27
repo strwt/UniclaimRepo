@@ -58,6 +58,17 @@ export interface Message {
   text: string;
   timestamp: any; // Firebase timestamp
   readBy: string[];
+  // New fields for message types
+  messageType?: "text" | "handover_request" | "handover_response" | "system";
+  // Fields for handover requests
+  handoverData?: {
+    postId: string;
+    postTitle: string;
+    status: "pending" | "accepted" | "rejected";
+    requestedAt: any;
+    respondedAt?: any;
+    responseMessage?: string;
+  };
 }
 
 export interface Conversation {
