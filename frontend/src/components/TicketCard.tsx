@@ -55,8 +55,8 @@ const TicketCard = ({ post, onClick }: PostCardProps) => {
           <div className="mb-2">
             <span className="text-xs text-blue-600 font-medium">
               Action: {post.foundAction === "keep" ? "Keep" : 
-                       post.foundAction === "turnover to OSA" ? "Turnover to OSA" : 
-                       "Turnover to Campus Security"}
+                       post.foundAction === "turnover to OSA" ? "OSA" : 
+                       "Campus Security"}
             </span>
           </div>
         )}

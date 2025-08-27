@@ -178,7 +178,9 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
                   : "bg-fuchsia-200 text-fuchsia-700"
               }`}
             >
-              {post.foundAction === "keep" ? "Kept by the Poster" : "Turned Over"}
+              {post.foundAction === "keep" ? "Keep" : 
+               post.foundAction === "turnover to OSA" ? "OSA" : 
+               "Campus Security"}
             </Text>
           )}
         </View>

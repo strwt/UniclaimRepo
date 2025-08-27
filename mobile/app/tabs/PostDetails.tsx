@@ -184,7 +184,9 @@ export default function PostDetailsScreen() {
                   post.foundAction === "keep" ? "text-black" : "text-black"
                 }`}
               >
-                {post.foundAction === "keep" ? "Kept by Poster" : "Turned Over"}
+                {post.foundAction === "keep" ? "Keep" : 
+                 post.foundAction === "turnover to OSA" ? "OSA" : 
+                 "Campus Security"}
               </Text>
             </View>
           </View>
