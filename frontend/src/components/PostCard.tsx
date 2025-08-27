@@ -170,7 +170,7 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
         {/* Display the user who created the post */}
         <div className="flex items-center gap-2 mb-2">
           <ProfilePicture
-            src={post.user?.profilePicture}
+            src={post.user?.profilePicture || post.user?.profileImageUrl}
             alt="user profile"
             size="xs"
             priority={false} // Don't prioritize profile pictures

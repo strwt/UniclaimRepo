@@ -75,7 +75,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
     const otherParticipant = Object.entries(conversation.participants)
       .find(([uid]) => uid !== currentUserId);
     
-    return otherParticipant ? otherParticipant[1].profilePicture : null;
+    return otherParticipant ? (otherParticipant[1].profilePicture || otherParticipant[1].profileImageUrl) : null;
   };
 
   return (

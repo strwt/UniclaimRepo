@@ -61,7 +61,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         userData.uid,
         `${userData.firstName} ${userData.lastName}`,
         newMessage.trim(),
-        userData.profilePicture
+        userData.profilePicture || userData.profileImageUrl
       );
       setNewMessage('');
     } catch (error) {
@@ -89,7 +89,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     const otherParticipant = Object.entries(conversation.participants)
       .find(([uid]) => uid !== userData.uid);
     
-    return otherParticipant ? otherParticipant[1].profilePicture : null;
+    return otherParticipant ? (otherParticipant[1].profilePicture || otherParticipant[1].profileImageUrl) : null;
   };
 
   if (!conversation) {

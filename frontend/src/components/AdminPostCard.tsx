@@ -143,7 +143,7 @@ function AdminPostCard({
         <div className="bg-gray-50 p-2 rounded mb-3">
           <div className="flex items-center gap-2 mb-2">
             <ProfilePicture
-              src={post.user?.profilePicture}
+              src={post.user?.profilePicture || post.user?.profileImageUrl}
               alt="user profile"
               size="xs"
               priority={false}

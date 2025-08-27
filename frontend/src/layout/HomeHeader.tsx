@@ -75,7 +75,7 @@ export default function HomeHeader({
               {/* profile picture */}
               <div className="">
                 <ProfilePicture
-                  src={userData?.profilePicture}
+                  src={userData?.profilePicture || userData?.profileImageUrl}
                   alt="user-profile"
                   size="md"
                   className="cursor-pointer"

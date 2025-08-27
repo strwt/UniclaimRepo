@@ -398,10 +398,10 @@ export const extractPublicIdFromUrl = (url: string): string | null => {
 };
 
 // Function to delete old profile picture
-export const deleteOldProfilePicture = async (oldProfileImageUrl: string): Promise<boolean> => {
+export const deleteOldProfilePicture = async (oldProfilePicture: string): Promise<boolean> => {
     try {
         // Extract public ID from the old profile image URL
-        const publicId = extractPublicIdFromUrl(oldProfileImageUrl);
+        const publicId = extractPublicIdFromUrl(oldProfilePicture);
 
         if (!publicId) {
             console.log('Could not extract public ID from profile image URL, skipping deletion');

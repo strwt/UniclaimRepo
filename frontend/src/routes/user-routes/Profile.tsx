@@ -42,7 +42,7 @@ const Profile = () => {
         email: userData.email || "",
         contact: userData.contactNum || "",
         studentId: userData.studentId || "",
-        profilePicture: userData.profilePicture || "",
+        profilePicture: userData.profilePicture || userData.profileImageUrl || "",
       };
       setUserInfo(updatedInfo);
       setInitialUserInfo(updatedInfo);

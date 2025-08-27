@@ -16,6 +16,7 @@ export interface Post {
     contactNum: string;
     studentId: string;
     profilePicture?: string;
+    profileImageUrl?: string;
   };
   createdAt?: string | Date | any; // Firebase timestamp or Date
   updatedAt?: string | Date | any; // Firebase timestamp or Date
@@ -50,6 +51,7 @@ export interface Conversation {
       firstName: string;
       lastName: string;
       profilePicture?: string;
+      profileImageUrl?: string;
       joinedAt: any;
     };
   };

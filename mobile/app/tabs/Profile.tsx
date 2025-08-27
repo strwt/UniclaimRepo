@@ -41,8 +41,8 @@ export default function Profile() {
     email: userData?.email || "",
     contactNumber: userData?.contactNum || "",
     studentId: userData?.studentId || "",
-    imageUri: userData?.profileImageUrl 
-      ? { uri: userData.profileImageUrl }
+    imageUri: userData?.profilePicture 
+      ? { uri: userData.profilePicture }
       : require("../../assets/images/squarepic.jpg"), // default local asset
   });
   const [hasImageChanged, setHasImageChanged] = useState(false);
@@ -56,8 +56,8 @@ export default function Profile() {
         email: userData.email || "",
         contactNumber: userData.contactNum || "",
         studentId: userData.studentId || "",
-        imageUri: userData.profileImageUrl 
-          ? { uri: userData.profileImageUrl }
+        imageUri: userData.profilePicture 
+          ? { uri: userData.profilePicture }
           : require("../../assets/images/squarepic.jpg"),
       });
       setHasImageChanged(false);
@@ -73,7 +73,7 @@ export default function Profile() {
     try {
       setIsLoading(true);
       
-      let profileImageUrl = userData.profileImageUrl;
+      let profileImageUrl = userData.profilePicture;
 
       // Handle profile picture changes
       if (hasImageChanged) {
@@ -86,9 +86,9 @@ export default function Profile() {
               profileImageUrl = uploadedUrls[0];
               
               // Automatically delete the old profile picture if it exists and is different from the new one
-              if (userData.profileImageUrl && userData.profileImageUrl !== profileImageUrl) {
+              if (userData.profilePicture && userData.profilePicture !== profileImageUrl) {
                 try {
-                  const deletionSuccess = await deleteOldProfilePicture(userData.profileImageUrl);
+                  const deletionSuccess = await deleteOldProfilePicture(userData.profilePicture);
                   if (deletionSuccess) {
                     // Old profile picture deleted successfully
                   } else {
@@ -103,16 +103,16 @@ export default function Profile() {
               console.error('Error uploading profile image:', imageError);
               Alert.alert("Warning", "Failed to upload profile image, but other changes will be saved.");
               // Revert to original image
-              profileImageUrl = userData.profileImageUrl;
+              profileImageUrl = userData.profilePicture;
             }
           } else if (profile.imageUri.uri.includes('cloudinary.com')) {
             // Already a Cloudinary URL - use it directly
             profileImageUrl = profile.imageUri.uri;
             
             // Automatically delete the old profile picture if it exists and is different from the new one
-            if (userData.profileImageUrl && userData.profileImageUrl !== profileImageUrl) {
+            if (userData.profilePicture && userData.profilePicture !== profileImageUrl) {
               try {
-                const deletionSuccess = await deleteOldProfilePicture(userData.profileImageUrl);
+                const deletionSuccess = await deleteOldProfilePicture(userData.profilePicture);
                 if (deletionSuccess) {
                   // Old profile picture deleted successfully
                 } else {
@@ -132,9 +132,9 @@ export default function Profile() {
           profileImageUrl = "";
           
           // Automatically delete the old profile picture if it exists
-          if (userData.profileImageUrl) {
+          if (userData.profilePicture) {
             try {
-              const deletionSuccess = await deleteOldProfilePicture(userData.profileImageUrl);
+              const deletionSuccess = await deleteOldProfilePicture(userData.profilePicture);
               if (deletionSuccess) {
                 // Old profile picture deleted successfully after removal
               } else {
@@ -156,9 +156,9 @@ export default function Profile() {
         studentId: profile.studentId,
       };
 
-      // Include profileImageUrl if it has changed
+      // Include profilePicture if it has changed
       if (hasImageChanged) {
-        updateData.profileImageUrl = profileImageUrl;
+        updateData.profilePicture = profileImageUrl;
       }
 
       // Update all user data across collections using the new service
@@ -199,8 +199,8 @@ export default function Profile() {
         email: userData.email || "",
         contactNumber: userData.contactNum || "",
         studentId: userData.studentId || "",
-        imageUri: userData.profileImageUrl 
-          ? { uri: userData.profileImageUrl }
+        imageUri: userData.profilePicture 
+          ? { uri: userData.profilePicture }
           : require("../../assets/images/squarepic.jpg"),
       });
     }
@@ -380,7 +380,7 @@ export default function Profile() {
             </TouchableOpacity>
 
             {/* Remove profile picture button - only show when editing and has a profile picture */}
-            {isEditing && userData?.profileImageUrl && (
+            {isEditing && userData?.profilePicture && (
               <TouchableOpacity
                 className="mt-2 bg-red-500 rounded-md py-2 px-3 flex-row items-center gap-2"
                 onPress={handleRemoveProfilePicture}

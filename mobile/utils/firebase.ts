@@ -281,7 +281,7 @@ export const messageService = {
                         uid: postOwnerId,
                         firstName: postOwnerUserData?.firstName || 'Post Owner',
                         lastName: postOwnerUserData?.lastName || '',
-                        profilePicture: (postOwnerUserData?.profilePicture || postOwnerUserData?.profileImageUrl) || null, // Ensure null instead of undefined
+                        profilePicture: postOwnerUserData?.profilePicture || null, // Ensure null instead of undefined
                         joinedAt: serverTimestamp()
                     }
                 },
@@ -817,7 +817,7 @@ export const imageService = {
                         try {
                             const userRef = doc(db, 'users', userId);
                             await updateDoc(userRef, {
-                                profileImageUrl: null,
+                                profilePicture: null,
                                 updatedAt: serverTimestamp()
                             });
                         } catch (updateError: any) {
