@@ -198,7 +198,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         
         {/* Delete confirmation dialog */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white p-4 rounded-lg shadow-lg max-w-sm mx-4">
               <h3 className="text-lg font-semibold mb-2">Delete Message?</h3>
               <p className="text-gray-600 mb-4">This action cannot be undone.</p>
