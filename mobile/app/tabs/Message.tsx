@@ -96,7 +96,9 @@ export default function Message() {
   const handleConversationPress = (conversation: Conversation) => {
     navigation.navigate('Chat', {
       conversationId: conversation.id,
-      postTitle: conversation.postTitle
+      postTitle: conversation.postTitle,
+      postOwnerId: conversation.postCreatorId, // Add this line
+      postId: conversation.postId // Add this line too
     });
   };
 

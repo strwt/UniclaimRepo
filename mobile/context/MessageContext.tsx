@@ -8,6 +8,7 @@ interface MessageContextType {
   sendMessage: (conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string) => Promise<void>;
   createConversation: (postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: any, postOwnerUserData?: any) => Promise<string>;
   getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void) => () => void;
+  getConversation: (conversationId: string) => Promise<any>; // Add getConversation function
   refreshConversations: () => Promise<void>; // Add refresh function
 }
 
@@ -66,6 +67,14 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     return messageService.getConversationMessages(conversationId, callback);
   };
 
+  const getConversation = async (conversationId: string) => {
+    try {
+      return await messageService.getConversation(conversationId);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to get conversation');
+    }
+  };
+
   // Simple refresh function that fetches current conversations
   const refreshConversations = async (): Promise<void> => {
     if (!userId) return;
@@ -93,6 +102,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         sendMessage,
         createConversation,
         getConversationMessages,
+        getConversation,
         refreshConversations,
       }}
     >

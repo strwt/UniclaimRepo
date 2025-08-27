@@ -359,6 +359,23 @@ export const messageService = {
         }
     },
 
+    // Get conversation data (for handover button logic)
+    async getConversation(conversationId: string): Promise<any> {
+        try {
+            const conversationDoc = await getDoc(doc(db, 'conversations', conversationId));
+            if (conversationDoc.exists()) {
+                return {
+                    id: conversationDoc.id,
+                    ...conversationDoc.data()
+                };
+            }
+            return null;
+        } catch (error: any) {
+            console.error('❌ Mobile: Failed to get conversation:', error);
+            throw new Error(error.message || 'Failed to get conversation');
+        }
+    },
+
     // Get user's conversations
     getUserConversations(userId: string, callback: (conversations: any[]) => void) {
         const q = query(

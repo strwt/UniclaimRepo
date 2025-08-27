@@ -56,13 +56,30 @@ export default function Chat() {
   const route = useRoute<ChatRouteProp>();
   const { conversationId: initialConversationId, postTitle, postId, postOwnerId, postOwnerUserData } = route.params;
   
-  const { sendMessage, createConversation, getConversationMessages } = useMessage();
+  const { sendMessage, createConversation, getConversationMessages, getConversation } = useMessage();
   const { user, userData } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState(initialConversationId || '');
+  const [conversationData, setConversationData] = useState<any>(null);
   const flatListRef = useRef<FlatList>(null);
+  
+  // Check if handover button should be shown
+  const shouldShowHandoverButton = () => {
+    if (!userData || !postOwnerId) return false;
+    
+    // Don't show if current user is the post creator
+    if (postOwnerId === userData.uid) return false;
+    
+    // Only show for lost items
+    if (conversationData?.postType !== 'lost') return false;
+    
+    // Only show if post is still pending
+    if (conversationData?.postStatus !== 'pending') return false;
+    
+    return true;
+  };
   
   useEffect(() => {
     // If no conversation exists, create one immediately
@@ -78,9 +95,22 @@ export default function Chat() {
         setMessages(loadedMessages);
         scrollToBottom();
       });
+      
+      // Fetch conversation data for handover button logic
+      const fetchConversationData = async () => {
+        try {
+          const data = await getConversation(conversationId);
+          setConversationData(data);
+        } catch (error) {
+          console.error('Failed to fetch conversation data:', error);
+        }
+      };
+      
+      fetchConversationData();
+      
       return () => unsubscribe();
     }
-  }, [conversationId, getConversationMessages]);
+  }, [conversationId, getConversationMessages, getConversation]);
 
   if (!user || !userData) {
     return (
@@ -159,6 +189,21 @@ export default function Chat() {
             }
           </Text>
         </View>
+        
+        {/* Handover Item Button */}
+        {shouldShowHandoverButton() && (
+          <TouchableOpacity 
+            className="ml-3 px-4 py-2 bg-green-500 rounded-lg"
+            onPress={() => {
+              // TODO: Implement handover functionality
+              Alert.alert('Handover Item', 'Handover functionality will be implemented in the next step.');
+            }}
+          >
+            <Text className="text-white font-medium text-sm">Handover</Text>
+          </TouchableOpacity>
+        )}
+        
+
       </View>
 
       {/* Messages */}
