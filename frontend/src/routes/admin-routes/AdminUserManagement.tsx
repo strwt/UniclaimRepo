@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy, limit, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, addDoc, doc, updateDoc, where, deleteDoc } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 import type { User } from '../../types/User';
 
@@ -158,6 +158,22 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
     if (!unbanningUser) return;
     
     try {
+      // Find and delete the active ban record
+      const userBansRef = collection(db, 'userBans');
+      const banQuery = query(
+        userBansRef, 
+        where('userId', '==', unbanningUser.uid),
+        where('isActive', '==', true)
+      );
+      const banSnapshot = await getDocs(banQuery);
+      
+      // Delete the ban record completely
+      if (!banSnapshot.empty) {
+        const banDoc = banSnapshot.docs[0];
+        await deleteDoc(banDoc.ref);
+        console.log('Ban record deleted successfully');
+      }
+      
       // Update user status back to active
       const userRef = doc(db, 'users', unbanningUser.uid);
       await updateDoc(userRef, {
@@ -169,15 +185,11 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
         }
       });
       
-      // Mark the current ban record as inactive
-      // Note: We'll need to find the active ban record first
-      // For now, we'll just update the user status
-      
       // Close modal and refresh users
       handleCloseUnbanModal();
       await loadUsers(); // Refresh the user list to show updated status
       
-      console.log('User unbanned successfully');
+      console.log('User unbanned and ban record deleted successfully');
       
     } catch (error) {
       console.error('Error unbanning user:', error);
