@@ -6,7 +6,6 @@ interface AdminPostCardProps {
   post: Post;
   onClick: () => void;
   highlightText: string;
-  onEdit?: (post: Post) => void;
   onDelete?: (post: Post) => void;
   onStatusChange?: (post: Post, status: string) => void;
   onActivateTicket?: (post: Post) => void;
@@ -46,7 +45,6 @@ function AdminPostCard({
   post, 
   onClick, 
   highlightText, 
-  onEdit, 
   onDelete, 
   onStatusChange,
   onActivateTicket
@@ -81,11 +79,6 @@ function AdminPostCard({
   };
 
 
-
-  const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onEdit?.(post);
-  };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -132,13 +125,6 @@ function AdminPostCard({
           
           {/* Admin Controls */}
           <div className="flex gap-2">
-            <button
-              onClick={handleEdit}
-              className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-              title="Edit Post"
-            >
-              Edit
-            </button>
             <button
               onClick={handleDelete}
               className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition"

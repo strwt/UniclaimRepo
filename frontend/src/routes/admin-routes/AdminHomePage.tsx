@@ -39,12 +39,6 @@ export default function AdminHomePage() {
 
 
   // Admin functionality handlers
-  const handleEditPost = (post: Post) => {
-    console.log('Edit post:', post);
-    // TODO: Implement edit functionality
-    // For now, just log the action
-  };
-
   const handleDeletePost = (post: Post) => {
     if (confirm(`Are you sure you want to delete "${post.title}"?`)) {
       console.log('Delete post:', post);
@@ -283,7 +277,6 @@ export default function AdminHomePage() {
                 post={post}
                 onClick={() => setSelectedPost(post)}
                 highlightText={lastDescriptionKeyword}
-                onEdit={handleEditPost}
                 onDelete={handleDeletePost}
                 onStatusChange={handleStatusChange}
                 onActivateTicket={handleActivateTicket}
