@@ -17,30 +17,7 @@ import type { Post } from '@/types/type';
 import * as ImagePicker from 'expo-image-picker';
 import CustomDropdownWithSearch from './DropdownWithSearch';
 import { cleanupRemovedPostImages } from '@/utils/cloudinary';
-
-// Location options - same as used in Report/ItemDetails (moved outside component to prevent recreation)
-const locationOptions = [
-  "Library",
-  "Canteen",
-  "Gymnasium",
-  "Main Entrance",
-  "Computer Laboratory",
-  "Science Building",
-  "Engineering Hall",
-  "Student Lounge",
-  "Registrar Office",
-  "Clinic",
-  "Parking Lot A",
-  "Parking Lot B",
-  "Auditorium",
-  "Basketball Court",
-  "Swimming Pool Area",
-  "Admin Office",
-  "Dormitory",
-  "Innovation Hub",
-  "Covered Court",
-  "Security Office",
-];
+import { USTP_LOCATIONS } from '../constants';
 
 interface EditTicketModalProps {
   post: Post;
@@ -63,7 +40,7 @@ export default function EditTicketModal({
   const [editedDescription, setEditedDescription] = useState(post.description);
   const [editedLocation, setEditedLocation] = useState<string | null>(
     // If the current location is in our predefined list, use it; otherwise set to null
-    locationOptions.includes(post.location) ? post.location : null
+    USTP_LOCATIONS.includes(post.location) ? post.location : null
   );
   
   // Image state - handle both string URLs and File objects
@@ -103,7 +80,7 @@ export default function EditTicketModal({
     setEditedDescription(post.description);
     setEditedLocation(
       // If the current location is in our predefined list, use it; otherwise set to null
-      locationOptions.includes(post.location) ? post.location : null
+      USTP_LOCATIONS.includes(post.location) ? post.location : null
     );
     setEditedImages(post.images.map(img => {
       if (typeof img === 'string') return img;
@@ -176,7 +153,7 @@ export default function EditTicketModal({
     setEditedDescription(post.description);
     setEditedLocation(
       // If the current location is in our predefined list, use it; otherwise set to null
-      locationOptions.includes(post.location) ? post.location : null
+      USTP_LOCATIONS.includes(post.location) ? post.location : null
     );
     setEditedImages(post.images.map(img => {
       if (typeof img === 'string') return img;
@@ -361,7 +338,7 @@ export default function EditTicketModal({
             </Text>
             <CustomDropdownWithSearch
               label=""
-              data={locationOptions}
+              data={USTP_LOCATIONS}
               selected={editedLocation}
               setSelected={setEditedLocation}
               placeholder="Select a place"

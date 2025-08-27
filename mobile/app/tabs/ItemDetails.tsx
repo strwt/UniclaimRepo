@@ -9,6 +9,7 @@ import CustomDropdownWithSearch from "../../components/DropdownWithSearch";
 import ImageUpload from "../../components/ImageUpload";
 import Info from "../../components/Info";
 import { useCoordinates } from "../../context/CoordinatesContext";
+import { USTP_LOCATIONS, ITEM_CATEGORIES } from "../../constants";
 
 // navigation
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -71,31 +72,6 @@ export default function ItemDetails({
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-
-  const itemCategory = ["Student Essentials", "Gadgets", "Personal Belongings"];
-
-  const locationOptions = [
-      "Library",
-  "Canteen",
-  "Gymnasium",
-  "Main Entrance",
-    "Computer Laboratory",
-    "Science Building",
-    "Engineering Hall",
-    "Student Lounge",
-    "Registrar Office",
-    "Clinic",
-    "Parking Lot A",
-    "Parking Lot B",
-    "Auditorium",
-    "Basketball Court",
-    "Swimming Pool Area",
-    "Admin Office",
-    "Dormitory",
-    "Innovation Hub",
-    "Covered Court",
-    "Security Office",
-  ];
 
   const handleReportClick = (type: "lost" | "found") => {
     setReportType(type);
@@ -180,7 +156,7 @@ export default function ItemDetails({
       <View>
         <CustomDropdown
           label="Item Category"
-          data={itemCategory}
+          data={ITEM_CATEGORIES}
           selected={selectedCategory}
           setSelected={setSelectedCategory}
         />
@@ -249,7 +225,7 @@ export default function ItemDetails({
       <View>
         <CustomDropdownWithSearch
           label="Last Known Location"
-          data={locationOptions}
+          data={USTP_LOCATIONS}
           selected={selectedLocation}
           setSelected={setSelectedLocation}
           placeholder="Select a place"

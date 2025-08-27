@@ -13,8 +13,7 @@ import type { Post } from "@/types/Post";
 import LocationForm from "@/routes/user-routes/LocationReport";
 import ContactDetails from "@/routes/user-routes/ContactDetails";
 import useToastFormHelper from "@/components/ToastFormHelper";
-
-const categories = ["Student Essentials", "Gadgets", "Personal Belongings"];
+import { ITEM_CATEGORIES } from "@/constants";
 
 export default function ReportPage() {
   const { userData, loading } = useAuth();
@@ -306,7 +305,7 @@ export default function ReportPage() {
             descriptionError={showDescriptionError}
             dateTimeError={showDateTimeError}
             imageError={showImageError}
-            categories={categories}
+            categories={ITEM_CATEGORIES}
             activeCategory={activeCategory}
             setActiveCategory={(category) => {
               setActiveCategory(category);

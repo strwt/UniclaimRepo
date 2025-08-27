@@ -11,30 +11,7 @@ import {
   View,
 } from "react-native";
 import CustomDropdownWithSearch from "../components/DropdownWithSearch";
-
-const categories = ["Student Essentials", "Gadgets", "Personal Belongings"];
-const locationOptions = [
-  "Library",
-  "Canteen",
-  "Gymnasium",
-  "Main Entrance",
-  "Computer Laboratory",
-  "Science Building",
-  "Engineering Hall",
-  "Student Lounge",
-  "Registrar Office",
-  "Clinic",
-  "Parking Lot A",
-  "Parking Lot B",
-  "Auditorium",
-  "Basketball Court",
-  "Swimming Pool Area",
-  "Admin Office",
-  "Dormitory",
-  "Innovation Hub",
-  "Covered Court",
-  "Security Office",
-];
+import { USTP_LOCATIONS, ITEM_CATEGORIES } from "../constants";
 
 type Props = {
   query: string;
@@ -213,7 +190,7 @@ export default function SearchWithToggle({
             value={categorySearch}
             expanded={categoryExpanded}
             onToggle={() => setCategoryExpanded(!categoryExpanded)}
-            options={categories}
+            options={ITEM_CATEGORIES}
             onSelect={setCategorySearch}
           />
           <View>
@@ -231,7 +208,7 @@ export default function SearchWithToggle({
           {/* last known location */}
           <CustomDropdownWithSearch
             label="Last Known Location"
-            data={locationOptions}
+            data={USTP_LOCATIONS}
             selected={selectedLocation}
             setSelected={setSelectedLocation}
             placeholder="Select a place"
