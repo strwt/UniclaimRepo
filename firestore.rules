@@ -77,9 +77,15 @@ service cloud.firestore {
           request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
         
         // Users can ONLY delete their own messages
-        allow delete: if request.auth != null && 
-          !isUserBanned() && 
+        allow delete: if request.auth != null &&
+          !isUserBanned() &&
           resource.data.senderId == request.auth.uid;
+
+        // Allow deleting messages when cleaning up conversations for deleted posts
+        // This enables proper cleanup when posts are deleted
+        allow delete: if request.auth != null &&
+          !isUserBanned() &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
         
         // Users can update their own messages (for editing)
         allow update: if request.auth != null &&
