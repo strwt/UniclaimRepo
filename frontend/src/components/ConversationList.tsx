@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useMessage } from '../context/MessageContext';
 import { useAuth } from '../context/AuthContext';
 import type { Conversation } from '../types/Post';
@@ -29,6 +29,27 @@ const ConversationList: React.FC<ConversationListProps> = ({
     }
   }, [autoSelectConversationId, conversations, selectedConversationId, onSelectConversation]);
 
+  // Sort conversations by most recent message timestamp (newest first)
+  const sortedConversations = useMemo(() => {
+    return [...conversations].sort((a, b) => {
+      // Get timestamps from last messages
+      const aTime = a.lastMessage?.timestamp;
+      const bTime = b.lastMessage?.timestamp;
+
+      // Handle conversations without messages
+      if (!aTime && !bTime) return 0; // Both have no messages, maintain current order
+      if (!aTime) return 1; // Conversation without messages goes to bottom
+      if (!bTime) return -1; // Conversation without messages goes to bottom
+
+      // Convert timestamps to comparable values
+      const aTimestamp = aTime instanceof Date ? aTime.getTime() : aTime.toDate?.()?.getTime() || 0;
+      const bTimestamp = bTime instanceof Date ? bTime.getTime() : bTime.toDate?.()?.getTime() || 0;
+
+      // Sort newest first (descending order)
+      return bTimestamp - aTimestamp;
+    });
+  }, [conversations]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -37,7 +58,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
     );
   }
 
-  if (conversations.length === 0) {
+  if (sortedConversations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-500">
         <div className="text-6xl mb-4">💬</div>
@@ -81,12 +102,12 @@ const ConversationList: React.FC<ConversationListProps> = ({
   return (
     <div className="bg-white border-r border-gray-200 w-full max-w-sm">
       <div className="p-4 border-b border-gray-200 mt-10">
-        
-        <p className="text-sm text-gray-500">{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</p>
+
+        <p className="text-sm text-gray-500">{sortedConversations.length} conversation{sortedConversations.length !== 1 ? 's' : ''}</p>
       </div>
       
       <div className="overflow-y-auto h-[calc(100vh-280px)]">
-        {conversations.map((conversation) => {
+        {sortedConversations.map((conversation) => {
           const isSelected = selectedConversationId === conversation.id;
           const hasUnread = conversation.unreadCount && conversation.unreadCount > 0;
           

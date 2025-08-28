@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { SafeAreaView, Text, FlatList, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -103,6 +103,27 @@ export default function Message() {
     });
   };
 
+  // Sort conversations by most recent message timestamp (newest first)
+  const sortedConversations = useMemo(() => {
+    return [...conversations].sort((a, b) => {
+      // Get timestamps from last messages
+      const aTime = a.lastMessage?.timestamp;
+      const bTime = b.lastMessage?.timestamp;
+
+      // Handle conversations without messages
+      if (!aTime && !bTime) return 0; // Both have no messages, maintain current order
+      if (!aTime) return 1; // Conversation without messages goes to bottom
+      if (!bTime) return -1; // Conversation without messages goes to bottom
+
+      // Convert timestamps to comparable values
+      const aTimestamp = aTime instanceof Date ? aTime.getTime() : aTime.toDate?.()?.getTime() || 0;
+      const bTimestamp = bTime instanceof Date ? bTime.getTime() : bTime.toDate?.()?.getTime() || 0;
+
+      // Sort newest first (descending order)
+      return bTimestamp - aTimestamp;
+    });
+  }, [conversations]);
+
   if (loading) {
     return (
       <PageLayout>
@@ -151,7 +172,7 @@ export default function Message() {
           <View className="flex-1 items-center justify-center">
             <Text className="text-gray-500">Loading conversations...</Text>
           </View>
-        ) : conversations.length === 0 ? (
+        ) : sortedConversations.length === 0 ? (
           <View className="flex-1 items-center justify-center">
             <Text className="text-gray-500 text-center">
               No conversations yet.{'\n'}Start a conversation by contacting someone about their post!
@@ -159,7 +180,7 @@ export default function Message() {
           </View>
         ) : (
           <FlatList
-            data={conversations}
+            data={sortedConversations}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <ConversationItem
