@@ -276,7 +276,7 @@ export const messageService = {
             let postType: "lost" | "found" = "lost";
             let postStatus: "pending" | "resolved" | "rejected" = "pending";
             let postCreatorId = postOwnerId; // Default to post owner ID
-            let foundAction: "keep" | "turnover to OSA" | "turnover to Campus Security" | undefined = undefined;
+            let foundAction: "keep" | "turnover to OSA" | "turnover to Campus Security" | null = null;
 
             try {
                 const postDoc = await getDoc(doc(db, 'posts', postId));
@@ -285,7 +285,14 @@ export const messageService = {
                     postType = postData.type || "lost";
                     postStatus = postData.status || "pending";
                     postCreatorId = postData.creatorId || postOwnerId;
-                    foundAction = postData.foundAction; // Include foundAction for found items
+                    // Only set foundAction if it exists and is valid, otherwise keep as null
+                    if (postData.foundAction && typeof postData.foundAction === 'string') {
+                        // Validate that foundAction is one of the expected values
+                        const validFoundActions = ["keep", "turnover to OSA", "turnover to Campus Security"];
+                        if (validFoundActions.includes(postData.foundAction)) {
+                            foundAction = postData.foundAction as "keep" | "turnover to OSA" | "turnover to Campus Security";
+                        }
+                    }
                 }
             } catch (error) {
                 console.warn('Could not fetch post data:', error);
