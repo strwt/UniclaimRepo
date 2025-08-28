@@ -50,62 +50,67 @@ service cloud.firestore {
     
     // SIMPLIFIED: Conversations collection for messaging
     match /conversations/{conversationId} {
-      // Only non-banned users can read conversations
-      allow read: if request.auth != null && !isUserBanned();
-      
+      // Only non-banned users can read conversations (admins have full access)
+      allow read: if request.auth != null && (!isUserBanned() || isAdmin());
+
       // Users can write conversations they participate in (but not when banned)
-      allow write: if request.auth != null && 
-        !isUserBanned() &&
-        request.auth.uid in resource.data.participants;
-      
+      // Admins have full write access
+      allow write: if request.auth != null &&
+        (!isUserBanned() || isAdmin()) &&
+        (request.auth.uid in resource.data.participants || isAdmin());
+
       // Allow creating new conversations (but not when banned)
-      allow create: if request.auth != null && !isUserBanned();
-      
+      // Admins can always create conversations
+      allow create: if request.auth != null && (!isUserBanned() || isAdmin());
+
       // Allow deleting conversations when deleting posts (post owner can delete related conversations)
       // Also allow any authenticated user to delete conversations for cleanup (simplified for reliability)
-      allow delete: if request.auth != null && !isUserBanned();
+      // Admins have full delete access
+      allow delete: if request.auth != null && (!isUserBanned() || isAdmin());
       
       // Messages subcollection - RESTRICTED deletion
       match /messages/{messageId} {
-        // Users can read messages in conversations they participate in
-        allow read: if request.auth != null && 
-          !isUserBanned() && 
-          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
-        
-        // Users can create messages in conversations they participate in
-        allow create: if request.auth != null && 
-          !isUserBanned() && 
-          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
-        
-        // Users can ONLY delete their own messages
+        // Users can read messages in conversations they participate in (admins have full access)
+        allow read: if request.auth != null &&
+          (!isUserBanned() || isAdmin()) &&
+          (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants || isAdmin());
+
+        // Users can create messages in conversations they participate in (admins have full access)
+        allow create: if request.auth != null &&
+          (!isUserBanned() || isAdmin()) &&
+          (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants || isAdmin());
+
+        // Users can ONLY delete their own messages (admins can delete any message)
         allow delete: if request.auth != null &&
-          !isUserBanned() &&
-          resource.data.senderId == request.auth.uid;
+          (!isUserBanned() || isAdmin()) &&
+          (resource.data.senderId == request.auth.uid || isAdmin());
 
         // Allow deleting messages when cleaning up conversations for deleted posts
-        // This enables proper cleanup when posts are deleted
+        // This enables proper cleanup when posts are deleted (admins have full access)
         allow delete: if request.auth != null &&
-          !isUserBanned() &&
-          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
-        
-        // Users can update their own messages (for editing)
+          (!isUserBanned() || isAdmin()) &&
+          (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants || isAdmin());
+
+        // Users can update their own messages (for editing) (admins can update any message)
         allow update: if request.auth != null &&
-          !isUserBanned() &&
-          resource.data.senderId == request.auth.uid;
+          (!isUserBanned() || isAdmin()) &&
+          (resource.data.senderId == request.auth.uid || isAdmin());
 
         // Allow updating messages for claim responses - users can respond to claim requests
         // in conversations they participate in, even if they're not the original sender
+        // Admins can update any claim responses
         allow update: if request.auth != null &&
-          !isUserBanned() &&
-          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants &&
+          (!isUserBanned() || isAdmin()) &&
+          (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants || isAdmin()) &&
           // Only allow updates to claimData field for claim responses
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimData']);
 
         // Allow updating messages for handover responses - users can respond to handover requests
         // in conversations they participate in, even if they're not the original sender
+        // Admins can update any handover responses
         allow update: if request.auth != null &&
-          !isUserBanned() &&
-          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants &&
+          (!isUserBanned() || isAdmin()) &&
+          (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants || isAdmin()) &&
           // Only allow updates to handoverData field for handover responses
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handoverData']);
       }

@@ -10,6 +10,7 @@ interface AuthContextType {
   userData: UserData | null;
   loading: boolean;
   isBanned: boolean;
+  isAdmin: boolean;
   banInfo: any;
   showBanNotification: boolean;
   setShowBanNotification: (show: boolean) => void;
@@ -26,11 +27,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [banInfo, setBanInfo] = useState<any>(null);
   const [showBanNotification, setShowBanNotification] = useState(false);
 
   // Track ban listener to clean up on logout
   const banListenerRef = useRef<(() => void) | null>(null);
+
+  // Helper function to check if user is admin
+  const checkIfAdmin = (email: string | null): boolean => {
+    if (!email) return false;
+    const adminEmails = ['admin@ustp.edu.ph', 'superadmin@ustp.edu.ph', 'admin@uniclaim.com'];
+    return adminEmails.includes(email.toLowerCase());
+  };
 
   // Listen for authentication state changes
   useEffect(() => {
@@ -38,12 +47,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (firebaseUser) {
         setUser(firebaseUser);
         setIsAuthenticated(true);
-        
+
+        // Check if user is admin
+        const userIsAdmin = checkIfAdmin(firebaseUser.email);
+        setIsAdmin(userIsAdmin);
+
         // Fetch user data from Firestore
         try {
           const fetchedUserData = await authService.getUserData(firebaseUser.uid);
           setUserData(fetchedUserData);
-          
+
           // Check ban status efficiently
           if (fetchedUserData && fetchedUserData.status === 'banned') {
             setIsBanned(true);
@@ -125,6 +138,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserData(null);
         setIsAuthenticated(false);
         setIsBanned(false);
+        setIsAdmin(false);
         setBanInfo(null);
         setShowBanNotification(false);
       }
@@ -168,6 +182,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUserData(userData);
       setIsAuthenticated(true);
       setIsBanned(false);
+      setIsAdmin(checkIfAdmin(user.email));
       setBanInfo(null);
       setShowBanNotification(false);
       
@@ -231,6 +246,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUserData(null);
       setIsAuthenticated(false);
       setIsBanned(true);
+      setIsAdmin(false);
       setBanInfo(bannedUserData.banInfo || {});
 
       // Don't show ban notification - user will be redirected to login
@@ -254,6 +270,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUserData(null);
       setIsAuthenticated(false);
       setIsBanned(true);
+      setIsAdmin(false);
       setBanInfo(bannedUserData.banInfo || {});
     }
   };
@@ -281,17 +298,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider 
-      value={{ 
-        isAuthenticated, 
-        user, 
-        userData, 
-        loading, 
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        user,
+        userData,
+        loading,
         isBanned,
+        isAdmin,
         banInfo,
         showBanNotification,
         setShowBanNotification,
-        login, 
+        login,
         logout,
         refreshUserData
       }}

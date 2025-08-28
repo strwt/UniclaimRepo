@@ -92,6 +92,7 @@ const ConversationItem = ({ conversation, onPress }: { conversation: Conversatio
 export default function Message() {
   const navigation = useNavigation<MessageNavigationProp>();
   const { conversations, loading } = useMessage();
+  const { isAdmin } = useAuth();
 
   const handleConversationPress = (conversation: Conversation) => {
     navigation.navigate('Chat', {
@@ -112,14 +113,45 @@ export default function Message() {
     );
   }
 
+  // Admin users see a different interface
+  if (isAdmin) {
+    return (
+      <PageLayout>
+        <SafeAreaView className="flex-1 bg-gray-50">
+          <View className="bg-white border-b border-gray-200 p-4">
+            <Text className="text-xl font-bold text-gray-800">Admin Panel</Text>
+          </View>
+
+          <View className="flex-1 items-center justify-center px-6">
+            <View className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 w-full max-w-sm">
+              <Text className="text-lg font-semibold text-gray-800 text-center mb-2">
+                Admin Access
+              </Text>
+              <Text className="text-gray-600 text-center text-sm mb-4">
+                You are logged in as an administrator.
+              </Text>
+              <Text className="text-gray-500 text-center text-xs leading-5">
+                For full administrative features, please use the web interface at the admin dashboard.
+              </Text>
+            </View>
+          </View>
+        </SafeAreaView>
+      </PageLayout>
+    );
+  }
+
   return (
     <PageLayout>
       <SafeAreaView className="flex-1 bg-gray-50">
         <View className="bg-white border-b border-gray-200 p-4">
           <Text className="text-xl font-bold text-gray-800">Messages</Text>
         </View>
-        
-        {conversations.length === 0 ? (
+
+        {loading ? (
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-gray-500">Loading conversations...</Text>
+          </View>
+        ) : conversations.length === 0 ? (
           <View className="flex-1 items-center justify-center">
             <Text className="text-gray-500 text-center">
               No conversations yet.{'\n'}Start a conversation by contacting someone about their post!
