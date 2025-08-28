@@ -26,3 +26,7 @@ dist-ssr
 
 # git ignore folder
 node_modules/
+
+# Test files
+test-*.html
+test-*.js

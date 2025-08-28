@@ -60,9 +60,17 @@ const ConversationItem = ({ conversation, onPress }: { conversation: Conversatio
         <View className="flex-1">
           <View className="flex-row justify-between items-start">
             <View className="flex-1">
-              <Text className="font-semibold text-gray-800 text-base" numberOfLines={1}>
-                {conversation.postTitle}
-              </Text>
+              <View className="flex-row items-center gap-2">
+                <Text className="font-semibold text-gray-800 text-base" numberOfLines={1}>
+                  {conversation.postTitle}
+                </Text>
+                {/* Post Type Badge */}
+                <View className={`px-2 py-1 rounded-full ${conversation.postType === 'found' ? 'bg-green-100' : 'bg-orange-100'}`}>
+                  <Text className={`text-xs font-medium ${conversation.postType === 'found' ? 'text-green-800' : 'text-orange-800'}`}>
+                    {conversation.postType === 'found' ? 'FOUND' : 'LOST'}
+                  </Text>
+                </View>
+              </View>
               <Text className="text-gray-500 text-xs mt-1" numberOfLines={1}>
                 {getOtherParticipantName()}
               </Text>

@@ -158,9 +158,19 @@ const ConversationList: React.FC<ConversationListProps> = ({
                      />
                    </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate">
-                      {conversation.postTitle}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-gray-900 truncate">
+                        {conversation.postTitle}
+                      </h3>
+                      {/* Post Type Badge */}
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ml-1 ${
+                        conversation.postType === 'found' 
+                          ? 'bg-green-200 text-green-800' 
+                          : 'bg-orange-300 text-orange-800'
+                      }`}>
+                        {conversation.postType === 'found' ? 'FOUND' : 'LOST'}
+                      </span>
+                    </div>
                     <p className="text-sm text-gray-500 truncate">
                       {userData ? getOtherParticipantName(conversation, userData.uid) : 'Unknown User'}
                     </p>

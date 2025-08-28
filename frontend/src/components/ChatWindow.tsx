@@ -227,7 +227,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       <div className="p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-gray-900">{conversation.postTitle}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900">{conversation.postTitle}</h3>
+              {/* Post Type Badge */}
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ${
+                conversation.postType === 'found' 
+                  ? 'bg-green-300 text-green-800' 
+                  : 'bg-orange-300 text-orange-800'
+              }`}>
+                {conversation.postType === 'found' ? 'FOUND' : 'LOST'}
+              </span>
+            </div>
             <div className="flex items-center gap-3 mt-1">
               <ProfilePicture
                 src={getOtherParticipantProfilePicture(conversation)}
