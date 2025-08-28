@@ -16,6 +16,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { sendMessage, getConversationMessages, markConversationAsRead, sendClaimRequest, updateClaimResponse } = useMessage();
@@ -24,6 +25,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Handle scroll events to show/hide scroll to bottom button
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    const isScrolledUp = target.scrollTop < target.scrollHeight - target.clientHeight - 100;
+    setShowScrollToBottom(isScrolledUp);
   };
 
   useEffect(() => {
@@ -214,7 +222,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white h-full  mt-11.5">
+    <div className="flex-1 flex flex-col bg-white h-full">
       {/* Chat Header */}
       <div className="p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -256,10 +264,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
       {/* Messages Area */}
       <div 
-        className="flex-1 overflow-y-auto p-4 bg-gray-50 min-h-0 border border-gray-200 rounded bg-blue-100"
+        className="overflow-y-auto p-4 bg-gray-50 scroll-smooth hover:scrollbar-thin hover:scrollbar-thumb-gray-300 hover:scrollbar-track-gray-100 relative flex-1"
         style={{ 
-          minHeight: '200px'
+          scrollBehavior: 'smooth'
         }}
+        onScroll={handleScroll}
       >
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
@@ -271,11 +280,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
             <p className="text-sm">Start the conversation!</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {/* Test message to ensure scrolling works */}
-            <div className="text-xs text-gray-400 text-center mb-4">
-              Messages loaded: {messages.length}
-            </div>
+          <div className="space-y-3">
             {messages.map((message) => (
               <MessageBubble
                 key={message.id}
@@ -291,10 +296,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
             <div ref={messagesEndRef} />
           </div>
         )}
+        
+        {/* Scroll to Bottom Button */}
+        {showScrollToBottom && (
+          <button
+            onClick={scrollToBottom}
+            className="absolute bottom-4 right-4 p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 transition-colors duration-200 z-10"
+            title="Scroll to bottom"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Message Input - Fixed at bottom */}
-      <div className="p-4 border-t border-gray-200 bg-white flex-shrink-0 mt-auto bg-red-100">
+      <div className="p-4 border-t border-gray-200 bg-white flex-shrink-0 mt-auto">
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <input
             type="text"

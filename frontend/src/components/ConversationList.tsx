@@ -127,13 +127,13 @@ const ConversationList: React.FC<ConversationListProps> = ({
   };
 
   return (
-    <div className="bg-white border-r border-gray-200 w-full max-w-sm">
-      <div className="p-4 border-b border-gray-200 mt-10">
-
+    <div className="bg-white border-r border-gray-200 w-full max-w-sm h-full flex flex-col">
+      <div className="p-4 border-b border-gray-200 mt-2 flex-shrink-0">
+        <h1 className="text-2xl font-bold">Contacts</h1>
         <p className="text-sm text-gray-500">{sortedConversations.length} conversation{sortedConversations.length !== 1 ? 's' : ''}</p>
       </div>
       
-      <div className="overflow-y-auto h-[calc(100vh-280px)]">
+      <div className="overflow-y-auto flex-1">
         {sortedConversations.map((conversation) => {
           const isSelected = selectedConversationId === conversation.id;
           // Get the current user's unread count from this conversation
