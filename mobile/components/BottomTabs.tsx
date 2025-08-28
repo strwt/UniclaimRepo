@@ -8,6 +8,7 @@ import {
 } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 
 // Screens
 import HomeScreen from "../app/tabs/Home";
@@ -31,7 +32,11 @@ export default function CustomTabs() {
   const TAB_BAR_HEIGHT = 50;
   const previousTabRef = useRef(currentTab);
   const [isInitialized, setIsInitialized] = useState(false);
-  const { isBanned } = useAuth();
+  const { isBanned, userData } = useAuth();
+  const { getUnreadConversationCount } = useMessage();
+  
+  // Calculate unread conversation count for badge
+  const unreadCount = userData?.uid ? getUnreadConversationCount(userData.uid) : 0;
 
   // NEW: Redirect banned users to login
   useEffect(() => {
@@ -189,16 +194,26 @@ export default function CustomTabs() {
                   onPress={() => handleTabChange(tab.key)}
                   className="items-center justify-center flex flex-col space-y-1"
                 >
-                  <Ionicons
-                    name={isActive ? tab.iconFilled : tab.iconOutline}
-                    size={isAddTab ? 28 : 22}
-                    color={isActive ? "#0A193A" : "#000"}
-                    style={
-                      tab.key === "Ticket"
-                        ? { transform: [{ rotate: "45deg" }] }
-                        : undefined
-                    }
-                  />
+                  <View className="relative">
+                    <Ionicons
+                      name={isActive ? tab.iconFilled : tab.iconOutline}
+                      size={isAddTab ? 28 : 22}
+                      color={isActive ? "#0A193A" : "#000"}
+                      style={
+                        tab.key === "Ticket"
+                          ? { transform: [{ rotate: "45deg" }] }
+                          : undefined
+                      }
+                    />
+                    {/* Badge count for Messages tab */}
+                    {tab.key === "Messages" && unreadCount > 0 && (
+                      <View className="absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[18px] h-[18px] items-center justify-center">
+                        <Text className="text-white text-xs font-bold">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   <Text
                     className={`text-[9px] font-manrope ${
                       isAddTab ? "mt-1" : "mt-2"

@@ -533,7 +533,7 @@ export default function Chat() {
   const route = useRoute<ChatRouteProp>();
   const { conversationId: initialConversationId, postTitle, postId, postOwnerId, postOwnerUserData } = route.params;
   
-  const { sendMessage, createConversation, getConversationMessages, getConversation, sendClaimRequest, updateClaimResponse } = useMessage();
+  const { sendMessage, createConversation, getConversationMessages, getConversation, sendClaimRequest, updateClaimResponse, markConversationAsRead, getConversationUnreadCount } = useMessage();
   const { user, userData } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -619,6 +619,11 @@ export default function Chat() {
       };
       
       fetchConversationData();
+      
+      // Mark conversation as read when user opens it
+      if (userData?.uid) {
+        markConversationAsRead(conversationId, userData.uid);
+      }
       
       return () => unsubscribe();
     }
@@ -753,9 +758,24 @@ export default function Chat() {
           <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
         <View className="flex-1">
-          <Text className="font-semibold text-lg text-gray-800" numberOfLines={1}>
-            {postTitle}
-          </Text>
+          <View className="flex-row items-center">
+            <Text className="font-semibold text-lg text-gray-800" numberOfLines={1}>
+              {postTitle}
+            </Text>
+            {/* Badge count for unread messages in this conversation */}
+            {conversationId && userData?.uid && (
+              (() => {
+                const unreadCount = getConversationUnreadCount(conversationId, userData.uid);
+                return unreadCount > 0 ? (
+                  <View className="ml-2 bg-red-500 rounded-full min-w-[20px] h-[20px] items-center justify-center">
+                    <Text className="text-white text-xs font-bold">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Text>
+                  </View>
+                ) : null;
+              })()
+            )}
+          </View>
           <Text className="text-sm text-gray-500">
             {postOwnerId && userData ? 
               (postOwnerId === userData.uid ? 'Your post' : 'Chat with post owner') : 

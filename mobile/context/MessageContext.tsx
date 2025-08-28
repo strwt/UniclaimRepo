@@ -17,6 +17,11 @@ interface MessageContextType {
   updateClaimResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update claim response
   confirmClaimIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm claim ID photo
   refreshConversations: () => Promise<void>; // Add refresh function
+  markConversationAsRead: (conversationId: string, userId: string) => Promise<void>; // New: Mark conversation as read
+  getUnreadConversationCount: (userId: string) => number; // New: Get count of conversations with unread messages
+  getTotalUnreadMessageCount: (userId: string) => number; // New: Get total count of unread messages
+  getConversationUnreadCount: (conversationId: string, userId: string) => number; // New: Get unread count for specific conversation
+  getUnreadConversationsSummary: (userId: string) => { count: number; conversations: Array<{ id: string; postTitle: string; unreadCount: number; lastMessage?: any }> }; // New: Get detailed unread summary
 }
 
 const MessageContext = createContext<MessageContextType | undefined>(undefined);
@@ -189,6 +194,79 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
   };
 
+  // Mark conversation as read for a specific user
+  const markConversationAsRead = async (conversationId: string, userId: string): Promise<void> => {
+    // Admin users don't need to mark conversations as read
+    if (isAdmin) {
+      console.log('Admin user detected - skipping mark as read');
+      return;
+    }
+
+    if (!userId) return;
+
+    try {
+      // Update the conversation's unread count for this user
+      await messageService.markConversationAsRead(conversationId, userId);
+      
+      // Update local state to reflect the change
+      setConversations(prevConversations => 
+        prevConversations.map(conv => 
+          conv.id === conversationId 
+            ? { ...conv, unreadCounts: { ...conv.unreadCounts, [userId]: 0 } }
+            : conv
+        )
+      );
+    } catch (error: any) {
+      console.error('Failed to mark conversation as read:', error);
+      // Don't throw error - just log it
+    }
+  };
+
+  // Get count of conversations with unread messages for a specific user
+  const getUnreadConversationCount = (userId: string): number => {
+    if (!userId || isAdmin) return 0;
+    
+    return conversations.filter(conv => 
+      conv.unreadCounts?.[userId] > 0
+    ).length;
+  };
+
+  // Get total count of unread messages for a specific user (optional - for future use)
+  const getTotalUnreadMessageCount = (userId: string): number => {
+    if (!userId || isAdmin) return 0;
+    
+    return conversations.reduce((total, conv) => 
+      total + (conv.unreadCounts?.[userId] || 0), 0
+    );
+  };
+
+  // Get unread count for a specific conversation (useful for chat headers)
+  const getConversationUnreadCount = (conversationId: string, userId: string): number => {
+    if (!userId || isAdmin) return 0;
+    
+    const conversation = conversations.find(conv => conv.id === conversationId);
+    return conversation?.unreadCounts?.[userId] || 0;
+  };
+
+  // Get unread conversations summary (useful for notifications or other UI elements)
+  const getUnreadConversationsSummary = (userId: string) => {
+    if (!userId || isAdmin) return { count: 0, conversations: [] };
+    
+    const unreadConversations = conversations.filter(conv => 
+      conv.unreadCounts?.[userId] > 0
+    );
+    
+    return {
+      count: unreadConversations.length,
+      conversations: unreadConversations.map(conv => ({
+        id: conv.id,
+        postTitle: conv.postTitle,
+        unreadCount: conv.unreadCounts?.[userId] || 0,
+        lastMessage: conv.lastMessage
+      }))
+    };
+  };
+
   return (
     <MessageContext.Provider
       value={{
@@ -205,6 +283,11 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         updateClaimResponse,
         confirmClaimIdPhoto,
         refreshConversations,
+        markConversationAsRead,
+        getUnreadConversationCount,
+        getTotalUnreadMessageCount,
+        getConversationUnreadCount,
+        getUnreadConversationsSummary,
       }}
     >
       {children}
