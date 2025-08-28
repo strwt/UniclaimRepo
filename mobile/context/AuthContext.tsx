@@ -67,55 +67,64 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
           
           // Start monitoring this specific user for ban status changes
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const banUnsubscribe = onSnapshot(userDocRef,
-            (docSnapshot) => {
-              if (docSnapshot.exists()) {
-                const userData = docSnapshot.data() as UserData;
+          // Only set up listener if user is authenticated to prevent permission errors during logout
+          if (firebaseUser && firebaseUser.uid) {
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            const banUnsubscribe = onSnapshot(userDocRef,
+              (docSnapshot) => {
+                if (docSnapshot.exists()) {
+                  const userData = docSnapshot.data() as UserData;
 
-                // Check if user just got banned
-                if (userData.status === 'banned') {
-                  console.log('User banned detected in real-time (mobile)');
+                  // Check if user just got banned
+                  if (userData.status === 'banned') {
+                    console.log('User banned detected in real-time (mobile)');
 
-                  // IMMEDIATELY stop listening to prevent permission errors
-                  banUnsubscribe();
-                  banListenerRef.current = null;
+                    // IMMEDIATELY stop listening to prevent permission errors
+                    banUnsubscribe();
+                    banListenerRef.current = null;
 
-                  // Update state
-                  setIsBanned(true);
-                  setBanInfo(userData.banInfo || {});
+                    // Update state
+                    setIsBanned(true);
+                    setBanInfo(userData.banInfo || {});
 
-                  // Logout user immediately when banned
-                  handleImmediateBanLogout(userData);
-                } else if (userData.status === 'active') {
-                  // User was unbanned
-                  setIsBanned(false);
-                  setBanInfo(null);
+                    // Logout user immediately when banned
+                    handleImmediateBanLogout(userData);
+                  } else if (userData.status === 'active') {
+                    // User was unbanned
+                    setIsBanned(false);
+                    setBanInfo(null);
+                  }
+                }
+              },
+              (error) => {
+                // Error handler - if listener fails, clean up gracefully
+                const isPermissionError = error?.code === 'permission-denied' ||
+                  error?.message?.includes('Missing or insufficient permissions');
+
+                if (isPermissionError) {
+                  // This is expected during logout - don't log as error
+                  // Only log if we're still authenticated (not during logout)
+                  if (isAuthenticated) {
+                    console.log('Ban listener permission error (expected during logout):', error.message);
+                  }
+                } else {
+                  console.warn('Ban listener error (mobile):', error);
+                }
+
+                // Clean up the listener
+                banUnsubscribe();
+                banListenerRef.current = null;
+
+                // Only start fallback if still authenticated
+                if (isAuthenticated) {
+                  startPeriodicBanCheck();
                 }
               }
-            },
-                        (error) => {
-              // Error handler - if listener fails, clean up gracefully
-              const isPermissionError = error?.code === 'permission-denied' ||
-                error?.message?.includes('Missing or insufficient permissions');
+            );
 
-              if (isPermissionError) {
-                // This is expected during logout - don't log as error
-                console.log('Ban listener permission error (expected during logout):', error.message);
-              } else {
-                console.warn('Ban listener error (mobile):', error);
-              }
-
-              banUnsubscribe();
-              banListenerRef.current = null;
-
-              // Fallback: start periodic ban checking
-              startPeriodicBanCheck();
-            }
-          );
-
-          // Store the unsubscribe function for cleanup on logout
-          banListenerRef.current = banUnsubscribe;
+            // Store the unsubscribe function for cleanup on logout
+            banListenerRef.current = banUnsubscribe;
+          }
           
         } catch (error: any) {
           console.error('Error fetching user data:', error);
@@ -197,6 +206,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async (): Promise<void> => {
     try {
       setLoading(true);
+      
+      // Immediately clean up ban listener to prevent permission errors during logout
+      // This prevents the race condition where the listener tries to access user data after logout
+      if (banListenerRef.current) {
+        console.log('Immediately cleaning up ban listener during logout');
+        banListenerRef.current();
+        banListenerRef.current = null;
+      }
+      
       await authService.logout();
       // onAuthStateChanged will handle updating the state
     } catch (error: any) {
