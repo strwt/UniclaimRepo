@@ -423,6 +423,26 @@ export const messageService = {
     // Send a handover request message
     async sendHandoverRequest(conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string): Promise<void> {
         try {
+            // First, check if this conversation already has a handover request
+            const conversationRef = doc(db, 'conversations', conversationId);
+            const conversationDoc = await getDoc(conversationRef);
+
+            if (!conversationDoc.exists()) {
+                throw new Error('Conversation not found');
+            }
+
+            const conversationData = conversationDoc.data();
+
+            // Check if this is a lost item (only allow handover for lost items)
+            if (conversationData.postType !== 'lost') {
+                throw new Error('Handover requests are only allowed for lost items');
+            }
+
+            // Check if a handover request already exists
+            if (conversationData.handoverRequested === true) {
+                throw new Error('You have already requested a handover in this conversation');
+            }
+
             const messagesRef = collection(db, 'conversations', conversationId, 'messages');
             const handoverMessage = {
                 senderId,
@@ -442,8 +462,9 @@ export const messageService = {
 
             await addDoc(messagesRef, handoverMessage);
 
-            // Update last message in conversation
-            await updateDoc(doc(db, 'conversations', conversationId), {
+            // Update conversation with handover request flag and last message
+            await updateDoc(conversationRef, {
+                handoverRequested: true,
                 lastMessage: {
                     text: handoverMessage.text,
                     senderId,
@@ -474,6 +495,14 @@ export const messageService = {
             }
 
             await updateDoc(messageRef, updateData);
+
+            // If handover is rejected, reset the handoverRequested flag to allow new requests
+            if (status === 'rejected') {
+                const conversationRef = doc(db, 'conversations', conversationId);
+                await updateDoc(conversationRef, {
+                    handoverRequested: false
+                });
+            }
 
             // Note: No new chat bubble is created - only the status is updated
             // The existing handover request message will show the updated status
@@ -745,8 +774,19 @@ export const messageService = {
                 // Continue with message deletion even if image deletion fails
             }
 
+            // Check if this is a handover request message before deleting
+            const isHandoverRequest = messageData.messageType === 'handover_request';
+
             // Delete the message
             await deleteDoc(messageRef);
+
+            // If we deleted a handover request, reset the handoverRequested flag
+            if (isHandoverRequest) {
+                const conversationRef = doc(db, 'conversations', conversationId);
+                await updateDoc(conversationRef, {
+                    handoverRequested: false
+                });
+            }
 
         } catch (error: any) {
             throw new Error(error.message || 'Failed to delete message');

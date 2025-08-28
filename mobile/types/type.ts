@@ -100,4 +100,6 @@ export interface Conversation {
   };
   createdAt: any;
   unreadCount?: number;
+  // New field for handover request limit
+  handoverRequested?: boolean;
 }
