@@ -90,13 +90,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const handleHandoverResponse = (messageId: string, status: 'accepted' | 'rejected') => {
     // This function will be called when a handover response is made
     // The actual update is handled in the MessageBubble component
-    console.log(`Handover response: ${status} for message ${messageId}`);
   };
 
   const handleClaimResponse = (messageId: string, status: 'accepted' | 'rejected') => {
     // This function will be called when a claim response is made
     // The actual update is handled in the MessageBubble component
-    console.log(`Claim response: ${status} for message ${messageId}`);
   };
 
   const handleHandoverRequest = async () => {
@@ -118,17 +116,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   };
 
   const handleClaimRequest = async () => {
-    console.log('Frontend Claim button pressed!');
-    console.log('conversation:', conversation);
-    console.log('userData:', userData);
-
     if (!conversation || !userData) {
-      console.log('Frontend claim request blocked - missing required data');
       return;
     }
 
     try {
-      console.log('Frontend calling sendClaimRequest...');
       await sendClaimRequest(
         conversation.id,
         userData.uid,
@@ -137,10 +129,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         conversation.postId,
         conversation.postTitle
       );
-      console.log('Frontend claim request sent successfully!');
       alert('Claim request sent successfully!');
     } catch (error) {
-      console.error('Frontend failed to send claim request:', error);
+      console.error('Failed to send claim request:', error);
       alert('Failed to send claim request. Please try again.');
     }
   };
@@ -183,40 +174,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
   // Check if claim item button should be shown
   const shouldShowClaimItemButton = () => {
-    console.log('Frontend shouldShowClaimItemButton check:');
-    console.log('- conversation:', conversation);
-    console.log('- userData:', userData);
-
     if (!conversation || !userData) {
-      console.log('Frontend claim button: No conversation or userData');
       return false;
     }
 
     // Only show for found items
     if (conversation.postType !== 'found') {
-      console.log('Frontend claim button: Not a found item', conversation.postType);
       return false;
     }
 
     // Only show if post is still pending
     if (conversation.postStatus !== 'pending') {
-      console.log('Frontend claim button: Post not pending', conversation.postStatus);
       return false;
     }
 
     // Only show if found action is "keep" (Found and Keep posts)
     if (conversation.foundAction !== 'keep') {
-      console.log('Frontend claim button: Found action not keep', conversation.foundAction);
       return false;
     }
 
     // Don't show if current user is the post creator
     if (conversation.postCreatorId === userData.uid) {
-      console.log('Frontend claim button: User is post creator');
       return false;
     }
 
-    console.log('Frontend claim button: Should show claim button');
     return true;
   };
 

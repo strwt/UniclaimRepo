@@ -173,7 +173,7 @@ export default function SideNav({
               <div className="flex items-center gap-1">
                 <img src={Logo} alt="Logo" className="size-8" />
                 <h1 className="font-albert-sans font-bold text-xl text-blue-950">
-                  <span className="text-brand">Uni</span>Cove
+                  <span className="text-brand">Uni</span>Claim
                 </h1>
               </div>
               <HiOutlineX
