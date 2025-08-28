@@ -109,7 +109,8 @@ const ConversationList: React.FC<ConversationListProps> = ({
       <div className="overflow-y-auto h-[calc(100vh-280px)]">
         {sortedConversations.map((conversation) => {
           const isSelected = selectedConversationId === conversation.id;
-          const hasUnread = conversation.unreadCount && conversation.unreadCount > 0;
+          // Get the current user's unread count from this conversation
+          const hasUnread = conversation.unreadCounts?.[userData?.uid || ''] > 0;
           
           return (
             <div
@@ -121,12 +122,14 @@ const ConversationList: React.FC<ConversationListProps> = ({
             >
               <div className="flex items-start justify-between mb-2">
                                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                   <ProfilePicture
-                     src={userData ? getOtherParticipantProfilePicture(conversation, userData.uid) : null}
-                     alt="participant profile"
-                     size="md"
-                     className="flex-shrink-0"
-                   />
+                   <div className="relative flex-shrink-0">
+                     <ProfilePicture
+                       src={userData ? getOtherParticipantProfilePicture(conversation, userData.uid) : null}
+                       alt="participant profile"
+                       size="md"
+                       className="flex-shrink-0"
+                     />
+                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-gray-900 truncate">
                       {conversation.postTitle}
@@ -137,15 +140,15 @@ const ConversationList: React.FC<ConversationListProps> = ({
                   </div>
                 </div>
                 {hasUnread && (
-                  <span className="ml-2 bg-blue-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
-                    {conversation.unreadCount}
-                  </span>
+                  <div className=" mr-5 mt-7 w-2 h-2 bg-blue-500 rounded-full" />
                 )}
               </div>
               
               {conversation.lastMessage && (
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600 truncate flex-1 mr-2">
+                  <p className={`text-sm truncate flex-1 mr-2 ${
+                    hasUnread ? 'font-semibold text-gray-800' : 'text-gray-600'
+                  }`}>
                     {conversation.lastMessage.text}
                   </p>
                   <span className="text-xs text-gray-400 whitespace-nowrap">

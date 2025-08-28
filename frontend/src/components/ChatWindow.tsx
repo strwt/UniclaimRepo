@@ -43,7 +43,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       setIsLoading(false);
       
       // Mark conversation as read when messages are loaded
-      if (userData && conversation.unreadCount && conversation.unreadCount > 0) {
+      if (userData && conversation.unreadCounts?.[userData.uid] > 0) {
         markConversationAsRead(conversation.id);
       }
     });

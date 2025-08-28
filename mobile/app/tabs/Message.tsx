@@ -66,7 +66,7 @@ const ConversationItem = ({ conversation, onPress }: { conversation: Conversatio
               <Text className="text-gray-500 text-xs mt-1" numberOfLines={1}>
                 {getOtherParticipantName()}
               </Text>
-              <Text className="text-gray-600 text-sm mt-1" numberOfLines={2}>
+              <Text className={`text-sm mt-1 ${conversation.unreadCounts?.[userData?.uid || ''] > 0 ? 'font-bold text-gray-800' : 'text-gray-600'}`} numberOfLines={2}>
                 {conversation.lastMessage?.text || 'No messages yet'}
               </Text>
             </View>
@@ -74,12 +74,9 @@ const ConversationItem = ({ conversation, onPress }: { conversation: Conversatio
               <Text className="text-gray-500 text-xs">
                 {formatTime(conversation.lastMessage?.timestamp)}
               </Text>
-              {conversation.unreadCount && conversation.unreadCount > 0 && (
-                <View className="bg-blue-500 rounded-full w-5 h-5 items-center justify-center mt-1 self-end">
-                  <Text className="text-white text-xs font-bold">
-                    {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
-                  </Text>
-                </View>
+              {/* Get the current user's unread count from this conversation */}
+              {conversation.unreadCounts?.[userData?.uid || ''] > 0 && (
+                <View className="bg-blue-500 rounded-full w-3 h-3 mt-1 self-end" />
               )}
             </View>
           </View>

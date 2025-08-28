@@ -25,7 +25,8 @@ import {
     deleteDoc,
     serverTimestamp,
     getDocs,
-    writeBatch
+    writeBatch,
+    increment
 } from 'firebase/firestore';
 // Note: Firebase Storage imports removed - now using Cloudinary
 // import {
@@ -417,13 +418,34 @@ export const messageService = {
                 messageType: "text" // Default message type
             });
 
-            // Update last message in conversation
-            await updateDoc(doc(db, 'conversations', conversationId), {
+            // Get conversation data to find other participants
+            const conversationRef = doc(db, 'conversations', conversationId);
+            const conversationDoc = await getDoc(conversationRef);
+
+            if (!conversationDoc.exists()) {
+                throw new Error('Conversation not found');
+            }
+
+            const conversationData = conversationDoc.data();
+            const participantIds = Object.keys(conversationData.participants || {});
+
+            // Increment unread count for all participants except the sender
+            const otherParticipantIds = participantIds.filter(id => id !== senderId);
+
+            // Prepare unread count updates for each receiver
+            const unreadCountUpdates: { [key: string]: any } = {};
+            otherParticipantIds.forEach(participantId => {
+                unreadCountUpdates[`unreadCounts.${participantId}`] = increment(1);
+            });
+
+            // Update conversation with last message and increment unread counts for other participants
+            await updateDoc(conversationRef, {
                 lastMessage: {
                     text,
                     senderId,
                     timestamp: serverTimestamp()
-                }
+                },
+                ...unreadCountUpdates
             });
         } catch (error: any) {
             throw new Error(error.message || 'Failed to send message');
@@ -796,10 +818,11 @@ export const messageService = {
     },
 
     // Mark conversation as read
-    async markConversationAsRead(conversationId: string, _userId: string): Promise<void> {
+    async markConversationAsRead(conversationId: string, userId: string): Promise<void> {
         try {
+            // Reset the unread count for the specific user who is reading the conversation
             await updateDoc(doc(db, 'conversations', conversationId), {
-                unreadCount: 0
+                [`unreadCounts.${userId}`]: 0
             });
         } catch (error: any) {
             throw new Error(error.message || 'Failed to mark conversation as read');

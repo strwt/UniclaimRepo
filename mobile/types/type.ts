@@ -114,7 +114,10 @@ export interface Conversation {
     timestamp: any;
   };
   createdAt: any;
-  unreadCount?: number;
+  // Replace global unreadCount with user-specific counts
+  unreadCounts: {
+    [userId: string]: number;
+  };
   // New field for handover request limit
   handoverRequested?: boolean;
   // New field for claim request limit

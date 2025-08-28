@@ -26,8 +26,12 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Calculate total unread count
-  const totalUnreadCount = conversations.reduce((total, conv) => total + (conv.unreadCount || 0), 0);
+  // Calculate total unread count for the current user
+  const totalUnreadCount = conversations.reduce((total, conv) => {
+    // Get the current user's unread count from this conversation
+    const userUnreadCount = conv.unreadCounts?.[userId || ''] || 0;
+    return total + userUnreadCount;
+  }, 0);
 
   // Load user conversations
   useEffect(() => {
