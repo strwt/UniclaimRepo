@@ -9,6 +9,7 @@ interface AdminPostCardProps {
   onDelete?: (post: Post) => void;
   onStatusChange?: (post: Post, status: string) => void;
   onActivateTicket?: (post: Post) => void;
+  onRevertResolution?: (post: Post) => void;
 }
 
 function formatDateTime(datetime: string | Date) {
@@ -41,13 +42,14 @@ function highlightAndTruncate(text: string, keyword: string, maxLength = 90) {
   return result;
 }
 
-function AdminPostCard({ 
-  post, 
-  onClick, 
-  highlightText, 
-  onDelete, 
+function AdminPostCard({
+  post,
+  onClick,
+  highlightText,
+  onDelete,
   onStatusChange,
-  onActivateTicket
+  onActivateTicket,
+  onRevertResolution
 }: AdminPostCardProps) {
   const previewUrl = useMemo(() => {
     if (post.images && post.images.length > 0) {
@@ -125,6 +127,18 @@ function AdminPostCard({
           
           {/* Admin Controls */}
           <div className="flex gap-2">
+            {post.status === 'resolved' && onRevertResolution && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRevertResolution(post);
+                }}
+                className="px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition"
+                title="Revert Resolution - Change back to pending"
+              >
+                Revert
+              </button>
+            )}
             <button
               onClick={handleDelete}
               className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition"

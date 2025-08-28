@@ -588,6 +588,26 @@ export const messageService = {
                 'claimData.status': 'accepted' // Final status after confirmation
             });
 
+            // STEP 2: Auto-resolve the post after ID confirmation
+            // Get conversation data to retrieve postId
+            const conversationRef = doc(db, 'conversations', conversationId);
+            const conversationSnap = await getDoc(conversationRef);
+
+            if (conversationSnap.exists()) {
+                const conversationData = conversationSnap.data();
+                const postId = conversationData.postId;
+
+                if (postId) {
+                    // Update post status to resolved
+                    await this.updatePostStatus(postId, 'resolved');
+                    console.log('✅ Post auto-resolved after ID photo confirmation:', postId);
+                } else {
+                    console.warn('⚠️ No postId found in conversation, cannot auto-resolve');
+                }
+            } else {
+                console.warn('⚠️ Conversation not found, cannot auto-resolve post');
+            }
+
         } catch (error: any) {
             throw new Error(error.message || 'Failed to confirm claim ID photo');
         }
@@ -853,6 +873,79 @@ export const messageService = {
             });
         } catch (error: any) {
             throw new Error(error.message || 'Failed to update post status');
+        }
+    },
+
+    // Revert post resolution - change resolved post back to pending and reset related claim request
+    async revertPostResolution(postId: string, adminId: string, reason?: string): Promise<void> {
+        try {
+            // STEP 3: Change post status back to pending
+            await this.updatePostStatus(postId, 'pending');
+            console.log('✅ Post status reverted to pending:', postId);
+
+            // STEP 4: Find and reset related claim/handover request
+            // Query conversations that reference this postId
+            const conversationsQuery = query(
+                collection(db, 'conversations'),
+                where('postId', '==', postId)
+            );
+            const conversationsSnap = await getDocs(conversationsQuery);
+
+            if (!conversationsSnap.empty) {
+                // Process each conversation (there should typically be only one)
+                for (const conversationDoc of conversationsSnap.docs) {
+                    const conversationId = conversationDoc.id;
+
+                    // Query messages in this conversation to find claim/handover requests
+                    const messagesQuery = query(
+                        collection(db, 'conversations', conversationId, 'messages'),
+                        where('messageType', 'in', ['claim_request', 'handover_request'])
+                    );
+                    const messagesSnap = await getDocs(messagesQuery);
+
+                    // Reset the most recent claim/handover request
+                    for (const messageDoc of messagesSnap.docs) {
+                        const messageData = messageDoc.data();
+                        const messageId = messageDoc.id;
+
+                        if (messageData.claimData?.status === 'accepted' && messageData.claimData?.idPhotoConfirmed) {
+                            // Reset claim request
+                            await updateDoc(doc(db, 'conversations', conversationId, 'messages', messageId), {
+                                'claimData.status': 'pending_confirmation',
+                                'claimData.idPhotoConfirmed': false,
+                                'claimData.idPhotoConfirmedAt': null,
+                                'claimData.idPhotoConfirmedBy': null,
+                                updatedAt: serverTimestamp()
+                            });
+                            console.log('✅ Claim request reset for message:', messageId);
+                        } else if (messageData.handoverData?.status === 'accepted' && messageData.handoverData?.idPhotoConfirmed) {
+                            // Reset handover request
+                            await updateDoc(doc(db, 'conversations', conversationId, 'messages', messageId), {
+                                'handoverData.status': 'pending_confirmation',
+                                'handoverData.idPhotoConfirmed': false,
+                                'handoverData.idPhotoConfirmedAt': null,
+                                'handoverData.idPhotoConfirmedBy': null,
+                                updatedAt: serverTimestamp()
+                            });
+                            console.log('✅ Handover request reset for message:', messageId);
+                        }
+                    }
+                }
+            }
+
+            // STEP 5: Create audit log entry
+            await addDoc(collection(db, 'audit_logs'), {
+                action: 'revert_resolution',
+                postId,
+                adminId,
+                reason: reason || 'Admin reverted resolution',
+                timestamp: serverTimestamp()
+            });
+            console.log('✅ Audit log created for revert action');
+
+        } catch (error: any) {
+            console.error('❌ Failed to revert post resolution:', error);
+            throw new Error(error.message || 'Failed to revert post resolution');
         }
     },
 
