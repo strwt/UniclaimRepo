@@ -75,14 +75,6 @@ export default function FoundActionModal({
             </button>
           ))}
         </div>
-
-        {/* Cancel Button */}
-        <button
-          onClick={onCancel}
-          className="w-full mt-4 py-2 px-4 text-gray-500 hover:text-gray-700 font-medium transition-colors"
-        >
-          Cancel
-        </button>
       </div>
     </div>
   );
