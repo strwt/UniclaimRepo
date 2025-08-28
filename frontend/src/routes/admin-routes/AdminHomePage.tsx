@@ -8,7 +8,7 @@ import MobileNavText from "@/components/NavHeadComp";
 import SearchBar from "../../components/SearchBar";
 
 // hooks
-import { usePosts } from "@/hooks/usePosts";
+import { usePosts, useResolvedPosts } from "@/hooks/usePosts";
 
 function fuzzyMatch(text: string, query: string): boolean {
   const cleanedText = text.toLowerCase();
@@ -19,11 +19,12 @@ function fuzzyMatch(text: string, query: string): boolean {
 }
 
 export default function AdminHomePage() {
-  // ✅ Use the custom hook for real-time posts
+  // ✅ Use the custom hooks for real-time posts
   const { posts, loading, error } = usePosts();
+  const { posts: resolvedPosts, loading: resolvedLoading, error: resolvedError } = useResolvedPosts();
 
 
-  const [viewType, setViewType] = useState<"all" | "lost" | "found" | "unclaimed">("all");
+  const [viewType, setViewType] = useState<"all" | "lost" | "found" | "unclaimed" | "completed">("all");
   const [lastDescriptionKeyword, setLastDescriptionKeyword] = useState("");
   const [rawResults, setRawResults] = useState<Post[] | null>(null); // store-search-result-without-viewType-filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,7 +90,10 @@ export default function AdminHomePage() {
   const handleSearch = async (query: string, filters: any) => {
     setLastDescriptionKeyword(filters.description || "");
 
-    const filtered = (posts ?? []).filter((item) => {
+    // Use appropriate posts based on current viewType
+    const postsToSearch = viewType === "completed" ? resolvedPosts : posts;
+
+    const filtered = (postsToSearch ?? []).filter((item) => {
       const matchesQuery = query.trim() ? fuzzyMatch(item.title, query) : true;
 
       const matchesCategory =
@@ -120,13 +124,15 @@ export default function AdminHomePage() {
 
 
 
-  const postsToDisplay = (rawResults ?? posts ?? []).filter((post) => {
+  const postsToDisplay = (rawResults ?? (viewType === "completed" ? resolvedPosts : posts) ?? []).filter((post) => {
     let shouldShow = false;
 
     if (viewType === "all") {
       shouldShow = true;
     } else if (viewType === "unclaimed") {
       shouldShow = post.movedToUnclaimed === true;
+    } else if (viewType === "completed") {
+      shouldShow = true; // resolvedPosts already filtered
     } else {
       shouldShow = post.type.toLowerCase() === viewType;
     }
@@ -172,7 +178,7 @@ export default function AdminHomePage() {
 
 
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-blue-600">{posts?.length || 0}</div>
             <div className="text-sm text-gray-600">Total Posts</div>
@@ -201,6 +207,12 @@ export default function AdminHomePage() {
             </div>
             <div className="text-sm text-gray-600">Unclaimed</div>
           </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-purple-600">
+              {resolvedPosts?.length || 0}
+            </div>
+            <div className="text-sm text-gray-600">Completed</div>
+          </div>
         </div>
       </div>
 
@@ -211,7 +223,9 @@ export default function AdminHomePage() {
         <div className="w-full lg:w-auto text-center lg:text-left mb-2 lg:mb-0">
           <span className="text-sm text-gray-600">Current View: </span>
           <span className="text-sm font-semibold text-blue-600 capitalize">
-            {viewType === "unclaimed" ? "Unclaimed Items" : `${viewType} Item Reports`}
+            {viewType === "unclaimed" ? "Unclaimed Items" :
+             viewType === "completed" ? "Completed Reports" :
+             `${viewType} Item Reports`}
           </span>
         </div>
         <button
@@ -274,18 +288,35 @@ export default function AdminHomePage() {
           Unclaimed Items
         </button>
 
+        <button
+          className={`px-4 py-2 cursor-pointer lg:px-8 rounded text-[14px] lg:text-base font-medium transition-colors duration-300 ${
+            viewType === "completed"
+              ? "bg-navyblue text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-blue-200 border-gray-300"
+          }`}
+          onClick={() => {
+            setIsLoading(true);
+            setViewType("completed");
+            setTimeout(() => setIsLoading(false), 200);
+          }}
+        >
+          Completed Reports
+        </button>
+
 
       </div>
 
       <div className="grid grid-cols-1 gap-5 mx-6 mt-7 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {/* ✅ Handle Firebase loading state */}
-        {loading || isLoading ? (
+        {(loading || resolvedLoading || isLoading) ? (
           <div className="col-span-full flex items-center justify-center h-80">
             <span className="text-gray-400">
-              Loading {viewType === "unclaimed" ? "unclaimed" : viewType} report items...
+              Loading {viewType === "unclaimed" ? "unclaimed" :
+                       viewType === "completed" ? "completed" :
+                       viewType} report items...
             </span>
           </div>
-        ) : error ? (
+        ) : (error || resolvedError) ? (
           <div className="col-span-full flex items-center justify-center h-80 text-red-500">
             <p>Error loading posts: {error}</p>
             <button 
