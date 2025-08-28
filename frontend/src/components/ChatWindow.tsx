@@ -18,7 +18,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [isSending, setIsSending] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { sendMessage, getConversationMessages, markConversationAsRead } = useMessage();
+  const { sendMessage, getConversationMessages, markConversationAsRead, sendClaimRequest, updateClaimResponse } = useMessage();
   const { userData } = useAuth();
 
   // Auto-scroll to bottom when new messages arrive
@@ -93,6 +93,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     console.log(`Handover response: ${status} for message ${messageId}`);
   };
 
+  const handleClaimResponse = (messageId: string, status: 'accepted' | 'rejected') => {
+    // This function will be called when a claim response is made
+    // The actual update is handled in the MessageBubble component
+    console.log(`Claim response: ${status} for message ${messageId}`);
+  };
+
   const handleHandoverRequest = async () => {
     if (!conversation || !userData) return;
 
@@ -108,6 +114,34 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     } catch (error) {
       console.error('Failed to send handover request:', error);
       // You could add a toast notification here
+    }
+  };
+
+  const handleClaimRequest = async () => {
+    console.log('Frontend Claim button pressed!');
+    console.log('conversation:', conversation);
+    console.log('userData:', userData);
+
+    if (!conversation || !userData) {
+      console.log('Frontend claim request blocked - missing required data');
+      return;
+    }
+
+    try {
+      console.log('Frontend calling sendClaimRequest...');
+      await sendClaimRequest(
+        conversation.id,
+        userData.uid,
+        `${userData.firstName} ${userData.lastName}`,
+        userData.profilePicture || userData.profileImageUrl || '',
+        conversation.postId,
+        conversation.postTitle
+      );
+      console.log('Frontend claim request sent successfully!');
+      alert('Claim request sent successfully!');
+    } catch (error) {
+      console.error('Frontend failed to send claim request:', error);
+      alert('Failed to send claim request. Please try again.');
     }
   };
 
@@ -144,6 +178,45 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     // Don't show if current user is the post creator
     if (conversation.postCreatorId === userData.uid) return false;
     
+    return true;
+  };
+
+  // Check if claim item button should be shown
+  const shouldShowClaimItemButton = () => {
+    console.log('Frontend shouldShowClaimItemButton check:');
+    console.log('- conversation:', conversation);
+    console.log('- userData:', userData);
+
+    if (!conversation || !userData) {
+      console.log('Frontend claim button: No conversation or userData');
+      return false;
+    }
+
+    // Only show for found items
+    if (conversation.postType !== 'found') {
+      console.log('Frontend claim button: Not a found item', conversation.postType);
+      return false;
+    }
+
+    // Only show if post is still pending
+    if (conversation.postStatus !== 'pending') {
+      console.log('Frontend claim button: Post not pending', conversation.postStatus);
+      return false;
+    }
+
+    // Only show if found action is "keep" (Found and Keep posts)
+    if (conversation.foundAction !== 'keep') {
+      console.log('Frontend claim button: Found action not keep', conversation.foundAction);
+      return false;
+    }
+
+    // Don't show if current user is the post creator
+    if (conversation.postCreatorId === userData.uid) {
+      console.log('Frontend claim button: User is post creator');
+      return false;
+    }
+
+    console.log('Frontend claim button: Should show claim button');
     return true;
   };
 
@@ -187,6 +260,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
               Handover Item
             </button>
           )}
+
+          {/* Claim Item Button */}
+          {shouldShowClaimItemButton() && (
+            <button 
+              onClick={handleClaimRequest}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Claim Item
+            </button>
+          )}
         </div>
       </div>
 
@@ -221,6 +304,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
                 conversationId={conversation.id}
                 currentUserId={userData?.uid || ''}
                 onHandoverResponse={handleHandoverResponse}
+                onClaimResponse={handleClaimResponse}
               />
             ))}
             <div ref={messagesEndRef} />

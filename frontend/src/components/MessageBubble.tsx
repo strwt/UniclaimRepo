@@ -11,6 +11,7 @@ interface MessageBubbleProps {
   conversationId: string;
   currentUserId: string;
   onHandoverResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
+  onClaimResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -19,9 +20,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   showSenderName = false,
   conversationId,
   currentUserId,
-  onHandoverResponse
+  onHandoverResponse,
+  onClaimResponse
 }) => {
-  const { deleteMessage, updateHandoverResponse, confirmHandoverIdPhoto } = useMessage();
+  const { deleteMessage, updateHandoverResponse, confirmHandoverIdPhoto, confirmClaimIdPhoto, updateClaimResponse } = useMessage();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showIdPhotoModal, setShowIdPhotoModal] = useState(false);
@@ -112,6 +114,93 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       await confirmHandoverIdPhoto(conversationId, message.id);
     } catch (error: any) {
       console.error('Failed to confirm ID photo:', error);
+      alert('Failed to confirm ID photo. Please try again.');
+    }
+  };
+
+  const handleClaimResponse = async (status: 'accepted' | 'rejected') => {
+    if (!onClaimResponse) return;
+
+    try {
+      // If accepting, show ID photo modal for verification
+      if (status === 'accepted') {
+        setShowIdPhotoModal(true);
+        return;
+      }
+
+      // For rejection, proceed as normal
+      await updateClaimResponse(conversationId, message.id, status);
+
+      // Call the callback to update UI
+      onClaimResponse(message.id, status);
+    } catch (error) {
+      console.error('Failed to update claim response:', error);
+      alert('Failed to update claim response. Please try again.');
+    }
+  };
+
+  const handleClaimIdPhotoUpload = async (photoFile: File) => {
+    try {
+      setIsUploadingIdPhoto(true);
+
+      console.log('📸 Starting claim ID photo upload...', photoFile.name);
+      console.log('📸 Message type:', message.messageType);
+      console.log('📸 Conversation ID:', conversationId);
+
+      // Upload ID photo to Cloudinary
+      const { cloudinaryService } = await import('../utils/cloudinary');
+      const uploadedUrl = await cloudinaryService.uploadImage(photoFile, 'id_photos');
+
+      console.log('✅ Claim ID photo uploaded successfully:', uploadedUrl);
+
+      // Update claim response with ID photo
+      const { messageService } = await import('../utils/firebase');
+      await messageService.updateClaimResponse(
+        conversationId,
+        message.id,
+        'accepted',
+        currentUserId,
+        uploadedUrl
+      );
+
+      console.log('✅ Claim response updated with ID photo');
+
+      // Call the callback to update UI
+      onClaimResponse(message.id, 'accepted');
+
+      // Close modal and reset state
+      setShowIdPhotoModal(false);
+      setSelectedIdPhoto(null);
+
+      // Show success message
+      alert('ID photo uploaded successfully! The post owner will now review and confirm your claim.');
+
+    } catch (error: any) {
+      console.error('❌ Failed to upload claim ID photo:', error);
+
+      let errorMessage = 'Failed to upload ID photo. Please try again.';
+
+      if (error.message?.includes('Network request failed')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.message?.includes('Cloudinary cloud name not configured')) {
+        errorMessage = 'Cloudinary not configured. Please contact support.';
+      } else if (error.message?.includes('Upload preset not configured')) {
+        errorMessage = 'Upload configuration error. Please contact support.';
+      }
+
+      alert('Upload Error: ' + errorMessage);
+    } finally {
+      setIsUploadingIdPhoto(false);
+    }
+  };
+
+  const handleConfirmClaimIdPhoto = async () => {
+    try {
+      await confirmClaimIdPhoto(conversationId, message.id);
+      // Call the callback to update UI
+      onClaimResponse(message.id, 'accepted');
+    } catch (error: any) {
+      console.error('Failed to confirm claim ID photo:', error);
       alert('Failed to confirm ID photo. Please try again.');
     }
   };
@@ -225,9 +314,104 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     );
   };
 
+  const renderClaimRequest = () => {
+    if (message.messageType !== 'claim_request') return null;
+
+    const claimData = message.claimData;
+    if (!claimData) return null;
+
+    // Show different UI based on status and user role
+    const canRespond = claimData.status === 'pending' && !isOwnMessage;
+    const canConfirm = claimData.status === 'pending_confirmation' && !isOwnMessage;
+    const isCompleted = claimData.status === 'accepted' || claimData.status === 'rejected';
+
+    return (
+      <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+        <div className="text-sm text-purple-800 mb-2">
+          <strong>Claim Request:</strong> {claimData.postTitle}
+        </div>
+
+        {/* Show ID photo if uploaded */}
+        {claimData.idPhotoUrl && (
+          <div className="mb-3 p-2 bg-white rounded border">
+            <div className="text-xs text-gray-600 mb-1">ID Photo:</div>
+            <img
+              src={claimData.idPhotoUrl}
+              alt="ID Photo"
+              className="w-20 h-12 rounded object-cover"
+            />
+          </div>
+        )}
+
+        {/* Action buttons */}
+        {canRespond ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleClaimResponse('accepted')}
+              className="px-3 py-1 bg-green-500 text-white text-xs rounded-md hover:bg-green-600 transition-colors"
+            >
+              Accept Claim
+            </button>
+            <button
+              onClick={() => handleClaimResponse('rejected')}
+              className="px-3 py-1 bg-red-500 text-white text-xs rounded-md hover:bg-red-600 transition-colors"
+            >
+              Reject Claim
+            </button>
+          </div>
+        ) : canConfirm ? (
+          <div className="flex gap-2">
+            <button
+              onClick={handleConfirmClaimIdPhoto}
+              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-md hover:bg-blue-600 transition-colors"
+            >
+              Confirm ID Photo
+            </button>
+          </div>
+        ) : (
+          <div className="text-xs text-purple-600">
+            Status: <span className="capitalize font-medium">{claimData.status}</span>
+            {isCompleted && claimData.respondedAt && (
+              <span className="ml-2">
+                at {formatTime(claimData.respondedAt)}
+              </span>
+            )}
+            {claimData.status === 'accepted' && claimData.idPhotoConfirmed && (
+              <span className="ml-2 text-green-600">
+                ✓ ID Photo Confirmed
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderClaimResponse = () => {
+    if (message.messageType !== 'claim_response') return null;
+
+    const claimData = message.claimData;
+    if (!claimData) return null;
+
+    const statusColor = claimData.status === 'accepted' ? 'text-green-600' : 'text-red-600';
+    const statusIcon = claimData.status === 'accepted' ? '✅' : '❌';
+
+    return (
+      <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+        <div className={`text-sm ${statusColor} flex items-center gap-2`}>
+          <span>{statusIcon}</span>
+          <span className="capitalize font-medium">Claim {claimData.status}</span>
+          {claimData.responseMessage && (
+            <span className="text-gray-600">- {claimData.responseMessage}</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderSystemMessage = () => {
     if (message.messageType !== 'system') return null;
-    
+
     return (
       <div className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
         <div className="text-sm text-yellow-800">
@@ -240,10 +424,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   // ID Photo Modal using ImagePicker component
   const renderIdPhotoModal = () => {
     if (!showIdPhotoModal) return null;
-    
+
+    // Use the correct upload handler based on message type
+    const uploadHandler = message.messageType === 'claim_request'
+      ? handleClaimIdPhotoUpload
+      : handleIdPhotoUpload;
+
+    console.log('📷 Opening photo modal for message type:', message.messageType);
+    console.log('📷 Using upload handler:', message.messageType === 'claim_request' ? 'handleClaimIdPhotoUpload' : 'handleIdPhotoUpload');
+
     return (
       <ImagePicker
-        onImageSelect={handleIdPhotoUpload}
+        onImageSelect={uploadHandler}
         onClose={() => setShowIdPhotoModal(false)}
         isUploading={isUploadingIdPhoto}
       />
@@ -277,6 +469,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           {/* Render special message types */}
           {renderHandoverRequest()}
           {renderHandoverResponse()}
+          {renderClaimRequest()}
+          {renderClaimResponse()}
           {renderSystemMessage()}
         </div>
         

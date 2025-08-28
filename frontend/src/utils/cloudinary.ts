@@ -457,6 +457,17 @@ export const extractMessageImages = (message: any): string[] => {
             }
         }
 
+        // Check if message has claim data with ID photo
+        if (message.claimData && message.claimData.idPhotoUrl) {
+            const idPhotoUrl = message.claimData.idPhotoUrl;
+
+            // Only include Cloudinary URLs
+            if (idPhotoUrl && typeof idPhotoUrl === 'string' && idPhotoUrl.includes('cloudinary.com')) {
+                console.log('🗑️ Found claim ID photo for deletion:', idPhotoUrl.split('/').pop());
+                imageUrls.push(idPhotoUrl);
+            }
+        }
+
         // Check for other potential image fields (future extensibility)
         // This could include message attachments, profile pictures, etc.
 
@@ -471,9 +482,11 @@ export const extractMessageImages = (message: any): string[] => {
 export const deleteMessageImages = async (imageUrls: string[]): Promise<{ deleted: string[], failed: string[], success: boolean }> => {
     try {
         if (!imageUrls || imageUrls.length === 0) {
+            console.log('🗑️ No images to delete');
             return { deleted: [], failed: [], success: true };
         }
 
+        console.log(`🗑️ Attempting to delete ${imageUrls.length} images from Cloudinary`);
         const deleted: string[] = [];
         const failed: string[] = [];
 
@@ -500,6 +513,13 @@ export const deleteMessageImages = async (imageUrls: string[]): Promise<{ delete
         }
 
         const success = failed.length === 0;
+
+        // Log results
+        if (success) {
+            console.log(`✅ Successfully deleted ${deleted.length} images from Cloudinary`);
+        } else {
+            console.warn(`⚠️ Cloudinary cleanup completed: ${deleted.length} deleted, ${failed.length} failed`);
+        }
 
         return { deleted, failed, success };
 

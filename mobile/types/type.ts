@@ -59,9 +59,23 @@ export interface Message {
   timestamp: any; // Firebase timestamp
   readBy: string[];
   // New fields for message types
-  messageType?: "text" | "handover_request" | "handover_response" | "system";
+  messageType?: "text" | "handover_request" | "handover_response" | "claim_request" | "claim_response" | "system";
   // Fields for handover requests
   handoverData?: {
+    postId: string;
+    postTitle: string;
+    status: "pending" | "accepted" | "rejected" | "pending_confirmation";
+    requestedAt: any;
+    respondedAt?: any;
+    responseMessage?: string;
+    // New fields for ID photo verification
+    idPhotoUrl?: string; // URL of the uploaded ID photo
+    idPhotoConfirmed?: boolean; // Whether the item owner confirmed the ID photo
+    idPhotoConfirmedAt?: any; // When the ID photo was confirmed
+    idPhotoConfirmedBy?: string; // User ID who confirmed the ID photo
+  };
+  // Fields for claim requests
+  claimData?: {
     postId: string;
     postTitle: string;
     status: "pending" | "accepted" | "rejected" | "pending_confirmation";
@@ -84,6 +98,7 @@ export interface Conversation {
   postType: "lost" | "found";
   postStatus?: "pending" | "resolved" | "rejected";
   postCreatorId: string;
+  foundAction?: "keep" | "turnover to OSA" | "turnover to Campus Security"; // For found items
   participants: {
     [userId: string]: {
       uid: string;
@@ -102,4 +117,6 @@ export interface Conversation {
   unreadCount?: number;
   // New field for handover request limit
   handoverRequested?: boolean;
+  // New field for claim request limit
+  claimRequested?: boolean;
 }

@@ -22,20 +22,22 @@ import ImagePicker from "@/components/ImagePicker";
 type ChatRouteProp = RouteProp<RootStackParamList, 'Chat'>;
 type ChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Chat'>;
 
-const MessageBubble = ({ 
-  message, 
-  isOwnMessage, 
-  conversationId, 
-  currentUserId, 
-  onHandoverResponse 
-}: { 
-  message: Message; 
+const MessageBubble = ({
+  message,
+  isOwnMessage,
+  conversationId,
+  currentUserId,
+  onHandoverResponse,
+  onClaimResponse
+}: {
+  message: Message;
   isOwnMessage: boolean;
   conversationId: string;
   currentUserId: string;
   onHandoverResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
+  onClaimResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
 }) => {
-  const { deleteMessage, confirmHandoverIdPhoto } = useMessage();
+  const { deleteMessage, confirmHandoverIdPhoto, confirmClaimIdPhoto } = useMessage();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showIdPhotoModal, setShowIdPhotoModal] = useState(false);
   const [selectedIdPhoto, setSelectedIdPhoto] = useState<string | null>(null);
@@ -130,6 +132,93 @@ const MessageBubble = ({
       await confirmHandoverIdPhoto(conversationId, message.id);
     } catch (error: any) {
       console.error('Failed to confirm ID photo:', error);
+      Alert.alert('Error', 'Failed to confirm ID photo. Please try again.');
+    }
+  };
+
+  const handleClaimResponse = async (status: 'accepted' | 'rejected') => {
+    if (!onClaimResponse) return;
+
+    try {
+      // If accepting, show ID photo modal for verification
+      if (status === 'accepted') {
+        setShowIdPhotoModal(true);
+        return;
+      }
+
+      // For rejection, proceed as normal
+      await updateClaimResponse(conversationId, message.id, status);
+
+      // Call the callback to update UI
+      onClaimResponse(message.id, status);
+    } catch (error) {
+      console.error('Failed to update claim response:', error);
+      Alert.alert('Error', 'Failed to update claim response. Please try again.');
+    }
+  };
+
+  const handleClaimIdPhotoUpload = async (photoUri: string) => {
+    try {
+      setIsUploadingIdPhoto(true);
+
+      console.log('📸 Starting claim ID photo upload...', photoUri);
+      console.log('📸 Message type:', message.messageType);
+      console.log('📸 Conversation ID:', conversationId);
+
+      // Upload ID photo to Cloudinary
+      const { cloudinaryService } = await import('@/utils/cloudinary');
+      const uploadedUrl = await cloudinaryService.uploadImage(photoUri, 'id_photos');
+
+      console.log('✅ Claim ID photo uploaded successfully:', uploadedUrl);
+
+      // Update claim response with ID photo
+      const { messageService } = await import('@/utils/firebase');
+      await messageService.updateClaimResponse(
+        conversationId,
+        message.id,
+        'accepted',
+        currentUserId,
+        uploadedUrl
+      );
+
+      console.log('✅ Claim response updated with ID photo');
+
+      // Call the callback to update UI
+      onClaimResponse(message.id, 'accepted');
+
+      // Close modal and reset state
+      setShowIdPhotoModal(false);
+      setSelectedIdPhoto(null);
+
+      // Show success message
+      Alert.alert('Success', 'ID photo uploaded successfully! The post owner will now review and confirm your claim.');
+
+    } catch (error: any) {
+      console.error('❌ Failed to upload claim ID photo:', error);
+
+      let errorMessage = 'Failed to upload ID photo. Please try again.';
+
+      if (error.message?.includes('Network request failed')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.message?.includes('Cloudinary cloud name not configured')) {
+        errorMessage = 'Cloudinary not configured. Please contact support.';
+      } else if (error.message?.includes('Upload preset not configured')) {
+        errorMessage = 'Upload configuration error. Please contact support.';
+      }
+
+      Alert.alert('Upload Error', errorMessage);
+    } finally {
+      setIsUploadingIdPhoto(false);
+    }
+  };
+
+  const handleConfirmClaimIdPhoto = async () => {
+    try {
+      await confirmClaimIdPhoto(conversationId, message.id);
+      // Call the callback to update UI
+      onClaimResponse(message.id, 'accepted');
+    } catch (error: any) {
+      console.error('Failed to confirm claim ID photo:', error);
       Alert.alert('Error', 'Failed to confirm ID photo. Please try again.');
     }
   };
@@ -260,9 +349,106 @@ const MessageBubble = ({
     );
   };
 
+  const renderClaimRequest = () => {
+    if (message.messageType !== 'claim_request') return null;
+
+    const claimData = message.claimData;
+    if (!claimData) return null;
+
+    // Show different UI based on status and user role
+    const canRespond = claimData.status === 'pending' && !isOwnMessage;
+    const canConfirm = claimData.status === 'pending_confirmation' && !isOwnMessage;
+    const isCompleted = claimData.status === 'accepted' || claimData.status === 'rejected';
+
+    return (
+      <View className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+        <Text className="text-sm text-purple-800 mb-2">
+          <Text className="font-bold">Claim Request:</Text> {claimData.postTitle}
+        </Text>
+
+        {/* Show ID photo if uploaded */}
+        {claimData.idPhotoUrl && (
+          <View className="mb-3 p-2 bg-white rounded border">
+            <Text className="text-xs text-gray-600 mb-1">ID Photo:</Text>
+            <Image
+              source={{ uri: claimData.idPhotoUrl }}
+              className="w-20 h-12 rounded"
+              resizeMode="cover"
+            />
+          </View>
+        )}
+
+        {/* Action buttons */}
+        {canRespond ? (
+          <View className="flex-row gap-2">
+            <TouchableOpacity
+              onPress={() => handleClaimResponse('accepted')}
+              className="px-3 py-1 bg-green-500 rounded-md"
+            >
+              <Text className="text-white text-xs">Accept Claim</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleClaimResponse('rejected')}
+              className="px-3 py-1 bg-red-500 rounded-md"
+            >
+              <Text className="text-white text-xs">Reject Claim</Text>
+            </TouchableOpacity>
+          </View>
+        ) : canConfirm ? (
+          <View className="flex-row gap-2">
+            <TouchableOpacity
+              onPress={handleConfirmClaimIdPhoto}
+              className="px-3 py-1 bg-blue-500 rounded-md"
+            >
+              <Text className="text-white text-xs">Confirm ID Photo</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <Text className="text-xs text-purple-600">
+            Status: <Text className="capitalize font-medium">{claimData.status}</Text>
+            {isCompleted && claimData.respondedAt && (
+              <Text className="ml-2">
+                at {formatTime(claimData.respondedAt)}
+              </Text>
+            )}
+            {claimData.status === 'accepted' && claimData.idPhotoConfirmed && (
+              <Text className="ml-2 text-green-600">
+                ✓ ID Photo Confirmed
+              </Text>
+            )}
+          </Text>
+        )}
+      </View>
+    );
+  };
+
+  const renderClaimResponse = () => {
+    if (message.messageType !== 'claim_response') return null;
+
+    const claimData = message.claimData;
+    if (!claimData) return null;
+
+    const statusColor = claimData.status === 'accepted' ? 'text-green-600' : 'text-red-600';
+    const statusIcon = claimData.status === 'accepted' ? '✅' : '❌';
+
+    return (
+      <View className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+        <View className={`flex-row items-center gap-2`}>
+          <Text>{statusIcon}</Text>
+          <Text className={`text-sm ${statusColor} capitalize font-medium`}>
+            Claim {claimData.status}
+          </Text>
+          {claimData.responseMessage && (
+            <Text className="text-gray-600 text-sm">- {claimData.responseMessage}</Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   const renderSystemMessage = () => {
     if (message.messageType !== 'system') return null;
-    
+
     return (
       <View className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
         <Text className="text-sm text-yellow-800">
@@ -275,10 +461,18 @@ const MessageBubble = ({
   // ID Photo Modal using ImagePicker component
   const renderIdPhotoModal = () => {
     if (!showIdPhotoModal) return null;
-    
+
+    // Use the correct upload handler based on message type
+    const uploadHandler = message.messageType === 'claim_request'
+      ? handleClaimIdPhotoUpload
+      : handleIdPhotoUpload;
+
+    console.log('📷 Mobile opening photo modal for message type:', message.messageType);
+    console.log('📷 Mobile using upload handler:', message.messageType === 'claim_request' ? 'handleClaimIdPhotoUpload' : 'handleIdPhotoUpload');
+
     return (
       <ImagePicker
-        onImageSelect={handleIdPhotoUpload}
+        onImageSelect={uploadHandler}
         onClose={() => setShowIdPhotoModal(false)}
         isUploading={isUploadingIdPhoto}
       />
@@ -306,6 +500,8 @@ const MessageBubble = ({
         {/* Render special message types */}
         {renderHandoverRequest()}
         {renderHandoverResponse()}
+        {renderClaimRequest()}
+        {renderClaimResponse()}
         {renderSystemMessage()}
       </View>
       <View className="flex-row items-center justify-between mt-1 mx-2">
@@ -337,7 +533,7 @@ export default function Chat() {
   const route = useRoute<ChatRouteProp>();
   const { conversationId: initialConversationId, postTitle, postId, postOwnerId, postOwnerUserData } = route.params;
   
-  const { sendMessage, createConversation, getConversationMessages, getConversation } = useMessage();
+  const { sendMessage, createConversation, getConversationMessages, getConversation, sendClaimRequest, updateClaimResponse } = useMessage();
   const { user, userData } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -359,6 +555,41 @@ export default function Chat() {
     // Only show if post is still pending
     if (conversationData?.postStatus !== 'pending') return false;
     
+    return true;
+  };
+
+  // Check if claim item button should be shown
+  const shouldShowClaimItemButton = () => {
+    if (!userData || !postOwnerId) {
+      console.log('Claim button: No userData or postOwnerId', { userData: !!userData, postOwnerId });
+      return false;
+    }
+
+    // Don't show if current user is the post creator
+    if (postOwnerId === userData.uid) {
+      console.log('Claim button: User is post creator');
+      return false;
+    }
+
+    // Only show for found items
+    if (conversationData?.postType !== 'found') {
+      console.log('Claim button: Not a found item', conversationData?.postType);
+      return false;
+    }
+
+    // Only show if post is still pending
+    if (conversationData?.postStatus !== 'pending') {
+      console.log('Claim button: Post not pending', conversationData?.postStatus);
+      return false;
+    }
+
+    // Only show if found action is "keep" (Found and Keep posts)
+    if (conversationData?.foundAction !== 'keep') {
+      console.log('Claim button: Found action not keep', conversationData?.foundAction);
+      return false;
+    }
+
+    console.log('Claim button: Should show claim button');
     return true;
   };
   
@@ -455,6 +686,12 @@ export default function Chat() {
     console.log(`Handover response: ${status} for message ${messageId}`);
   };
 
+  const handleClaimResponse = (messageId: string, status: 'accepted' | 'rejected') => {
+    // This function will be called when a claim response is made
+    // The actual update is handled in the MessageBubble component
+    console.log(`Claim response: ${status} for message ${messageId}`);
+  };
+
   const handleHandoverRequest = async () => {
     if (!conversationId || !user || !userData) return;
 
@@ -471,6 +708,37 @@ export default function Chat() {
     } catch (error: any) {
       console.error('Failed to send handover request:', error);
       Alert.alert('Error', 'Failed to send handover request. Please try again.');
+    }
+  };
+
+  const handleClaimRequest = async () => {
+    console.log('Claim button pressed!');
+    console.log('conversationId:', conversationId);
+    console.log('user:', user);
+    console.log('userData:', userData);
+    console.log('postId:', postId);
+    console.log('postTitle:', postTitle);
+
+    if (!conversationId || !user || !userData) {
+      console.log('Claim request blocked - missing required data');
+      return;
+    }
+
+    try {
+      console.log('Calling sendClaimRequest...');
+      await sendClaimRequest(
+        conversationId,
+        user!.uid,
+        `${userData.firstName} ${userData.lastName}`,
+        userData.profilePicture || userData.profileImageUrl || '',
+        postId,
+        postTitle
+      );
+      console.log('Claim request sent successfully!');
+      Alert.alert('Success', 'Claim request sent successfully!');
+    } catch (error: any) {
+      console.error('Failed to send claim request:', error);
+      Alert.alert('Error', error.message || 'Failed to send claim request. Please try again.');
     }
   };
 
@@ -505,6 +773,19 @@ export default function Chat() {
             <Text className="text-white font-medium text-sm">Handover</Text>
           </TouchableOpacity>
         )}
+
+        {/* Claim Item Button */}
+        {shouldShowClaimItemButton() && (
+          <TouchableOpacity
+            className="ml-3 px-4 py-2 bg-blue-500 rounded-lg"
+            onPress={() => {
+              console.log('CLAIM BUTTON PRESSED ON MOBILE!');
+              handleClaimRequest();
+            }}
+          >
+            <Text className="text-white font-medium text-sm">Claim Item</Text>
+          </TouchableOpacity>
+        )}
         
 
       </View>
@@ -537,6 +818,7 @@ export default function Chat() {
                 conversationId={conversationId}
                 currentUserId={user?.uid || ''}
                 onHandoverResponse={handleHandoverResponse}
+                onClaimResponse={handleClaimResponse}
               />
             )}
             contentContainerStyle={{ padding: 16 }}

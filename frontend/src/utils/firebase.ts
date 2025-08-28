@@ -276,6 +276,7 @@ export const messageService = {
             let postType: "lost" | "found" = "lost";
             let postStatus: "pending" | "resolved" | "rejected" = "pending";
             let postCreatorId = postOwnerId; // Default to post owner ID
+            let foundAction: "keep" | "turnover to OSA" | "turnover to Campus Security" | undefined = undefined;
 
             try {
                 const postDoc = await getDoc(doc(db, 'posts', postId));
@@ -284,6 +285,7 @@ export const messageService = {
                     postType = postData.type || "lost";
                     postStatus = postData.status || "pending";
                     postCreatorId = postData.creatorId || postOwnerId;
+                    foundAction = postData.foundAction; // Include foundAction for found items
                 }
             } catch (error) {
                 console.warn('Could not fetch post data:', error);
@@ -366,6 +368,7 @@ export const messageService = {
                 postType,
                 postStatus,
                 postCreatorId,
+                foundAction, // Include foundAction for found items
                 participants: {
                     [currentUserId]: {
                         uid: currentUserId,
@@ -473,6 +476,120 @@ export const messageService = {
             });
         } catch (error: any) {
             throw new Error(error.message || 'Failed to send handover request');
+        }
+    },
+
+    // Send a claim request message
+    async sendClaimRequest(conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string): Promise<void> {
+        try {
+            // First, check if this conversation already has a claim request
+            const conversationRef = doc(db, 'conversations', conversationId);
+            const conversationDoc = await getDoc(conversationRef);
+
+            if (!conversationDoc.exists()) {
+                throw new Error('Conversation not found');
+            }
+
+            const conversationData = conversationDoc.data();
+
+            // Check if this is a found item with "keep" action (only allow claims for found items that are being kept)
+            if (conversationData.postType !== 'found') {
+                throw new Error('Claim requests are only allowed for found items');
+            }
+
+            if (conversationData.foundAction !== 'keep') {
+                throw new Error('Claim requests are only allowed for found items that are being kept');
+            }
+
+            // Check if a claim request already exists
+            if (conversationData.claimRequested === true) {
+                throw new Error('You have already requested to claim this item in this conversation');
+            }
+
+            const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+            const claimMessage = {
+                senderId,
+                senderName,
+                senderProfilePicture: senderProfilePicture || null,
+                text: `I would like to claim the item "${postTitle}" as my own.`,
+                timestamp: serverTimestamp(),
+                readBy: [senderId],
+                messageType: "claim_request",
+                claimData: {
+                    postId,
+                    postTitle,
+                    status: "pending",
+                    requestedAt: serverTimestamp()
+                }
+            };
+
+            await addDoc(messagesRef, claimMessage);
+
+            // Update conversation with claim request flag and last message
+            await updateDoc(conversationRef, {
+                claimRequested: true,
+                lastMessage: {
+                    text: claimMessage.text,
+                    senderId,
+                    timestamp: claimMessage.timestamp
+                }
+            });
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to send claim request');
+        }
+    },
+
+    // Update claim response
+    async updateClaimResponse(conversationId: string, messageId: string, status: 'accepted' | 'rejected', responderId: string, idPhotoUrl?: string): Promise<void> {
+        try {
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+
+            // Update the claim message with the response
+            const updateData: any = {
+                'claimData.status': status,
+                'claimData.respondedAt': serverTimestamp(),
+                'claimData.responderId': responderId
+            };
+
+            // If accepting with ID photo, add the photo URL and change status to pending confirmation
+            if (status === 'accepted' && idPhotoUrl) {
+                updateData['claimData.idPhotoUrl'] = idPhotoUrl;
+                updateData['claimData.status'] = 'pending_confirmation'; // New status for photo confirmation
+            }
+
+            await updateDoc(messageRef, updateData);
+
+            // If claim is rejected, reset the claimRequested flag to allow new requests
+            if (status === 'rejected') {
+                const conversationRef = doc(db, 'conversations', conversationId);
+                await updateDoc(conversationRef, {
+                    claimRequested: false
+                });
+            }
+
+            // Note: No new chat bubble is created - only the status is updated
+            // The existing claim request message will show the updated status
+
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to update claim response');
+        }
+    },
+
+    // Confirm ID photo for claim
+    async confirmClaimIdPhoto(conversationId: string, messageId: string, confirmBy: string): Promise<void> {
+        try {
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+
+            // Update the claim message to confirm the ID photo
+            await updateDoc(messageRef, {
+                'claimData.idPhotoConfirmed': true,
+                'claimData.idPhotoConfirmedAt': serverTimestamp(),
+                'claimData.idPhotoConfirmedBy': confirmBy,
+                'claimData.status': 'accepted' // Final status after confirmation
+            });
+
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to confirm claim ID photo');
         }
     },
 
@@ -759,14 +876,17 @@ export const messageService = {
 
             // NEW: Extract and delete images from Cloudinary before deleting the message
             try {
+                console.log('🗑️ Starting image cleanup for message type:', messageData.messageType);
                 const { extractMessageImages, deleteMessageImages } = await import('./cloudinary');
                 const imageUrls = extractMessageImages(messageData);
 
+                console.log(`🗑️ Found ${imageUrls.length} images to delete`);
                 if (imageUrls.length > 0) {
+                    console.log('🗑️ Images to delete:', imageUrls.map(url => url.split('/').pop()));
                     const imageDeletionResult = await deleteMessageImages(imageUrls);
 
                     if (!imageDeletionResult.success) {
-                        console.warn(`Image deletion completed with some failures. Deleted: ${imageDeletionResult.deleted.length}, Failed: ${imageDeletionResult.failed.length}`);
+                        console.warn(`⚠️ Image deletion completed with some failures. Deleted: ${imageDeletionResult.deleted.length}, Failed: ${imageDeletionResult.failed.length}`);
                     }
                 }
             } catch (imageError: any) {
@@ -774,18 +894,26 @@ export const messageService = {
                 // Continue with message deletion even if image deletion fails
             }
 
-            // Check if this is a handover request message before deleting
+            // Check message types before deleting
             const isHandoverRequest = messageData.messageType === 'handover_request';
+            const isClaimRequest = messageData.messageType === 'claim_request';
 
             // Delete the message
             await deleteDoc(messageRef);
 
-            // If we deleted a handover request, reset the handoverRequested flag
+            // Reset flags based on message type
+            const conversationRef = doc(db, 'conversations', conversationId);
+
             if (isHandoverRequest) {
-                const conversationRef = doc(db, 'conversations', conversationId);
                 await updateDoc(conversationRef, {
                     handoverRequested: false
                 });
+                console.log('🗑️ Reset handoverRequested flag');
+            } else if (isClaimRequest) {
+                await updateDoc(conversationRef, {
+                    claimRequested: false
+                });
+                console.log('🗑️ Reset claimRequested flag');
             }
 
         } catch (error: any) {
