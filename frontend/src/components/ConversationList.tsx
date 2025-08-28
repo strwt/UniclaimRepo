@@ -29,21 +29,48 @@ const ConversationList: React.FC<ConversationListProps> = ({
     }
   }, [autoSelectConversationId, conversations, selectedConversationId, onSelectConversation]);
 
-  // Sort conversations by most recent message timestamp (newest first)
+  // Sort conversations by most recent message timestamp, with fallback to createdAt (newest first)
   const sortedConversations = useMemo(() => {
     return [...conversations].sort((a, b) => {
-      // Get timestamps from last messages
-      const aTime = a.lastMessage?.timestamp;
-      const bTime = b.lastMessage?.timestamp;
+      // Helper function to get a comparable timestamp
+      const getComparableTimestamp = (conversation: any) => {
+        // First try to get timestamp from last message
+        if (conversation.lastMessage?.timestamp) {
+          const lastMessageTime = conversation.lastMessage.timestamp;
+          // Handle Firestore Timestamp objects
+          if (lastMessageTime.toDate && typeof lastMessageTime.toDate === 'function') {
+            return lastMessageTime.toDate().getTime();
+          }
+          // Handle regular Date objects
+          if (lastMessageTime instanceof Date) {
+            return lastMessageTime.getTime();
+          }
+          // Handle numeric timestamps
+          if (typeof lastMessageTime === 'number') {
+            return lastMessageTime;
+          }
+        }
+        
+        // Fallback to conversation creation time
+        if (conversation.createdAt) {
+          const createdAt = conversation.createdAt;
+          if (createdAt.toDate && typeof createdAt.toDate === 'function') {
+            return createdAt.toDate().getTime();
+          }
+          if (createdAt instanceof Date) {
+            return createdAt.getTime();
+          }
+          if (typeof createdAt === 'number') {
+            return createdAt;
+          }
+        }
+        
+        // Final fallback to 0 (oldest)
+        return 0;
+      };
 
-      // Handle conversations without messages
-      if (!aTime && !bTime) return 0; // Both have no messages, maintain current order
-      if (!aTime) return 1; // Conversation without messages goes to bottom
-      if (!bTime) return -1; // Conversation without messages goes to bottom
-
-      // Convert timestamps to comparable values
-      const aTimestamp = aTime instanceof Date ? aTime.getTime() : aTime.toDate?.()?.getTime() || 0;
-      const bTimestamp = bTime instanceof Date ? bTime.getTime() : bTime.toDate?.()?.getTime() || 0;
+      const aTimestamp = getComparableTimestamp(a);
+      const bTimestamp = getComparableTimestamp(b);
 
       // Sort newest first (descending order)
       return bTimestamp - aTimestamp;

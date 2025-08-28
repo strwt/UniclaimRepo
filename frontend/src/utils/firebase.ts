@@ -439,11 +439,13 @@ export const messageService = {
             });
 
             // Update conversation with last message and increment unread counts for other participants
+            // Use current timestamp for lastMessage to prevent jumping during sorting
+            const currentTimestamp = new Date();
             await updateDoc(conversationRef, {
                 lastMessage: {
                     text,
                     senderId,
-                    timestamp: serverTimestamp()
+                    timestamp: currentTimestamp
                 },
                 ...unreadCountUpdates
             });
@@ -495,12 +497,14 @@ export const messageService = {
             await addDoc(messagesRef, handoverMessage);
 
             // Update conversation with handover request flag and last message
+            // Use current timestamp for lastMessage to prevent jumping during sorting
+            const currentTimestamp = new Date();
             await updateDoc(conversationRef, {
                 handoverRequested: true,
                 lastMessage: {
                     text: handoverMessage.text,
                     senderId,
-                    timestamp: handoverMessage.timestamp
+                    timestamp: currentTimestamp
                 }
             });
         } catch (error: any) {
@@ -730,14 +734,8 @@ export const messageService = {
                 }
             });
 
-            // Sort conversations by createdAt in JavaScript instead
-            const sortedConversations = validConversations.sort((a: any, b: any) => {
-                const dateA = a.createdAt ? (a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)) : new Date(0);
-                const dateB = b.createdAt ? (b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)) : new Date(0);
-                return dateB.getTime() - dateA.getTime(); // Most recent first
-            });
-
-            callback(sortedConversations);
+            // Return conversations without sorting - let the UI component handle sorting
+            callback(validConversations);
         }, (error) => {
             // Handle listener errors gracefully
             console.log('🔧 MessageService: Listener error:', error?.message || 'Unknown error');
@@ -777,15 +775,9 @@ export const messageService = {
                 return participantIds.length > 1; // Must have at least 2 participants
             });
 
-            // Sort conversations by createdAt
-            const sortedConversations = validConversations.sort((a: any, b: any) => {
-                const dateA = a.createdAt ? (a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)) : new Date(0);
-                const dateB = b.createdAt ? (b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)) : new Date(0);
-                return dateB.getTime() - dateA.getTime(); // Most recent first
-            });
-
-            console.log(`🔧 MessageService: One-time query found ${sortedConversations.length} conversations`);
-            return sortedConversations;
+            // Return conversations without sorting - let the UI component handle sorting
+            console.log(`🔧 MessageService: One-time query found ${validConversations.length} conversations`);
+            return validConversations;
 
         } catch (error: any) {
             console.error('❌ MessageService: One-time query failed:', error);
