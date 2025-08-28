@@ -8,7 +8,7 @@ import MobileNavText from "@/components/NavHeadComp";
 import SearchBar from "../../components/SearchBar";
 
 // hooks
-import { usePosts } from "@/hooks/usePosts";
+import { usePosts, useResolvedPosts } from "@/hooks/usePosts";
 
 function fuzzyMatch(text: string, query: string): boolean {
   const cleanedText = text.toLowerCase();
@@ -19,8 +19,9 @@ function fuzzyMatch(text: string, query: string): boolean {
 }
 
 export default function HomePage() {
-  // ✅ Use the custom hook for real-time posts
+  // ✅ Use the custom hooks for real-time posts
   const { posts, loading, error } = usePosts();
+  const { posts: resolvedPosts, loading: resolvedLoading, error: resolvedError } = useResolvedPosts();
   const [viewType, setViewType] = useState<"all" | "lost" | "found" | "completed">("all");
   const [lastDescriptionKeyword, setLastDescriptionKeyword] = useState("");
   const [rawResults, setRawResults] = useState<Post[] | null>(null); // store-search-result-without-viewType-filter
@@ -37,7 +38,10 @@ export default function HomePage() {
   const handleSearch = async (query: string, filters: any) => {
     setLastDescriptionKeyword(filters.description || "");
 
-    const filtered = (posts ?? []).filter((item) => {
+    // Use appropriate posts based on current viewType
+    const postsToSearch = viewType === "completed" ? resolvedPosts : posts;
+
+    const filtered = (postsToSearch ?? []).filter((item) => {
       const matchesQuery = query.trim() ? fuzzyMatch(item.title, query) : true;
 
       const matchesCategory =
@@ -66,11 +70,16 @@ export default function HomePage() {
   //   (post) => post.type === viewType
   // );
 
-  const postsToDisplay = (rawResults ?? posts ?? []).filter((post) => {
-    if (viewType === "all") return true;
-    if (viewType === "completed") return post.status === "resolved";
-    return post.type.toLowerCase() === viewType;
-  });
+  // Determine which posts to display based on viewType
+  const getPostsToDisplay = () => {
+    const basePosts = rawResults ?? (viewType === "completed" ? resolvedPosts : posts) ?? [];
+
+    if (viewType === "all") return basePosts;
+    if (viewType === "completed") return basePosts; // resolvedPosts already filtered
+    return basePosts.filter((post) => post.type.toLowerCase() === viewType);
+  };
+
+  const postsToDisplay = getPostsToDisplay();
 
   return (
     <div className="min-h-screen bg-gray-100 mb-13 font-manrope transition-colors duration-300">
@@ -165,17 +174,17 @@ export default function HomePage() {
 
       <div className="grid grid-cols-1 gap-5 mx-6 mt-7 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {/* ✅ Handle Firebase loading state */}
-        {loading || isLoading ? (
+        {(loading || resolvedLoading || isLoading) ? (
           <div className="col-span-full flex items-center justify-center h-80">
             <span className="text-gray-400">
               Loading {viewType === "completed" ? "completed" : viewType} report items...
             </span>
           </div>
-        ) : error ? (
+        ) : (error || resolvedError) ? (
           <div className="col-span-full flex items-center justify-center h-80 text-red-500">
-            <p>Error loading posts: {error}</p>
-            <button 
-              onClick={() => window.location.reload()} 
+            <p>Error loading posts: {error || resolvedError}</p>
+            <button
+              onClick={() => window.location.reload()}
               className="ml-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
               Retry

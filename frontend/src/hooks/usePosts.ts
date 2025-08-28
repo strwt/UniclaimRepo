@@ -294,3 +294,91 @@ export const useUserPostsWithSet = (userEmail: string) => {
 
     return { posts, setPosts, loading };
 };
+
+// Custom hook for resolved posts (completed reports)
+export const useResolvedPosts = () => {
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const { isAuthenticated, userData } = useAuth();
+    const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const listenerActiveRef = useRef<boolean>(false);
+
+    useEffect(() => {
+        // Clear any existing timeout
+        if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+            loadingTimeoutRef.current = null;
+        }
+
+        // Don't create listeners until user is authenticated
+        if (!isAuthenticated) {
+            setPosts([]);
+            setLoading(false);
+            setError(null);
+            listenerActiveRef.current = false;
+            return;
+        }
+
+        // If authenticated but userData is still loading, wait
+        if (isAuthenticated && !userData) {
+            setLoading(true);
+            setError(null);
+            listenerActiveRef.current = false;
+            return;
+        }
+
+        // Both authenticated and userData loaded - create listeners
+        setLoading(true);
+        setError(null);
+        listenerActiveRef.current = true;
+
+        // Set a safety timeout to prevent infinite loading
+        loadingTimeoutRef.current = setTimeout(() => {
+            setLoading(false);
+            setError('Loading timeout - please refresh the page');
+            listenerActiveRef.current = false;
+        }, 15000); // 15 second timeout
+
+        // Subscribe to resolved posts for completed reports section
+        const unsubscribe = postService.getResolvedPosts((fetchedPosts) => {
+            if (listenerActiveRef.current) {
+                setPosts(fetchedPosts);
+                setLoading(false);
+                setError(null);
+
+                // Clear the timeout since we got data
+                if (loadingTimeoutRef.current) {
+                    clearTimeout(loadingTimeoutRef.current);
+                    loadingTimeoutRef.current = null;
+                }
+            }
+        });
+
+        return () => {
+            listenerActiveRef.current = false;
+
+            // Clear timeout
+            if (loadingTimeoutRef.current) {
+                clearTimeout(loadingTimeoutRef.current);
+                loadingTimeoutRef.current = null;
+            }
+
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+    }, [isAuthenticated, userData]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (loadingTimeoutRef.current) {
+                clearTimeout(loadingTimeoutRef.current);
+            }
+            listenerActiveRef.current = false;
+        };
+    }, []);
+
+    return { posts, loading, error };
+};

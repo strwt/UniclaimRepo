@@ -1355,9 +1355,12 @@ export const postService = {
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
 
-            // Filter out expired posts on the client side (this is fast since we're only processing ~20-50 posts)
+            // Filter out expired posts and resolved posts on the client side (this is fast since we're only processing ~20-50 posts)
             const activePosts = posts.filter(post => {
                 if (post.movedToUnclaimed) return false;
+
+                // Exclude resolved posts from active sections
+                if (post.status === 'resolved') return false;
 
                 // Check if post has expired
                 if (post.expiryDate) {
@@ -1416,7 +1419,44 @@ export const postService = {
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
 
+            // Filter out resolved posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+
             // Sort posts by createdAt in JavaScript instead
+            const sortedPosts = filteredPosts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
+        });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
+    },
+
+    // Get resolved posts for completed reports section
+    getResolvedPosts(callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts'),
+            where('status', '==', 'resolved')
+            // Removed orderBy to avoid composite index requirement
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            // Sort posts by createdAt in JavaScript instead (most recent first for completed reports)
             const sortedPosts = posts.sort((a, b) => {
                 const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
                 const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
@@ -1424,6 +1464,9 @@ export const postService = {
             });
 
             callback(sortedPosts);
+        }, (error) => {
+            console.error('PostService: Error fetching resolved posts:', error);
+            callback([]);
         });
 
         // Register with ListenerManager for tracking
@@ -1450,8 +1493,11 @@ export const postService = {
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
 
+            // Filter out resolved posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+
             // Sort posts by createdAt in JavaScript instead
-            const sortedPosts = posts.sort((a, b) => {
+            const sortedPosts = filteredPosts.sort((a, b) => {
                 const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
                 const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
                 return dateB.getTime() - dateA.getTime(); // Most recent first
@@ -1734,8 +1780,11 @@ export const postService = {
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
 
+            // Filter out resolved posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+
             // Sort posts by createdAt in JavaScript instead
-            const sortedPosts = posts.sort((a, b) => {
+            const sortedPosts = filteredPosts.sort((a, b) => {
                 const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
                 const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
                 return dateB.getTime() - dateA.getTime(); // Most recent first
