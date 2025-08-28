@@ -286,14 +286,14 @@ export const messageService = {
                 return existingConversation.id;
             }
 
-            const conversationData = {
+            // Build conversation data dynamically to avoid undefined fields
+            const conversationData: any = {
                 postId,
                 postTitle,
                 // New fields for handover button functionality
                 postType,
                 postStatus,
                 postCreatorId,
-                foundAction, // Include foundAction for found items
                 participants: {
                     [currentUserId]: {
                         uid: currentUserId,
@@ -312,6 +312,11 @@ export const messageService = {
                 },
                 createdAt: serverTimestamp()
             };
+
+            // Only include foundAction if it has a valid value (not undefined)
+            if (foundAction !== undefined) {
+                conversationData.foundAction = foundAction;
+            }
 
             const conversationRef = await addDoc(collection(db, 'conversations'), conversationData);
 
@@ -439,7 +444,8 @@ export const messageService = {
                 throw new Error('Claim requests are only allowed for found items');
             }
 
-            if (conversationData.foundAction !== 'keep') {
+            // Allow claims if foundAction is 'keep' or undefined (posts without explicit action)
+            if (conversationData.foundAction !== undefined && conversationData.foundAction !== 'keep') {
                 throw new Error('Claim requests are only allowed for found items that are being kept');
             }
 

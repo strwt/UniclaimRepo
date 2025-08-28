@@ -583,8 +583,8 @@ export default function Chat() {
       return false;
     }
 
-    // Only show if found action is "keep" (Found and Keep posts)
-    if (conversationData?.foundAction !== 'keep') {
+    // Only show if found action is "keep" or undefined (Found and Keep posts, or posts without explicit action)
+    if (conversationData?.foundAction !== undefined && conversationData?.foundAction !== 'keep') {
       console.log('Claim button: Found action not keep', conversationData?.foundAction);
       return false;
     }
