@@ -33,7 +33,7 @@ export interface Post {
     email: string;
     contactNum: string;
     studentId: string;
-    profilePicture?: string; // Standardized profile picture field name
+    profilePicture?: string | null; // Standardized profile picture field name
   };
   createdAt?: string | Date | any; // Firebase timestamp or Date
   updatedAt?: string | Date | any; // Firebase timestamp or Date

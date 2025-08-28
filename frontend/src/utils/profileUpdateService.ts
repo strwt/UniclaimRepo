@@ -41,6 +41,12 @@ export const profileUpdateService: ProfileUpdateService = {
                 Object.entries(updates).filter(([_, value]) => value !== undefined)
             );
 
+            // Ensure we have updates to make
+            if (Object.keys(filteredUpdates).length === 0) {
+                console.log('No updates to make, skipping profile update');
+                return;
+            }
+
             await updateDoc(userRef, {
                 ...filteredUpdates,
                 updatedAt: serverTimestamp()
@@ -48,7 +54,15 @@ export const profileUpdateService: ProfileUpdateService = {
             console.log('User profile updated successfully');
         } catch (error: any) {
             console.error('Error updating user profile:', error);
-            throw new Error(`Failed to update user profile: ${error.message}`);
+
+            // Provide more specific error messages
+            if (error.code === 'permission-denied') {
+                throw new Error('Permission denied: You may not have access to update this profile. Please contact support if this persists.');
+            } else if (error.code === 'not-found') {
+                throw new Error('User profile not found. Please try logging out and logging back in.');
+            } else {
+                throw new Error(`Failed to update user profile: ${error.message}`);
+            }
         }
     },
 

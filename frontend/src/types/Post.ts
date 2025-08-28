@@ -15,7 +15,7 @@ export interface Post {
     email: string;
     contactNum: string;
     studentId: string;
-    profilePicture?: string;
+    profilePicture?: string | null;
     profileImageUrl?: string;
   };
   createdAt?: string | Date | any; // Firebase timestamp or Date

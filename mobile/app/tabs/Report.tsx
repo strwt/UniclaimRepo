@@ -99,7 +99,7 @@ export default function Report() {
           email: userData.email,
           contactNum: userData.contactNum,
           studentId: userData.studentId,
-          profilePicture: userData.profilePicture || undefined, // Include profile picture
+          profilePicture: userData.profilePicture || null, // Ensure it's never undefined
         },
         creatorId: user.uid, // Add creator ID
         postedById: user.uid, // Use Firebase user ID for messaging

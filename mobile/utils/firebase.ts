@@ -180,10 +180,16 @@ export const authService = {
                 lastName,
                 contactNum,
                 studentId,
-                profilePicture: undefined, // Initialize with undefined, will be set later
+                profilePicture: require('../assets/images/empty_profile.jpg'), // Set default profile picture
+                status: 'active', // Set default status to active - CRITICAL for permissions
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             };
+
+            // Ensure the status field is explicitly set to prevent permission issues
+            if (!userData.status) {
+                userData.status = 'active';
+            }
 
             await setDoc(doc(db, 'users', user.uid), userData);
 
@@ -1297,6 +1303,51 @@ export const userService = {
     }
 };
 
+// Utility function to sanitize user data before saving to Firestore
+export const sanitizeUserData = (userData: any): any => {
+    if (!userData) return userData;
+
+    const sanitized = { ...userData };
+
+    // Ensure profilePicture is never undefined
+    if (sanitized.profilePicture === undefined) {
+        sanitized.profilePicture = null;
+    }
+
+    // Ensure all string fields are never undefined
+    const stringFields = ['firstName', 'lastName', 'email', 'contactNum', 'studentId'];
+    stringFields.forEach(field => {
+        if (sanitized[field] === undefined) {
+            sanitized[field] = '';
+        }
+    });
+
+    return sanitized;
+};
+
+// Utility function to sanitize post data before saving to Firestore
+export const sanitizePostData = (postData: any): any => {
+    if (!postData) return postData;
+
+    const sanitized = { ...postData };
+
+    // Sanitize user object within post
+    if (sanitized.user) {
+        sanitized.user = sanitizeUserData(sanitized.user);
+    }
+
+    // Ensure other optional fields are never undefined
+    if (sanitized.coordinates === undefined) {
+        sanitized.coordinates = null;
+    }
+
+    if (sanitized.foundAction === undefined) {
+        sanitized.foundAction = null;
+    }
+
+    return sanitized;
+};
+
 // Helper function to check if error is a permission error (expected during logout)
 const isPermissionError = (error: any): boolean => {
     if (!error) return false;
@@ -1329,9 +1380,12 @@ export const postService = {
                 ? await imageService.uploadImages(postData.images as string[])
                 : [];
 
+            // Sanitize post data to ensure no undefined values are sent to Firestore
+            const sanitizedPostData = sanitizePostData(postData);
+
             // Create post document
             const post: Post = {
-                ...postData,
+                ...sanitizedPostData,
                 id: postId,
                 creatorId: creatorId, // Add the creator ID
                 images: imageUrls,

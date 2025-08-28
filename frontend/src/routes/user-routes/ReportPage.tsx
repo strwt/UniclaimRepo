@@ -183,7 +183,7 @@ export default function ReportPage() {
           email: userData?.email || "",
           contactNum: userData?.contactNum || "",
           studentId: userData?.studentId || "",
-          profilePicture: userData?.profilePicture || userData?.profileImageUrl || undefined, // Include profile picture
+          profilePicture: userData?.profilePicture || userData?.profileImageUrl || null, // Ensure it's never undefined
         },
         status: "pending",
       };
