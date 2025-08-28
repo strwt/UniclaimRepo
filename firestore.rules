@@ -100,6 +100,14 @@ service cloud.firestore {
           request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants &&
           // Only allow updates to claimData field for claim responses
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimData']);
+
+        // Allow updating messages for handover responses - users can respond to handover requests
+        // in conversations they participate in, even if they're not the original sender
+        allow update: if request.auth != null &&
+          !isUserBanned() &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants &&
+          // Only allow updates to handoverData field for handover responses
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handoverData']);
       }
     }
     
