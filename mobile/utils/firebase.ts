@@ -438,14 +438,28 @@ export const messageService = {
 
             await addDoc(messagesRef, handoverMessage);
 
-            // Update conversation with handover request flag and last message
+            // Get conversation data to find other participants for unread count updates
+            const conversationDataForUnread = await getDoc(conversationRef);
+            const participantIds = Object.keys(conversationDataForUnread.data()?.participants || {});
+
+            // Increment unread count for all participants except the sender
+            const otherParticipantIds = participantIds.filter(id => id !== senderId);
+
+            // Prepare unread count updates for each receiver
+            const unreadCountUpdates: { [key: string]: any } = {};
+            otherParticipantIds.forEach(participantId => {
+                unreadCountUpdates[`unreadCounts.${participantId}`] = increment(1);
+            });
+
+            // Update conversation with handover request flag, last message, and unread counts
             await updateDoc(conversationRef, {
                 handoverRequested: true,
                 lastMessage: {
                     text: handoverMessage.text,
                     senderId,
                     timestamp: handoverMessage.timestamp
-                }
+                },
+                ...unreadCountUpdates
             });
 
         } catch (error: any) {
@@ -501,14 +515,28 @@ export const messageService = {
 
             await addDoc(messagesRef, claimMessage);
 
-            // Update conversation with claim request flag and last message
+            // Get conversation data to find other participants for unread count updates
+            const conversationDataForUnread = await getDoc(conversationRef);
+            const participantIds = Object.keys(conversationDataForUnread.data()?.participants || {});
+
+            // Increment unread count for all participants except the sender
+            const otherParticipantIds = participantIds.filter(id => id !== senderId);
+
+            // Prepare unread count updates for each receiver
+            const unreadCountUpdates: { [key: string]: any } = {};
+            otherParticipantIds.forEach(participantId => {
+                unreadCountUpdates[`unreadCounts.${participantId}`] = increment(1);
+            });
+
+            // Update conversation with claim request flag, last message, and unread counts
             await updateDoc(conversationRef, {
                 claimRequested: true,
                 lastMessage: {
                     text: claimMessage.text,
                     senderId,
                     timestamp: claimMessage.timestamp
-                }
+                },
+                ...unreadCountUpdates
             });
 
         } catch (error: any) {
