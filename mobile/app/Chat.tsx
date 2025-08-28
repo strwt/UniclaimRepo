@@ -561,35 +561,29 @@ export default function Chat() {
   // Check if claim item button should be shown
   const shouldShowClaimItemButton = () => {
     if (!userData || !postOwnerId) {
-      console.log('Claim button: No userData or postOwnerId', { userData: !!userData, postOwnerId });
       return false;
     }
 
     // Don't show if current user is the post creator
     if (postOwnerId === userData.uid) {
-      console.log('Claim button: User is post creator');
       return false;
     }
 
     // Only show for found items
     if (conversationData?.postType !== 'found') {
-      console.log('Claim button: Not a found item', conversationData?.postType);
       return false;
     }
 
     // Only show if post is still pending
     if (conversationData?.postStatus !== 'pending') {
-      console.log('Claim button: Post not pending', conversationData?.postStatus);
       return false;
     }
 
     // Only show if found action is "keep" or undefined (Found and Keep posts, or posts without explicit action)
     if (conversationData?.foundAction !== undefined && conversationData?.foundAction !== 'keep') {
-      console.log('Claim button: Found action not keep', conversationData?.foundAction);
       return false;
     }
 
-    console.log('Claim button: Should show claim button');
     return true;
   };
   
