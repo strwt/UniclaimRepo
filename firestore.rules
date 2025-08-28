@@ -82,9 +82,17 @@ service cloud.firestore {
           resource.data.senderId == request.auth.uid;
         
         // Users can update their own messages (for editing)
-        allow update: if request.auth != null && 
-          !isUserBanned() && 
+        allow update: if request.auth != null &&
+          !isUserBanned() &&
           resource.data.senderId == request.auth.uid;
+
+        // Allow updating messages for claim responses - users can respond to claim requests
+        // in conversations they participate in, even if they're not the original sender
+        allow update: if request.auth != null &&
+          !isUserBanned() &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants &&
+          // Only allow updates to claimData field for claim responses
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimData']);
       }
     }
     
