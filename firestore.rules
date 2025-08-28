@@ -12,6 +12,9 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/conversations/{conversationId}) &&
         request.auth.uid in get(/databases/$(database)/documents/conversations/{conversationId}).data.participants;
 
+      // Allow admins to read all users (for admin panel)
+      allow read: if request.auth != null && isAdmin();
+
       // Allow users to create their own document during registration
       allow create: if request.auth != null && request.auth.uid == userId;
 
