@@ -223,10 +223,13 @@ export default function Profile() {
           onPress: async () => {
             try {
               await logout();
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "Index" }],
-              });
+              // Wait a moment for auth state to update
+              setTimeout(() => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: "Login" }],
+                });
+              }, 100);
             } catch (error: any) {
               Alert.alert("Logout Failed", error.message);
             }

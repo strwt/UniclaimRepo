@@ -1257,6 +1257,25 @@ export const userService = {
     }
 };
 
+// Helper function to check if error is a permission error (expected during logout)
+const isPermissionError = (error: any): boolean => {
+    if (!error) return false;
+
+    const errorMessage = error.message || error.toString() || '';
+    const errorCode = error.code || '';
+
+    // Check for common permission error patterns
+    return (
+        errorCode === 'permission-denied' ||
+        errorCode === 'PERMISSION_DENIED' ||
+        errorMessage.includes('Missing or insufficient permissions') ||
+        errorMessage.includes('permission-denied') ||
+        errorMessage.includes('PERMISSION_DENIED') ||
+        errorMessage.includes('not authorized') ||
+        errorMessage.includes('authentication required')
+    );
+};
+
 // Post service functions
 export const postService = {
     // Create a new post
@@ -1317,7 +1336,12 @@ export const postService = {
 
             callback(posts);
         }, (error) => {
-            console.error('Error fetching posts:', error);
+            if (isPermissionError(error)) {
+                // This is expected during logout - don't log as error
+                console.log('Posts listener permission error (expected during logout):', error.message);
+            } else {
+                console.error('Error fetching posts:', error);
+            }
             callback([]);
         });
     },
@@ -1345,6 +1369,14 @@ export const postService = {
             });
 
             callback(sortedPosts);
+        }, (error) => {
+            if (isPermissionError(error)) {
+                // This is expected during logout - don't log as error
+                console.log('Posts by type listener permission error (expected during logout):', error.message);
+            } else {
+                console.error('Error fetching posts by type:', error);
+            }
+            callback([]);
         });
     },
 
@@ -1371,6 +1403,14 @@ export const postService = {
             });
 
             callback(sortedPosts);
+        }, (error) => {
+            if (isPermissionError(error)) {
+                // This is expected during logout - don't log as error
+                console.log('Posts by category listener permission error (expected during logout):', error.message);
+            } else {
+                console.error('Error fetching posts by category:', error);
+            }
+            callback([]);
         });
     },
 
@@ -1398,7 +1438,12 @@ export const postService = {
 
             callback(sortedPosts);
         }, (error) => {
-            console.error('Error fetching user posts:', error);
+            if (isPermissionError(error)) {
+                // This is expected during logout - don't log as error
+                console.log('User posts listener permission error (expected during logout):', error.message);
+            } else {
+                console.error('Error fetching user posts:', error);
+            }
             callback([]);
         });
     },

@@ -92,8 +92,8 @@ export default function Login() {
         return;
       }
       
-      // Navigation will be handled by AuthContext/navigation logic
-      navigation.navigate("RootBottomTabs");
+      // Navigation will be handled automatically by Navigation component based on auth state
+      // No manual navigation needed - the Navigation component will show RootBottomTabs when authenticated
     } catch (error: any) {
       setGeneralError(getFirebaseErrorMessage(error));
     } finally {

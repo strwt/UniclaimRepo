@@ -21,7 +21,7 @@ function fuzzyMatch(text: string, query: string): boolean {
 export default function HomePage() {
   // ✅ Use the custom hook for real-time posts
   const { posts, loading, error } = usePosts();
-  const [viewType, setViewType] = useState<"all" | "lost" | "found">("all");
+  const [viewType, setViewType] = useState<"all" | "lost" | "found" | "completed">("all");
   const [lastDescriptionKeyword, setLastDescriptionKeyword] = useState("");
   const [rawResults, setRawResults] = useState<Post[] | null>(null); // store-search-result-without-viewType-filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,9 +66,11 @@ export default function HomePage() {
   //   (post) => post.type === viewType
   // );
 
-  const postsToDisplay = (rawResults ?? posts ?? []).filter((post) =>
-    viewType === "all" ? true : post.type.toLowerCase() === viewType
-  );
+  const postsToDisplay = (rawResults ?? posts ?? []).filter((post) => {
+    if (viewType === "all") return true;
+    if (viewType === "completed") return post.status === "resolved";
+    return post.type.toLowerCase() === viewType;
+  });
 
   return (
     <div className="min-h-screen bg-gray-100 mb-13 font-manrope transition-colors duration-300">
@@ -144,13 +146,30 @@ export default function HomePage() {
         >
           Found Item Reports
         </button>
+
+        <button
+          className={`px-4 py-2 cursor-pointer lg:px-8 rounded text-[14px] lg:text-base font-medium transition-colors duration-300 ${
+            viewType === "completed"
+              ? "bg-navyblue text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-blue-200 border-gray-300"
+          }`}
+          onClick={() => {
+            setIsLoading(true);
+            setViewType("completed");
+            setTimeout(() => setIsLoading(false), 200);
+          }}
+        >
+          Completed Reports
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-5 mx-6 mt-7 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {/* ✅ Handle Firebase loading state */}
         {loading || isLoading ? (
           <div className="col-span-full flex items-center justify-center h-80">
-            <span className="text-gray-400">Loading {viewType} report items...</span>
+            <span className="text-gray-400">
+              Loading {viewType === "completed" ? "completed" : viewType} report items...
+            </span>
           </div>
         ) : error ? (
           <div className="col-span-full flex items-center justify-center h-80 text-red-500">

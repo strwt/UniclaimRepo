@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { postService } from '../utils/firebase';
 import type { Post } from '../types/type';
+import { useAuth } from '../context/AuthContext';
 
 // Global cache to persist data between component unmounts
 const globalPostCache = new Map<string, { posts: Post[], timestamp: number }>();
@@ -8,17 +9,43 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Custom hook for real-time posts with smart caching
 export const usePosts = () => {
+    const { isAuthenticated } = useAuth();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const cacheKey = 'all-posts';
+    const unsubscribeRef = useRef<(() => void) | null>(null);
 
     // Check if we have valid cached data
     const cachedData = globalPostCache.get(cacheKey);
     const hasValidCache = cachedData && (Date.now() - cachedData.timestamp) < CACHE_DURATION;
 
     useEffect(() => {
+        // If user is not authenticated, clear posts and don't set up listeners
+        if (!isAuthenticated) {
+            console.log('User not authenticated - clearing posts and listeners');
+
+            // Clear posts
+            setPosts([]);
+            setLoading(false);
+            setIsInitialLoad(false);
+
+            // Clean up any existing listener
+            if (unsubscribeRef.current) {
+                console.log('Cleaning up posts listener');
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+
+            // Clear cache to prevent stale data
+            globalPostCache.delete(cacheKey);
+            return;
+        }
+
+        // User is authenticated - set up listeners
+        console.log('User authenticated - setting up posts listener');
+
         // If we have valid cached data, use it immediately
         if (hasValidCache) {
             setPosts(cachedData.posts);
@@ -41,12 +68,17 @@ export const usePosts = () => {
             });
         });
 
+        // Store unsubscribe function for cleanup
+        unsubscribeRef.current = unsubscribe;
+
         return () => {
             if (unsubscribe) {
+                console.log('Cleaning up posts listener on unmount');
                 unsubscribe();
+                unsubscribeRef.current = null;
             }
         };
-    }, []);
+    }, [isAuthenticated, hasValidCache]);
 
     return {
         posts,
@@ -58,15 +90,41 @@ export const usePosts = () => {
 
 // Custom hook for posts by type with caching
 export const usePostsByType = (type: 'lost' | 'found') => {
+    const { isAuthenticated } = useAuth();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const cacheKey = `posts-${type}`;
+    const unsubscribeRef = useRef<(() => void) | null>(null);
 
     const cachedData = globalPostCache.get(cacheKey);
     const hasValidCache = cachedData && (Date.now() - cachedData.timestamp) < CACHE_DURATION;
 
     useEffect(() => {
+        // If user is not authenticated, clear posts and don't set up listeners
+        if (!isAuthenticated) {
+            console.log(`User not authenticated - clearing ${type} posts and listeners`);
+
+            // Clear posts
+            setPosts([]);
+            setLoading(false);
+            setIsInitialLoad(false);
+
+            // Clean up any existing listener
+            if (unsubscribeRef.current) {
+                console.log(`Cleaning up ${type} posts listener`);
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+
+            // Clear cache to prevent stale data
+            globalPostCache.delete(cacheKey);
+            return;
+        }
+
+        // User is authenticated - set up listeners
+        console.log(`User authenticated - setting up ${type} posts listener`);
+
         if (hasValidCache) {
             setPosts(cachedData.posts);
             setLoading(false);
@@ -86,12 +144,17 @@ export const usePostsByType = (type: 'lost' | 'found') => {
             });
         });
 
+        // Store unsubscribe function for cleanup
+        unsubscribeRef.current = unsubscribe;
+
         return () => {
             if (unsubscribe) {
+                console.log(`Cleaning up ${type} posts listener on unmount`);
                 unsubscribe();
+                unsubscribeRef.current = null;
             }
         };
-    }, [type]);
+    }, [type, isAuthenticated, hasValidCache]);
 
     return {
         posts,
@@ -102,10 +165,30 @@ export const usePostsByType = (type: 'lost' | 'found') => {
 
 // Custom hook for posts by category
 export const usePostsByCategory = (category: string) => {
+    const { isAuthenticated } = useAuth();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const unsubscribeRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
+        // If user is not authenticated, clear posts and don't set up listeners
+        if (!isAuthenticated) {
+            console.log('User not authenticated - clearing category posts and listeners');
+
+            // Clear posts
+            setPosts([]);
+            setLoading(false);
+
+            // Clean up any existing listener
+            if (unsubscribeRef.current) {
+                console.log('Cleaning up category posts listener');
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+            return;
+        }
+
+        // User is authenticated
         if (!category) {
             setPosts([]);
             setLoading(false);
@@ -119,22 +202,47 @@ export const usePostsByCategory = (category: string) => {
             setLoading(false);
         });
 
+        // Store unsubscribe function for cleanup
+        unsubscribeRef.current = unsubscribe;
+
         return () => {
             if (unsubscribe) {
+                console.log('Cleaning up category posts listener on unmount');
                 unsubscribe();
+                unsubscribeRef.current = null;
             }
         };
-    }, [category]);
+    }, [category, isAuthenticated]);
 
     return { posts, loading };
 };
 
 // Custom hook for user's posts
 export const useUserPosts = (userEmail: string) => {
+    const { isAuthenticated } = useAuth();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const unsubscribeRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
+        // If user is not authenticated, clear posts and don't set up listeners
+        if (!isAuthenticated) {
+            console.log('User not authenticated - clearing user posts and listeners');
+
+            // Clear posts
+            setPosts([]);
+            setLoading(false);
+
+            // Clean up any existing listener
+            if (unsubscribeRef.current) {
+                console.log('Cleaning up user posts listener');
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+            return;
+        }
+
+        // User is authenticated
         if (!userEmail) {
             setPosts([]);
             setLoading(false);
@@ -148,22 +256,47 @@ export const useUserPosts = (userEmail: string) => {
             setLoading(false);
         });
 
+        // Store unsubscribe function for cleanup
+        unsubscribeRef.current = unsubscribe;
+
         return () => {
             if (unsubscribe) {
+                console.log('Cleaning up user posts listener on unmount');
                 unsubscribe();
+                unsubscribeRef.current = null;
             }
         };
-    }, [userEmail]);
+    }, [userEmail, isAuthenticated]);
 
     return { posts, loading };
 };
 
 // Custom hook for user's posts with setPosts functionality
 export const useUserPostsWithSet = (userEmail: string) => {
+    const { isAuthenticated } = useAuth();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const unsubscribeRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
+        // If user is not authenticated, clear posts and don't set up listeners
+        if (!isAuthenticated) {
+            console.log('User not authenticated - clearing user posts (with set) and listeners');
+
+            // Clear posts
+            setPosts([]);
+            setLoading(false);
+
+            // Clean up any existing listener
+            if (unsubscribeRef.current) {
+                console.log('Cleaning up user posts (with set) listener');
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+            return;
+        }
+
+        // User is authenticated
         if (!userEmail) {
             setPosts([]);
             setLoading(false);
@@ -177,12 +310,17 @@ export const useUserPostsWithSet = (userEmail: string) => {
             setLoading(false);
         });
 
+        // Store unsubscribe function for cleanup
+        unsubscribeRef.current = unsubscribe;
+
         return () => {
             if (unsubscribe) {
+                console.log('Cleaning up user posts (with set) listener on unmount');
                 unsubscribe();
+                unsubscribeRef.current = null;
             }
         };
-    }, [userEmail]);
+    }, [userEmail, isAuthenticated]);
 
     return { posts, setPosts, loading };
 };

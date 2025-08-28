@@ -20,7 +20,7 @@ import Report from "../app/tabs/Report";
 import USTPMapScreen from "../app/tabs/USTPMapScreen";
 
 // Components
-import RootBottomTabs from "../components/BottomTabs";
+import CustomTabs from "../components/BottomTabs";
 import ScreenWrapper from "../components/ScreenWrapper";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -54,32 +54,44 @@ export default function Navigation({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const { user, isBanned } = useAuth();
+  const { user, isBanned, isAuthenticated } = useAuth();
 
   // If user is banned, redirect to login
   const shouldShowOnboarding = !hasSeenOnBoarding && !user;
   const shouldShowIndex = !hasPassedIndex && !user;
-  
-  // NEW: Check if user is banned and redirect to login
+
+  // Check if user is banned and redirect to login
   const shouldRedirectToLogin = user && isBanned;
 
-  // NEW: Handle redirect when user gets banned
+  // Handle redirect when user gets banned
   useEffect(() => {
     if (user && isBanned) {
-      // User is banned, but don't try to navigate since we're already handling it in the component structure
       console.log('User is banned, redirecting to login via component structure');
     }
   }, [user, isBanned]);
 
-  // NEW: Prevent banned users from accessing main app
+  // Prevent banned users from accessing main app
   if (user && isBanned) {
-    // Force redirect to login for banned users
     return (
       <Stack.Navigator
         initialRouteName="Login"
         screenOptions={{ headerShown: false, animation: "fade" }}
       >
         <Stack.Screen name="Login" component={withScreenWrapper(Login)} />
+      </Stack.Navigator>
+    );
+  }
+
+  // If user is not authenticated, show login
+  if (!isAuthenticated && !user) {
+    return (
+      <Stack.Navigator
+        initialRouteName="Login"
+        screenOptions={{ headerShown: false, animation: "fade" }}
+      >
+        <Stack.Screen name="Login" component={withScreenWrapper(Login)} />
+        <Stack.Screen name="Register" component={withScreenWrapper(Register)} />
+        <Stack.Screen name="ForgotPassword" component={withScreenWrapper(ForgotPassword)} />
       </Stack.Navigator>
     );
   }
@@ -107,7 +119,7 @@ export default function Navigation({
       {/* Main Screens */}
       <Stack.Screen
         name="RootBottomTabs"
-        component={withScreenWrapper(RootBottomTabs)}
+        component={withScreenWrapper(CustomTabs)}
       />
       <Stack.Screen name="Login" component={withScreenWrapper(Login)} />
       <Stack.Screen name="Register" component={withScreenWrapper(Register)} />
