@@ -543,7 +543,7 @@ export const messageService = {
     },
 
     // Send a claim request message
-    async sendClaimRequest(conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string): Promise<void> {
+    async sendClaimRequest(conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string, evidencePhotos?: { url: string; uploadedAt: any; description?: string }[]): Promise<void> {
         try {
             // First, check if this conversation already has a claim request
             const conversationRef = doc(db, 'conversations', conversationId);
@@ -584,7 +584,8 @@ export const messageService = {
                     status: "pending",
                     requestedAt: serverTimestamp(),
                     claimReason: claimReason || null,
-                    idPhotoUrl: idPhotoUrl || null
+                    idPhotoUrl: idPhotoUrl || null,
+                    evidencePhotos: evidencePhotos || null
                 }
             };
 

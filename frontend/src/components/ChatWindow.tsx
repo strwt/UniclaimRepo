@@ -137,20 +137,33 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     setShowClaimModal(false);
   };
 
-  const handleSubmitClaim = async (claimReason: string, idPhotoFile: File | null) => {
-    if (!conversation || !userData || !idPhotoFile) {
+  const handleSubmitClaim = async (claimReason: string, idPhotoFile: File | null, evidencePhotos: File[]) => {
+    if (!conversation || !userData || !idPhotoFile || !evidencePhotos || evidencePhotos.length === 0) {
       return;
     }
 
     setIsClaimSubmitting(true);
     try {
-      // First, upload the ID photo to Cloudinary using the existing service
+      // Upload ID photo to Cloudinary
       const idPhotoUrl = await cloudinaryService.uploadImage(idPhotoFile, 'id_photos');
-      
       console.log('ID photo uploaded successfully:', idPhotoUrl);
+      
+      // Upload all evidence photos to Cloudinary
+      const photoUploadPromises = evidencePhotos.map(async (photoFile) => {
+        const photoUrl = await cloudinaryService.uploadImage(photoFile, 'evidence_photos');
+        return {
+          url: photoUrl,
+          uploadedAt: new Date(),
+          description: `Evidence photo ${photoFile.name}`
+        };
+      });
+      
+      const uploadedEvidencePhotos = await Promise.all(photoUploadPromises);
+      
+      console.log('Evidence photos uploaded successfully:', uploadedEvidencePhotos);
       console.log('Claim reason provided:', claimReason);
       
-      // Now send the claim request with the ID photo URL
+      // Now send the claim request with both ID photo and evidence photos
       await sendClaimRequest(
         conversation.id,
         userData.uid,
@@ -159,7 +172,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         conversation.postId,
         conversation.postTitle,
         claimReason,
-        idPhotoUrl
+        idPhotoUrl,
+        uploadedEvidencePhotos
       );
       
       // Close modal and show success message

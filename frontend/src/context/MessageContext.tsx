@@ -14,7 +14,7 @@ interface MessageContextType {
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>; // New: Delete message function
   updateHandoverResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update handover response
   confirmHandoverIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm ID photo function
-  sendClaimRequest: (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string) => Promise<void>; // New: Send claim request
+  sendClaimRequest: (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string, evidencePhotos?: { url: string; uploadedAt: any; description?: string }[]) => Promise<void>; // New: Send claim request
   updateClaimResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update claim response
   confirmClaimIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm claim ID photo
   refreshConversations: () => Promise<void>; // Simplified refresh function
@@ -122,9 +122,9 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
   };
 
-  const sendClaimRequest = async (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string): Promise<void> => {
+  const sendClaimRequest = async (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string, evidencePhotos?: { url: string; uploadedAt: any; description?: string }[]): Promise<void> => {
     try {
-      await messageService.sendClaimRequest(conversationId, senderId, senderName, senderProfilePicture, postId, postTitle, claimReason, idPhotoUrl);
+      await messageService.sendClaimRequest(conversationId, senderId, senderName, senderProfilePicture, postId, postTitle, claimReason, idPhotoUrl, evidencePhotos);
     } catch (error: any) {
       throw new Error(error.message || 'Failed to send claim request');
     }

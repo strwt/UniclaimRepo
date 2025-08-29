@@ -64,11 +64,29 @@ export interface Message {
     respondedAt?: any;
     responseMessage?: string;
     claimReason?: string; // New field for claim reason
-    // New fields for ID photo verification
+    // ID photo for identity verification (REQUIRED)
     idPhotoUrl?: string; // URL of the uploaded ID photo
     idPhotoConfirmed?: boolean; // Whether the item owner confirmed the ID photo
     idPhotoConfirmedAt?: any; // When the ID photo was confirmed
     idPhotoConfirmedBy?: string; // User ID who confirmed the ID photo
+    // Evidence photos for ownership proof (REQUIRED - up to 3)
+    evidencePhotos?: {
+      url: string;
+      uploadedAt: any;
+      description?: string;
+    }[];
+    evidencePhotosConfirmed?: boolean; // Whether the item owner confirmed the evidence photos
+    evidencePhotosConfirmedAt?: any; // When the evidence photos were confirmed
+    evidencePhotosConfirmedBy?: string; // User ID who confirmed the evidence photos
+    // Legacy field for backward compatibility
+    verificationPhotos?: {
+      url: string;
+      uploadedAt: any;
+      description?: string;
+    }[];
+    photosConfirmed?: boolean; // Whether the item owner confirmed the verification photos
+    photosConfirmedAt?: any; // When the photos were confirmed
+    photosConfirmedBy?: string; // User ID who confirmed the verification photos
   };
 }
 

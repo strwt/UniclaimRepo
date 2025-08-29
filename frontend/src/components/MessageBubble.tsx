@@ -153,14 +153,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
       console.log('✅ Claim ID photo uploaded successfully:', uploadedUrl);
 
-      // Update claim response with ID photo
+      // Update claim response with verification photo
       const { messageService } = await import('../utils/firebase');
       await messageService.updateClaimResponse(
         conversationId,
         message.id,
         'accepted',
         currentUserId,
-        uploadedUrl
+        [{
+          url: uploadedUrl,
+          uploadedAt: new Date(),
+          description: 'Verification photo'
+        }]
       );
 
       console.log('✅ Claim response updated with ID photo');
@@ -366,6 +370,78 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         )}
 
+        {/* Show evidence photos if uploaded */}
+        {claimData.evidencePhotos && claimData.evidencePhotos.length > 0 && (
+          <div className="mb-3 p-2 bg-white rounded border">
+            <div className="text-xs text-gray-600 mb-1 font-medium">Evidence Photos:</div>
+            <div className="grid grid-cols-1 gap-2">
+              {claimData.evidencePhotos.map((photo, index) => (
+                <div key={index} className="relative">
+                  <img
+                    src={photo.url}
+                    alt={`Evidence Photo ${index + 1}`}
+                    className="w-full h-32 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
+                    onClick={() => {
+                      // Open photo in new tab for better viewing
+                      window.open(photo.url, '_blank');
+                    }}
+                    title="Click to view full size"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
+                    <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
+                      Click to expand
+                    </span>
+                  </div>
+                  {photo.description && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      {photo.description}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="text-xs text-gray-500 mt-2">
+              Click any photo to view full size
+            </div>
+          </div>
+        )}
+
+        {/* Show legacy verification photos if exists (for backward compatibility) */}
+        {claimData.verificationPhotos && claimData.verificationPhotos.length > 0 && !claimData.evidencePhotos && (
+          <div className="mb-3 p-2 bg-white rounded border">
+            <div className="text-xs text-gray-600 mb-1 font-medium">Verification Photos:</div>
+            <div className="grid grid-cols-1 gap-2">
+              {claimData.verificationPhotos.map((photo, index) => (
+                <div key={index} className="relative">
+                  <img
+                    src={photo.url}
+                    alt={`Verification Photo ${index + 1}`}
+                    className="w-full h-32 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
+                    onClick={() => {
+                      // Open photo in new tab for better viewing
+                      window.open(photo.url, '_blank');
+                    }}
+                    title="Click to view full size"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
+                    <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
+                      Click to expand
+                    </span>
+                  </div>
+                  {photo.description && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      {photo.description}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="text-xs text-gray-500 mt-2">
+              Click any photo to view full size
+            </div>
+          </div>
+        )}
+
         {/* Action buttons */}
         {canRespond ? (
           <div className="flex gap-2">
@@ -399,9 +475,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 at {formatTime(claimData.respondedAt)}
               </span>
             )}
-            {claimData.status === 'accepted' && claimData.idPhotoConfirmed && (
+            {claimData.status === 'accepted' && claimData.evidencePhotosConfirmed && (
+              <span className="ml-2 text-green-600">
+                ✓ Evidence Photos Confirmed
+              </span>
+            )}
+            {claimData.status === 'accepted' && claimData.idPhotoConfirmed && !claimData.evidencePhotosConfirmed && (
               <span className="ml-2 text-green-600">
                 ✓ ID Photo Confirmed
+              </span>
+            )}
+            {claimData.status === 'accepted' && claimData.photosConfirmed && !claimData.evidencePhotosConfirmed && (
+              <span className="ml-2 text-green-600">
+                ✓ Verification Photos Confirmed
               </span>
             )}
           </div>

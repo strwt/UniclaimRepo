@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 interface ClaimVerificationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (claimReason: string, idPhotoFile: File | null) => void;
+  onSubmit: (claimReason: string, idPhotoFile: File | null, evidencePhotos: File[]) => void;
   itemTitle: string;
   itemDescription?: string;
   isLoading?: boolean;
@@ -21,6 +21,8 @@ const ClaimVerificationModal: React.FC<ClaimVerificationModalProps> = ({
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [idPhotoFile, setIdPhotoFile] = useState<File | null>(null);
   const [idPhotoPreview, setIdPhotoPreview] = useState<string | null>(null);
+  const [evidencePhotos, setEvidencePhotos] = useState<File[]>([]);
+  const [evidencePhotoPreviews, setEvidencePhotoPreviews] = useState<string[]>([]);
   const [isPhotoUploading, setIsPhotoUploading] = useState(false);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,10 +55,64 @@ const ClaimVerificationModal: React.FC<ClaimVerificationModalProps> = ({
     if (fileInput) fileInput.value = '';
   };
 
+  const handleEvidencePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const newPhotos: File[] = [];
+      const newPreviews: string[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file && file.type.startsWith('image/')) {
+          // Validate file size (max 5MB)
+          if (file.size > 5 * 1024 * 1024) {
+            alert(`File ${file.name} is too large. Please choose a file smaller than 5MB.`);
+            continue;
+          }
+          
+          // Check if we already have 3 photos
+          if (evidencePhotos.length + newPhotos.length >= 3) {
+            alert('Maximum 3 evidence photos allowed. Please remove some photos first.');
+            break;
+          }
+          
+          newPhotos.push(file);
+          
+          // Create preview URL
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            newPreviews.push(e.target?.result as string);
+            setEvidencePhotoPreviews([...evidencePhotoPreviews, ...newPreviews]);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          alert(`File ${file.name} is not a valid image file. Please select JPEG, PNG, etc.`);
+        }
+      }
+      
+      setEvidencePhotos([...evidencePhotos, ...newPhotos]);
+    }
+  };
+
+  const removeEvidencePhoto = (index: number) => {
+    const newPhotos = evidencePhotos.filter((_, i) => i !== index);
+    const newPreviews = evidencePhotoPreviews.filter((_, i) => i !== index);
+    setEvidencePhotos(newPhotos);
+    setEvidencePhotoPreviews(newPreviews);
+  };
+
+  const removeAllEvidencePhotos = () => {
+    setEvidencePhotos([]);
+    setEvidencePhotoPreviews([]);
+    // Reset the file input
+    const fileInput = document.getElementById('evidencePhotosInput') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isConfirmed && idPhotoFile) {
-      onSubmit(claimReason, idPhotoFile);
+    if (isConfirmed && idPhotoFile && evidencePhotos.length > 0) {
+      onSubmit(claimReason, idPhotoFile, evidencePhotos);
     }
   };
 
@@ -65,6 +121,8 @@ const ClaimVerificationModal: React.FC<ClaimVerificationModalProps> = ({
     setIsConfirmed(false);
     setIdPhotoFile(null);
     setIdPhotoPreview(null);
+    setEvidencePhotos([]);
+    setEvidencePhotoPreviews([]);
     onClose();
   };
 
@@ -145,17 +203,124 @@ const ClaimVerificationModal: React.FC<ClaimVerificationModalProps> = ({
                   
                   {/* Photo Preview */}
                   <div className="mb-2">
-                    <img
-                      src={idPhotoPreview || ''}
-                      alt="ID Photo Preview"
-                      className="w-full h-32 object-cover rounded border"
-                    />
+                    {idPhotoPreview && (
+                      <img
+                        src={idPhotoPreview}
+                        alt="ID Photo Preview"
+                        className="w-full h-32 object-cover rounded border"
+                      />
+                    )}
                   </div>
                   
                   <div className="text-xs text-gray-600">
                     <div>File: {idPhotoFile.name}</div>
                     <div>Size: {(idPhotoFile.size / 1024).toFixed(1)} KB</div>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Evidence Photos Upload - REQUIRED */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Evidence Photos <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Please upload up to 3 photos as proof of ownership (e.g., you with the item, item details, etc.)
+              </p>
+              
+              {evidencePhotos.length === 0 ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors">
+                  <input
+                    id="evidencePhotosInput"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleEvidencePhotoSelect}
+                    className="hidden"
+                    required
+                  />
+                  <label htmlFor="evidencePhotosInput" className="cursor-pointer">
+                    <div className="text-gray-600">
+                      <div className="text-2xl mb-2">📸</div>
+                      <div className="font-medium">Click to upload evidence photos</div>
+                      <div className="text-sm">JPEG, PNG up to 5MB each (Max 3 photos)</div>
+                    </div>
+                  </label>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Photo Counter and Remove All Button */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      {evidencePhotos.length}/3 photos selected
+                    </span>
+                    {evidencePhotos.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={removeAllEvidencePhotos}
+                        className="text-red-500 hover:text-red-700 text-sm"
+                      >
+                        Remove All
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Photo Grid */}
+                  <div className="grid grid-cols-1 gap-3">
+                    {evidencePhotos.map((photo, index) => (
+                      <div key={index} className="border border-gray-300 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700">
+                            Evidence Photo {index + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeEvidencePhoto(index)}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        
+                        {/* Photo Preview */}
+                        <div className="mb-2">
+                          {evidencePhotoPreviews[index] && (
+                            <img
+                              src={evidencePhotoPreviews[index]}
+                              alt={`Evidence Photo ${index + 1}`}
+                              className="w-full h-32 object-cover rounded border"
+                            />
+                          )}
+                        </div>
+                        
+                        <div className="text-xs text-gray-600">
+                          <div>File: {photo.name}</div>
+                          <div>Size: {(photo.size / 1024).toFixed(1)} KB</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Add More Photos Button */}
+                  {evidencePhotos.length < 3 && (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-blue-400 transition-colors">
+                      <input
+                        id="additionalEvidencePhotosInput"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleEvidencePhotoSelect}
+                        className="hidden"
+                      />
+                      <label htmlFor="additionalEvidencePhotosInput" className="cursor-pointer">
+                        <div className="text-gray-600">
+                          <div className="text-sm font-medium">Add more evidence photos</div>
+                          <div className="text-xs">You can add {3 - evidencePhotos.length} more photo(s)</div>
+                        </div>
+                      </label>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -207,7 +372,7 @@ const ClaimVerificationModal: React.FC<ClaimVerificationModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={!isConfirmed || !idPhotoFile || isLoading}
+                disabled={!isConfirmed || !idPhotoFile || evidencePhotos.length === 0 || isLoading}
                 className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (

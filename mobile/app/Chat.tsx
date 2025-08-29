@@ -749,6 +749,8 @@ export default function Chat() {
       return;
     }
 
+    // For now, mobile will send claim request without photos
+    // TODO: Implement photo upload for mobile
     try {
       console.log('Calling sendClaimRequest...');
       await sendClaimRequest(
@@ -757,7 +759,10 @@ export default function Chat() {
         `${userData.firstName} ${userData.lastName}`,
         userData.profilePicture || userData.profileImageUrl || '',
         postId,
-        postTitle
+        postTitle,
+        'Claiming this item as my own', // Default claim reason
+        '', // No ID photo for now
+        [] // No evidence photos for now
       );
       console.log('Claim request sent successfully!');
       Alert.alert('Success', 'Claim request sent successfully!');
