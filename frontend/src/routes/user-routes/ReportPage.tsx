@@ -42,10 +42,12 @@ export default function ReportPage() {
   const { showToast } = useToast();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // New state for found action modal
   const [showFoundActionModal, setShowFoundActionModal] = useState(false);
-  const [selectedFoundAction, setSelectedFoundAction] = useState<"keep" | "turnover to OSA" | "turnover to Campus Security" | null>(null);
+  const [selectedFoundAction, setSelectedFoundAction] = useState<
+    "keep" | "turnover to OSA" | "turnover to Campus Security" | null
+  >(null);
 
   useEffect(() => {
     if (showSuccessModal) {
@@ -94,7 +96,9 @@ export default function ReportPage() {
     setSelectedFiles((prev) => prev.filter((file) => file.name !== name));
   };
 
-  const handleFoundActionSelect = (action: "keep" | "turnover to OSA" | "turnover to Campus Security") => {
+  const handleFoundActionSelect = (
+    action: "keep" | "turnover to OSA" | "turnover to Campus Security"
+  ) => {
     setSelectedFoundAction(action);
     setShowFoundActionModal(false);
   };
@@ -124,7 +128,9 @@ export default function ReportPage() {
 
     // Prevent duplicate submissions
     if (isSubmitting) {
-      console.log('Form submission already in progress, ignoring duplicate submit');
+      console.log(
+        "Form submission already in progress, ignoring duplicate submit"
+      );
       return;
     }
 
@@ -151,7 +157,9 @@ export default function ReportPage() {
     // ✅ Type narrowing to satisfy Post.type
     if (selectedReport !== "lost" && selectedReport !== "found") {
       // This should never happen since validateFormErrors already checked this
-      console.error('Unexpected: selectedReport validation failed after validateFormErrors passed');
+      console.error(
+        "Unexpected: selectedReport validation failed after validateFormErrors passed"
+      );
       setIsSubmitting(false);
       return;
     }
@@ -166,9 +174,9 @@ export default function ReportPage() {
       if (!userData) {
         throw new Error("User data not available");
       }
-      
+
       // Build post data conditionally to avoid undefined values in Firebase
-      const createdPost: Omit<Post, 'id' | 'createdAt'> = {
+      const createdPost: Omit<Post, "id" | "createdAt"> = {
         title: title.trim(),
         description: description.trim(),
         category: activeCategory,
@@ -183,7 +191,8 @@ export default function ReportPage() {
           email: userData?.email || "",
           contactNum: userData?.contactNum || "",
           studentId: userData?.studentId || "",
-          profilePicture: userData?.profilePicture || userData?.profileImageUrl || null, // Ensure it's never undefined
+          profilePicture:
+            userData?.profilePicture || userData?.profileImageUrl || null, // Ensure it's never undefined
         },
         status: "pending",
       };
@@ -199,10 +208,10 @@ export default function ReportPage() {
       }
 
       // Use Firebase service to create post
-      const { postService } = await import('../../utils/firebase');
+      const { postService } = await import("../../utils/firebase");
       const postId = await postService.createPost(createdPost, userData.uid);
 
-      console.log('Post created successfully with ID:', postId);
+      console.log("Post created successfully with ID:", postId);
 
       // Clear form
       setTitle("");
@@ -216,11 +225,19 @@ export default function ReportPage() {
       setSelectedFoundAction(null);
       setWasSubmitted(false);
       setShowSuccessModal(true);
-      
-      showToast("success", "Post Created", "Your report has been submitted successfully!");
+
+      showToast(
+        "success",
+        "Post Created",
+        "Your report has been submitted successfully!"
+      );
     } catch (error: any) {
-      console.error('Error creating post:', error);
-      showToast("error", "Submission Failed", error.message || "Failed to submit report. Please try again.");
+      console.error("Error creating post:", error);
+      showToast(
+        "error",
+        "Submission Failed",
+        error.message || "Failed to submit report. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -272,7 +289,11 @@ export default function ReportPage() {
             Status of the item
             <span className="text-red-500 ml-1">*</span>
           </h1>
-          <div className={`flex gap-3 mt-4 mx-4 lg:mx-6 ${showReportTypeError ? 'border-2 border-red-500 rounded p-2' : ''}`}>
+          <div
+            className={`flex gap-3 mt-4 mx-4 lg:mx-6 ${
+              showReportTypeError ? "border-2 border-red-500 rounded p-2" : ""
+            }`}
+          >
             <button
               type="button"
               className={`p-2 w-full lg:max-w-[12rem] rounded text-md font-medium transition-colors duration-200 ${
@@ -301,7 +322,13 @@ export default function ReportPage() {
             >
               <span className="flex items-center justify-center gap-1">
                 {selectedReport === "found" && selectedFoundAction
-                  ? `Found (${selectedFoundAction === "keep" ? "Keep" : selectedFoundAction === "turnover to OSA" ? "OSA" : "Campus Security"})`
+                  ? `Found (${
+                      selectedFoundAction === "keep"
+                        ? "Keep"
+                        : selectedFoundAction === "turnover to OSA"
+                        ? "OSA"
+                        : "Campus Security"
+                    })`
                   : "Found Item"}
                 {selectedReport === "found" && (
                   <FiX className="w-4 h-4 text-white" />
@@ -389,12 +416,12 @@ export default function ReportPage() {
             type="submit"
             disabled={isSubmitting}
             className={`w-full text-white rounded p-3 block cursor-pointer transition-colors ${
-              isSubmitting 
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-brand hover:bg-teal-600'
+              isSubmitting
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-brand hover:bg-teal-600"
             }`}
           >
-            {isSubmitting ? 'Submitting...' : 'Submit report'}
+            {isSubmitting ? "Submitting..." : "Submit report"}
           </button>
         </div>
       </form>
@@ -408,7 +435,7 @@ export default function ReportPage() {
           setSelectedFoundAction(null); // Reset selected action
         }}
         onActionSelect={handleFoundActionSelect}
-        selectedAction={selectedFoundAction}
+        // selectedAction={selectedFoundAction}
       />
 
       {showSuccessModal && (
