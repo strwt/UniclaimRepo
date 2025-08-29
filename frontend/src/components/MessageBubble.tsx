@@ -331,15 +331,38 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           <strong>Claim Request:</strong> {claimData.postTitle}
         </div>
 
+        {/* Show claim reason if provided */}
+        {claimData.claimReason && (
+          <div className="mb-3 p-2 bg-white rounded border">
+            <div className="text-xs text-gray-600 mb-1 font-medium">Claim Reason:</div>
+            <div className="text-sm text-gray-800">{claimData.claimReason}</div>
+          </div>
+        )}
+
         {/* Show ID photo if uploaded */}
         {claimData.idPhotoUrl && (
           <div className="mb-3 p-2 bg-white rounded border">
-            <div className="text-xs text-gray-600 mb-1">ID Photo:</div>
-            <img
-              src={claimData.idPhotoUrl}
-              alt="ID Photo"
-              className="w-20 h-12 rounded object-cover"
-            />
+            <div className="text-xs text-gray-600 mb-1 font-medium">ID Photo:</div>
+            <div className="relative group">
+              <img
+                src={claimData.idPhotoUrl}
+                alt="ID Photo"
+                className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => {
+                  // Open ID photo in new tab for better viewing
+                  window.open(claimData.idPhotoUrl, '_blank');
+                }}
+                title="Click to view full size"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center">
+                <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
+                  Click to expand
+                </span>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Click the photo to view full size
+            </div>
           </div>
         )}
 

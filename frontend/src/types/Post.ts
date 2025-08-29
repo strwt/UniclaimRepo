@@ -63,6 +63,7 @@ export interface Message {
     requestedAt: any;
     respondedAt?: any;
     responseMessage?: string;
+    claimReason?: string; // New field for claim reason
     // New fields for ID photo verification
     idPhotoUrl?: string; // URL of the uploaded ID photo
     idPhotoConfirmed?: boolean; // Whether the item owner confirmed the ID photo

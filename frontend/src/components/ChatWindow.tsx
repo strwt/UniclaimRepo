@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import ProfilePicture from './ProfilePicture';
 import { messageService } from '../utils/firebase';
 import ClaimVerificationModal from './ClaimVerificationModal';
+import { cloudinaryService } from '../utils/cloudinary';
 
 interface ChatWindowProps {
   conversation: Conversation | null;
@@ -136,24 +137,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     setShowClaimModal(false);
   };
 
-  const handleSubmitClaim = async (claimReason: string) => {
-    if (!conversation || !userData) {
+  const handleSubmitClaim = async (claimReason: string, idPhotoFile: File | null) => {
+    if (!conversation || !userData || !idPhotoFile) {
       return;
     }
 
     setIsClaimSubmitting(true);
     try {
-      // TODO: In the future, we can enhance this to include the claimReason in the claim request
-      // For now, we'll just send the basic claim request
+      // First, upload the ID photo to Cloudinary using the existing service
+      const idPhotoUrl = await cloudinaryService.uploadImage(idPhotoFile, 'id_photos');
+      
+      console.log('ID photo uploaded successfully:', idPhotoUrl);
       console.log('Claim reason provided:', claimReason);
       
+      // Now send the claim request with the ID photo URL
       await sendClaimRequest(
         conversation.id,
         userData.uid,
         `${userData.firstName} ${userData.lastName}`,
         userData.profilePicture || userData.profileImageUrl || '',
         conversation.postId,
-        conversation.postTitle
+        conversation.postTitle,
+        claimReason,
+        idPhotoUrl
       );
       
       // Close modal and show success message
