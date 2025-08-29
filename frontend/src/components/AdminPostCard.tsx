@@ -10,6 +10,7 @@ interface AdminPostCardProps {
   onStatusChange?: (post: Post, status: string) => void;
   onActivateTicket?: (post: Post) => void;
   onRevertResolution?: (post: Post) => void;
+  isDeleting?: boolean;
 }
 
 function formatDateTime(datetime: string | Date) {
@@ -49,7 +50,8 @@ function AdminPostCard({
   onDelete,
   onStatusChange,
   onActivateTicket,
-  onRevertResolution
+  onRevertResolution,
+  isDeleting = false
 }: AdminPostCardProps) {
   const previewUrl = useMemo(() => {
     if (post.images && post.images.length > 0) {
@@ -141,10 +143,25 @@ function AdminPostCard({
             )}
             <button
               onClick={handleDelete}
-              className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition"
-              title="Delete Post"
+              disabled={isDeleting}
+              className={`px-2 py-1 text-xs rounded transition ${
+                isDeleting 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-red-500 hover:bg-red-600 text-white'
+              }`}
+              title={isDeleting ? "Deleting..." : "Delete Post"}
             >
-              Delete
+              {isDeleting ? (
+                <span className="flex items-center gap-1">
+                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  Deleting...
+                </span>
+              ) : (
+                'Delete'
+              )}
             </button>
           </div>
         </div>
