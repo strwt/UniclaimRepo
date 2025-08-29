@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Post } from "@/types/Post";
 
 // components
@@ -10,6 +10,7 @@ import SearchBar from "../../components/SearchBar";
 // hooks
 import { usePosts, useResolvedPosts } from "@/hooks/usePosts";
 import { useToast } from "@/context/ToastContext";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
 function fuzzyMatch(text: string, query: string): boolean {
   const cleanedText = text.toLowerCase();
@@ -63,8 +64,8 @@ export default function AdminHomePage() {
   const [selectedPost] = useState<Post | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  // e change dari pila ka post mu appear pag click and load more button
-  const itemsPerPage = 2;
+  // e change dari pila ka post mu appear pag scroll down
+  const itemsPerPage = 6; // Increased from 2 to 6 for better scroll experience
   
 
 
@@ -475,6 +476,19 @@ export default function AdminHomePage() {
     return shouldShow;
   });
 
+  // Check if there are more posts to load
+  const hasMorePosts = postsToDisplay.length > currentPage * itemsPerPage;
+  
+  // Function to load more posts when scrolling
+  const handleLoadMore = useCallback(() => {
+    if (hasMorePosts && !isLoading) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  }, [hasMorePosts, isLoading]);
+
+  // Use the infinite scroll hook
+  const loadingRef = useInfiniteScroll(handleLoadMore, hasMorePosts, isLoading);
+
   return (
     <div className="min-h-screen bg-gray-100 mb-13 font-manrope transition-colors duration-300">
       <MobileNavText title="Admin Home" description="Admin dashboard for managing posts" />
@@ -488,6 +502,7 @@ export default function AdminHomePage() {
               setRawResults(null);
               setLastDescriptionKeyword("");
               setSearchQuery("");
+              setCurrentPage(1); // Reset pagination when clearing search
             }}
             query={searchQuery}
             setQuery={setSearchQuery}
@@ -572,6 +587,7 @@ export default function AdminHomePage() {
           onClick={() => {
             setIsLoading(true);
             setViewType("all");
+            setCurrentPage(1); // Reset pagination when switching views
             setTimeout(() => setIsLoading(false), 200);
           }}
         >
@@ -587,6 +603,7 @@ export default function AdminHomePage() {
           onClick={() => {
             setIsLoading(true);
             setViewType("lost");
+            setCurrentPage(1); // Reset pagination when switching views
             setTimeout(() => setIsLoading(false), 200);
           }}
         >
@@ -602,6 +619,7 @@ export default function AdminHomePage() {
           onClick={() => {
             setIsLoading(true);
             setViewType("found");
+            setCurrentPage(1); // Reset pagination when switching views
             setTimeout(() => setIsLoading(false), 200);
           }}
         >
@@ -617,6 +635,7 @@ export default function AdminHomePage() {
           onClick={() => {
             setIsLoading(true);
             setViewType("unclaimed");
+            setCurrentPage(1); // Reset pagination when switching views
             setTimeout(() => setIsLoading(false), 200);
           }}
         >
@@ -632,6 +651,7 @@ export default function AdminHomePage() {
           onClick={() => {
             setIsLoading(true);
             setViewType("completed");
+            setCurrentPage(1); // Reset pagination when switching views
             setTimeout(() => setIsLoading(false), 200);
           }}
         >
@@ -695,14 +715,17 @@ export default function AdminHomePage() {
         )}
       </div>
 
-      {postsToDisplay.length > currentPage * itemsPerPage && (
-        <div className="flex justify-center my-6">
-          <button
-            className="px-6 py-2 text-sm bg-gray-200 text-gray-600 rounded hover:bg-gray-300 transition"
-            onClick={() => setCurrentPage((prev) => prev + 1)}
-          >
-            Load More
-          </button>
+      {/* Invisible loading indicator for scroll-to-load */}
+      {hasMorePosts && (
+        <div 
+          ref={loadingRef}
+          className="h-10 flex items-center justify-center my-6"
+        >
+          {isLoading ? (
+            <div className="text-gray-500 text-sm">Loading more posts...</div>
+          ) : (
+            <div className="text-gray-400 text-sm">Scroll down to load more</div>
+          )}
         </div>
       )}
 
@@ -723,7 +746,7 @@ export default function AdminHomePage() {
           </div>
           
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
             onClick={cancelDelete}
             role="dialog"
             aria-modal="true"
