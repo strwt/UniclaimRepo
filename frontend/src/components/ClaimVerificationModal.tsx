@@ -7,6 +7,7 @@ interface ClaimVerificationModalProps {
   itemTitle: string;
   itemDescription?: string;
   isLoading?: boolean;
+  onSuccess?: () => void; // New prop to handle successful submission
 }
 
 const ClaimVerificationModal: React.FC<ClaimVerificationModalProps> = ({
@@ -15,7 +16,8 @@ const ClaimVerificationModal: React.FC<ClaimVerificationModalProps> = ({
   onSubmit,
   itemTitle,
   itemDescription,
-  isLoading = false
+  isLoading = false,
+  onSuccess
 }) => {
   const [claimReason, setClaimReason] = useState('');
   const [isConfirmed, setIsConfirmed] = useState(false);
@@ -24,6 +26,25 @@ const ClaimVerificationModal: React.FC<ClaimVerificationModalProps> = ({
   const [evidencePhotos, setEvidencePhotos] = useState<File[]>([]);
   const [evidencePhotoPreviews, setEvidencePhotoPreviews] = useState<string[]>([]);
   const [isPhotoUploading, setIsPhotoUploading] = useState(false);
+
+  // Function to clear all form entries
+  const clearForm = () => {
+    setClaimReason('');
+    setIsConfirmed(false);
+    setIdPhotoFile(null);
+    setIdPhotoPreview(null);
+    setEvidencePhotos([]);
+    setEvidencePhotoPreviews([]);
+    
+    // Reset file inputs
+    const idPhotoInput = document.getElementById('idPhotoInput') as HTMLInputElement;
+    const evidencePhotosInput = document.getElementById('evidencePhotosInput') as HTMLInputElement;
+    const additionalEvidencePhotosInput = document.getElementById('additionalEvidencePhotosInput') as HTMLInputElement;
+    
+    if (idPhotoInput) idPhotoInput.value = '';
+    if (evidencePhotosInput) evidencePhotosInput.value = '';
+    if (additionalEvidencePhotosInput) additionalEvidencePhotosInput.value = '';
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -112,17 +133,19 @@ const ClaimVerificationModal: React.FC<ClaimVerificationModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isConfirmed && idPhotoFile && evidencePhotos.length > 0) {
+      // Clear the form immediately after submission
+      clearForm();
+      // Call the onSubmit function
       onSubmit(claimReason, idPhotoFile, evidencePhotos);
+      // Call onSuccess if provided
+      if (onSuccess) {
+        onSuccess();
+      }
     }
   };
 
   const handleClose = () => {
-    setClaimReason('');
-    setIsConfirmed(false);
-    setIdPhotoFile(null);
-    setIdPhotoPreview(null);
-    setEvidencePhotos([]);
-    setEvidencePhotoPreviews([]);
+    clearForm();
     onClose();
   };
 

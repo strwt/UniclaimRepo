@@ -437,6 +437,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         onSubmit={handleSubmitClaim}
         itemTitle={conversation?.postTitle || ''}
         isLoading={isClaimSubmitting}
+        onSuccess={() => {
+          // This will be called after successful form submission
+          // The form is already cleared by the modal component
+          console.log('Claim form submitted and cleared successfully');
+        }}
       />
 
       {/* Handover Verification Modal */}
@@ -446,6 +451,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         onSubmit={handleSubmitHandover}
         itemTitle={conversation?.postTitle || ''}
         isLoading={isHandoverSubmitting}
+        onSuccess={() => {
+          // This will be called after successful form submission
+          // The form is already cleared by the modal component
+          console.log('Handover form submitted and cleared successfully');
+        }}
       />
     </div>
   );

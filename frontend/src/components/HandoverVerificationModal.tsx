@@ -7,6 +7,7 @@ interface HandoverVerificationModalProps {
   itemTitle: string;
   itemDescription?: string;
   isLoading?: boolean;
+  onSuccess?: () => void; // New prop to handle successful submission
 }
 
 const HandoverVerificationModal: React.FC<HandoverVerificationModalProps> = ({
@@ -15,7 +16,8 @@ const HandoverVerificationModal: React.FC<HandoverVerificationModalProps> = ({
   onSubmit,
   itemTitle,
   itemDescription,
-  isLoading = false
+  isLoading = false,
+  onSuccess
 }) => {
   const [handoverReason, setHandoverReason] = useState('');
   const [isConfirmed, setIsConfirmed] = useState(false);
@@ -78,20 +80,39 @@ const HandoverVerificationModal: React.FC<HandoverVerificationModalProps> = ({
     if (fileInput) fileInput.value = '';
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isConfirmed && idPhotoFile && itemPhotoFiles.length > 0) {
-      onSubmit(handoverReason, idPhotoFile, itemPhotoFiles);
-    }
-  };
-
-  const handleClose = () => {
+  // Function to clear all form entries
+  const clearForm = () => {
     setHandoverReason('');
     setIsConfirmed(false);
     setIdPhotoFile(null);
     setIdPhotoPreview(null);
     setItemPhotoFiles([]);
     setItemPhotoPreviews([]);
+    
+    // Reset file inputs
+    const idPhotoInput = document.getElementById('id-photo-input') as HTMLInputElement;
+    const itemPhotoInput = document.getElementById('item-photo-input') as HTMLInputElement;
+    
+    if (idPhotoInput) idPhotoInput.value = '';
+    if (itemPhotoInput) itemPhotoInput.value = '';
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isConfirmed && idPhotoFile && itemPhotoFiles.length > 0) {
+      // Clear the form immediately after submission
+      clearForm();
+      // Call the onSubmit function
+      onSubmit(handoverReason, idPhotoFile, itemPhotoFiles);
+      // Call onSuccess if provided
+      if (onSuccess) {
+        onSuccess();
+      }
+    }
+  };
+
+  const handleClose = () => {
+    clearForm();
     onClose();
   };
 
