@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView, 
   Platform,
   Alert,
-  Image
+  Image,
+  Linking
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -273,11 +274,36 @@ const MessageBubble = ({
         {handoverData.idPhotoUrl && (
           <View className="mb-3 p-2 bg-white rounded border">
             <Text className="text-xs text-gray-600 mb-1">ID Photo:</Text>
-            <Image 
-              source={{ uri: handoverData.idPhotoUrl }} 
-              className="w-20 h-12 rounded"
-              resizeMode="cover"
-            />
+            <TouchableOpacity
+              onPress={() => {
+                if (handoverData.idPhotoUrl) {
+                  // For mobile, we'll use a simple alert with option to view
+                  Alert.alert(
+                    'View ID Photo',
+                    'Would you like to view the full-size ID photo?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { 
+                        text: 'View Full Size', 
+                        onPress: () => {
+                          // Open in device's default image viewer
+                          Linking.openURL(handoverData.idPhotoUrl);
+                        }
+                      }
+                    ]
+                  );
+                }
+              }}
+            >
+              <Image 
+                source={{ uri: handoverData.idPhotoUrl }} 
+                className="w-20 h-12 rounded"
+                resizeMode="cover"
+              />
+              <Text className="text-xs text-blue-500 text-center mt-1">
+                Tap to view full size
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
         

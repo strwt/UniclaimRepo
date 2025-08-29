@@ -343,18 +343,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {claimData.idPhotoUrl && (
           <div className="mb-3 p-2 bg-white rounded border">
             <div className="text-xs text-gray-600 mb-1 font-medium">ID Photo:</div>
-            <div className="relative group">
+            <div className="relative">
               <img
                 src={claimData.idPhotoUrl}
                 alt="ID Photo"
-                className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
                 onClick={() => {
                   // Open ID photo in new tab for better viewing
                   window.open(claimData.idPhotoUrl, '_blank');
                 }}
                 title="Click to view full size"
               />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
                 <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
                   Click to expand
                 </span>
