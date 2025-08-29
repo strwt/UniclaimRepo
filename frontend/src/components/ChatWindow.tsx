@@ -6,6 +6,7 @@ import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import ProfilePicture from './ProfilePicture';
 import { messageService } from '../utils/firebase';
+import ClaimVerificationModal from './ClaimVerificationModal';
 
 interface ChatWindowProps {
   conversation: Conversation | null;
@@ -17,9 +18,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [isClaimSubmitting, setIsClaimSubmitting] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { sendMessage, getConversationMessages, markConversationAsRead, sendClaimRequest, updateClaimResponse } = useMessage();
+  const { sendMessage, getConversationMessages, markConversationAsRead, sendClaimRequest } = useMessage();
   const { userData } = useAuth();
 
   // Auto-scroll to bottom when new messages arrive
@@ -95,12 +98,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     }
   };
 
-  const handleHandoverResponse = (messageId: string, status: 'accepted' | 'rejected') => {
+  const handleHandoverResponse = (_messageId: string, _status: 'accepted' | 'rejected') => {
     // This function will be called when a handover response is made
     // The actual update is handled in the MessageBubble component
   };
 
-  const handleClaimResponse = (messageId: string, status: 'accepted' | 'rejected') => {
+  const handleClaimResponse = (_messageId: string, _status: 'accepted' | 'rejected') => {
     // This function will be called when a claim response is made
     // The actual update is handled in the MessageBubble component
   };
@@ -123,12 +126,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     }
   };
 
-  const handleClaimRequest = async () => {
+
+
+  const handleOpenClaimModal = () => {
+    setShowClaimModal(true);
+  };
+
+  const handleCloseClaimModal = () => {
+    setShowClaimModal(false);
+  };
+
+  const handleSubmitClaim = async (claimReason: string) => {
     if (!conversation || !userData) {
       return;
     }
 
+    setIsClaimSubmitting(true);
     try {
+      // TODO: In the future, we can enhance this to include the claimReason in the claim request
+      // For now, we'll just send the basic claim request
+      console.log('Claim reason provided:', claimReason);
+      
       await sendClaimRequest(
         conversation.id,
         userData.uid,
@@ -137,10 +155,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         conversation.postId,
         conversation.postTitle
       );
+      
+      // Close modal and show success message
+      setShowClaimModal(false);
       alert('Claim request sent successfully!');
     } catch (error) {
       console.error('Failed to send claim request:', error);
       alert('Failed to send claim request. Please try again.');
+    } finally {
+      setIsClaimSubmitting(false);
     }
   };
 
@@ -263,7 +286,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
           {/* Claim Item Button */}
           {shouldShowClaimItemButton() && (
             <button 
-              onClick={handleClaimRequest}
+              onClick={handleOpenClaimModal}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
               Claim Item
@@ -345,6 +368,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
           </button>
         </form>
       </div>
+
+      {/* Claim Verification Modal */}
+      <ClaimVerificationModal
+        isOpen={showClaimModal}
+        onClose={handleCloseClaimModal}
+        onSubmit={handleSubmitClaim}
+        itemTitle={conversation?.postTitle || ''}
+        isLoading={isClaimSubmitting}
+      />
     </div>
   );
 };

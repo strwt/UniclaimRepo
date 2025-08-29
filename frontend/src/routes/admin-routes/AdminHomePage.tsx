@@ -83,8 +83,7 @@ export default function AdminHomePage() {
       setDeletingPostId(postToDelete.id);
       
       // Get current admin user info for audit logging
-      const { getAuth } = await import('../../utils/firebase');
-      const auth = getAuth();
+      const { auth } = await import('../../utils/firebase');
       const currentUser = auth.currentUser;
       
       if (!currentUser) {
@@ -96,8 +95,8 @@ export default function AdminHomePage() {
       
       // Create audit log entry
       try {
-        const { addDoc, collection, serverTimestamp } = await import('../../utils/firebase');
-        await addDoc(collection(getAuth(), 'audit_logs'), {
+        const { addDoc, collection, serverTimestamp, db } = await import('../../utils/firebase');
+        await addDoc(collection(db, 'audit_logs'), {
           action: 'admin_delete_post',
           postId: postToDelete.id,
           postTitle: postToDelete.title,
@@ -134,11 +133,10 @@ export default function AdminHomePage() {
   const fetchAuditLogs = async () => {
     try {
       setAuditLogsLoading(true);
-      const { getAuth, collection, query, orderBy, limit, getDocs } = await import('../../utils/firebase');
-      const auth = getAuth();
+      const { db, collection, query, orderBy, limit, getDocs } = await import('../../utils/firebase');
       
       // Query recent audit logs (last 100 actions)
-      const auditLogsRef = collection(auth, 'audit_logs');
+      const auditLogsRef = collection(db, 'audit_logs');
       const q = query(auditLogsRef, orderBy('timestamp', 'desc'), limit(100));
       const snapshot = await getDocs(q);
       
@@ -173,14 +171,13 @@ export default function AdminHomePage() {
   const calculateAdminStats = async () => {
     try {
       setStatsLoading(true);
-      const { getAuth, collection, query, orderBy, limit, getDocs, where } = await import('../../utils/firebase');
-      const auth = getAuth();
+      const { auth, db, collection, query, orderBy, limit, getDocs, where } = await import('../../utils/firebase');
       
       // Get current admin user info
       const currentUser = auth.currentUser;
       if (!currentUser) return;
 
-      const auditLogsRef = collection(auth, 'audit_logs');
+      const auditLogsRef = collection(db, 'audit_logs');
       
       // Get all admin actions by current user
       const userActionsQuery = query(
@@ -295,8 +292,7 @@ export default function AdminHomePage() {
   const handleStatusChange = async (post: Post, status: string) => {
     try {
       // Get current admin user info for audit logging
-      const { getAuth } = await import('../../utils/firebase');
-      const auth = getAuth();
+      const { auth, db } = await import('../../utils/firebase');
       const currentUser = auth.currentUser;
       
       if (!currentUser) {
@@ -310,7 +306,7 @@ export default function AdminHomePage() {
       // Create audit log entry for status change
       try {
         const { addDoc, collection, serverTimestamp } = await import('../../utils/firebase');
-        await addDoc(collection(getAuth(), 'audit_logs'), {
+        await addDoc(collection(db, 'audit_logs'), {
           action: 'admin_status_change',
           postId: post.id,
           postTitle: post.title,
@@ -339,8 +335,7 @@ export default function AdminHomePage() {
     if (confirm(`Are you sure you want to activate "${post.title}"? This will move it back to active status with a new 30-day period.`)) {
       try {
         // Get current admin user info for audit logging
-        const { getAuth } = await import('../../utils/firebase');
-        const auth = getAuth();
+        const { auth, db } = await import('../../utils/firebase');
         const currentUser = auth.currentUser;
         
         if (!currentUser) {
@@ -354,7 +349,7 @@ export default function AdminHomePage() {
         // Create audit log entry
         try {
           const { addDoc, collection, serverTimestamp } = await import('../../utils/firebase');
-          await addDoc(collection(getAuth(), 'audit_logs'), {
+          await addDoc(collection(db, 'audit_logs'), {
             action: 'admin_activate_ticket',
             postId: post.id,
             postTitle: post.title,
@@ -385,8 +380,7 @@ export default function AdminHomePage() {
     if (confirm(`Are you sure you want to revert "${post.title}" back to pending status? This will reset any claim/handover requests.`)) {
       try {
         // Get current admin user info for audit logging
-        const { getAuth } = await import('../../utils/firebase');
-        const auth = getAuth();
+        const { auth, db } = await import('../../utils/firebase');
         const currentUser = auth.currentUser;
         
         if (!currentUser) {
@@ -400,7 +394,7 @@ export default function AdminHomePage() {
         // Create audit log entry
         try {
           const { addDoc, collection, serverTimestamp } = await import('../../utils/firebase');
-          await addDoc(collection(getAuth(), 'audit_logs'), {
+          await addDoc(collection(db, 'audit_logs'), {
             action: 'admin_revert_resolution',
             postId: post.id,
             postTitle: post.title,

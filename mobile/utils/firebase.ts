@@ -1772,15 +1772,75 @@ export const postService = {
                 return;
             }
 
-            // STEP 2: Create a batch operation for atomic deletion
-            const batch = writeBatch(db);
+            // STEP 2: Extract all images from all messages before deletion
+            console.log(`🗑️ Mobile: Starting image cleanup for ${conversationsSnapshot.docs.length} conversations`);
+            const allImageUrls: string[] = [];
 
-            // STEP 3: Delete messages and conversations in the correct order
             for (const convDoc of conversationsSnapshot.docs) {
                 const conversationId = convDoc.id;
 
                 try {
-                    // STEP 3a: Delete all messages in the subcollection first
+                    // Get all messages in this conversation
+                    const messagesQuery = query(collection(db, 'conversations', conversationId, 'messages'));
+                    const messagesSnapshot = await getDocs(messagesQuery);
+
+                    if (messagesSnapshot.docs.length > 0) {
+                        console.log(`🗑️ Mobile: Processing ${messagesSnapshot.docs.length} messages in conversation ${conversationId}`);
+
+                        // Extract images from each message
+                        for (const messageDoc of messagesSnapshot.docs) {
+                            const messageData = messageDoc.data();
+
+                            try {
+                                const { extractMessageImages } = await import('./cloudinary');
+                                const messageImages = extractMessageImages(messageData);
+
+                                if (messageImages.length > 0) {
+                                    console.log(`🗑️ Mobile: Found ${messageImages.length} images in message ${messageDoc.id}`);
+                                    allImageUrls.push(...messageImages);
+                                }
+                            } catch (imageError: any) {
+                                console.warn(`Mobile: Failed to extract images from message ${messageDoc.id}:`, imageError.message);
+                                // Continue with other messages even if one fails
+                            }
+                        }
+                    }
+                } catch (error: any) {
+                    console.warn(`Mobile: Failed to process conversation ${conversationId} for image extraction:`, error.message);
+                    // Continue with other conversations even if one fails
+                }
+            }
+
+            // STEP 3: Delete all extracted images from Cloudinary
+            if (allImageUrls.length > 0) {
+                console.log(`🗑️ Mobile: Attempting to delete ${allImageUrls.length} total images from Cloudinary`);
+
+                try {
+                    const { deleteMessageImages } = await import('./cloudinary');
+                    const imageDeletionResult = await deleteMessageImages(allImageUrls);
+
+                    if (imageDeletionResult.success) {
+                        console.log(`✅ Mobile: Successfully deleted ${imageDeletionResult.deleted.length} images from Cloudinary`);
+                    } else {
+                        console.warn(`⚠️ Mobile: Image deletion completed with some failures. Deleted: ${imageDeletionResult.deleted.length}, Failed: ${imageDeletionResult.failed.length}`);
+                    }
+                } catch (imageError: any) {
+                    console.warn('Mobile: Failed to delete images from Cloudinary, but continuing with database cleanup:', imageError.message);
+                    // Continue with database cleanup even if image deletion fails
+                }
+            } else {
+                console.log('🗑️ Mobile: No images found in conversations to delete');
+            }
+
+            // STEP 4: Create a batch operation for atomic deletion of database records
+            const batch = writeBatch(db);
+
+            // STEP 5: Delete messages and conversations in the correct order
+            for (const convDoc of conversationsSnapshot.docs) {
+                const conversationId = convDoc.id;
+
+                try {
+                    // STEP 5a: Delete all messages in the subcollection first
                     const messagesQuery = query(collection(db, 'conversations', conversationId, 'messages'));
                     const messagesSnapshot = await getDocs(messagesQuery);
 
@@ -1791,7 +1851,7 @@ export const postService = {
                         });
                     }
 
-                    // STEP 3b: Add conversation document to deletion batch
+                    // STEP 5b: Add conversation document to deletion batch
                     batch.delete(convDoc.ref);
 
                 } catch (error: any) {
@@ -1799,10 +1859,10 @@ export const postService = {
                 }
             }
 
-            // STEP 4: Execute the batch operation atomically
+            // STEP 6: Execute the batch operation atomically
             await batch.commit();
 
-            // STEP 5: Verify deletion was successful
+            // STEP 7: Verify deletion was successful
             const verifyQuery = query(
                 collection(db, 'conversations'),
                 where('postId', '==', postId)
@@ -1812,6 +1872,8 @@ export const postService = {
             if (verifySnapshot.docs.length > 0) {
                 throw new Error('Conversation deletion verification failed');
             }
+
+            console.log(`✅ Mobile: Successfully deleted ${conversationsSnapshot.docs.length} conversations and their messages`);
 
         } catch (error: any) {
             console.error('Mobile: Error deleting conversations for post:', error);
