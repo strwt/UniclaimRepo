@@ -48,7 +48,7 @@ const MessagesPage: React.FC = () => {
           {/* Messages Layout */}
           <div className="flex h-[calc(105vh-280px)] bg-white rounded-lg overflow-hidden mt-1">
             {/* Conversation List - Left Side */}
-            <div className="w-full sm:w-80 lg:w-96 border-r border-gray-200 flex flex-col">
+            <div className="w-full sm:w-72 md:w-80 lg:w-96 border-r border-gray-200 flex flex-col">
               <ConversationList
                 onSelectConversation={handleSelectConversation}
                 selectedConversationId={selectedConversation?.id}
@@ -56,12 +56,12 @@ const MessagesPage: React.FC = () => {
               />
             </div>
 
-            {/* Chat Window - Right Side */}
-            <div className="flex-1 hidden lg:flex flex-col h-full">
+            {/* Chat Window - Right Side - Visible on sm and up, hidden only on xs */}
+            <div className="flex-1 hidden sm:flex flex-col h-full min-w-0">
               <ChatWindow conversation={selectedConversation} />
             </div>
 
-            {/* Mobile Chat Overlay */}
+            {/* Mobile Chat Overlay - Only on very small screens (xs) */}
             {selectedConversation && (
               <div className="sm:hidden fixed inset-0 z-50 bg-white">
                 <div className="flex flex-col h-full">

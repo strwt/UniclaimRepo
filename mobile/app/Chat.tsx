@@ -66,7 +66,7 @@ const MessageBubble = ({
         status,
         currentUserId
       );
-      
+        
       // Call the callback to update UI
       onHandoverResponse(message.id, status);
     } catch (error) {
