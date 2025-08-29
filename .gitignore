@@ -52,19 +52,18 @@ coverage/
 *.lcov
 test-results/
 
-# Test and debug files
+# Test and debug files (exclude all test and debug files)
 test-*.js
 test-*.html
 test-*.tsx
 test-*.ts
 test-*.jsx
+test-*.md
 debug-*.js
 debug-*.html
 debug-*.tsx
 debug-*.ts
 debug-*.jsx
-debug-*.js
-debug-*.html
 
 # Temporary files
 *.tmp
@@ -72,8 +71,24 @@ debug-*.html
 *.swp
 *~
 
-# Documentation files
-*.md
+# Development documentation (exclude specific development docs, keep README)
+CLOUDINARY_*.md
+DELETE_*.md
+DEPENDENCIES.md
+FIREBASE_*.md
+HANDOVER_*.md
+INFINITE_*.md
+LOGIN_*.md
+MESSAGING_*.md
+MOBILE_*.md
+PROFILE_*.md
+TAB_*.md
+TEST_*.md
+VALIDATION_*.md
+CRYPTOJS_*.md
+FIRESTORE_*.md
+DUPLICATE_*.md
+CENTRALIZED_*.md
 
 # Sensitive data
 secrets/
@@ -89,7 +104,7 @@ secrets/
 *.db
 *.sql
 
-uniclaim2-firebase-adminsdk-fbsvc-08654ce766.json
-
-firestore.rules
-storage.rules
+# Firebase admin SDK (keep these for deployment)
+# uniclaim2-firebase-adminsdk-fbsvc-08654ce766.json
+# firestore.rules
+# storage.rules
