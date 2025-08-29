@@ -1654,15 +1654,7 @@ export const postService = {
                 }
             }
 
-            // STEP 5: Create audit log entry
-            await addDoc(collection(db, 'audit_logs'), {
-                action: 'revert_resolution',
-                postId,
-                adminId,
-                reason: reason || 'Admin reverted resolution',
-                timestamp: serverTimestamp()
-            });
-            console.log('✅ Mobile: Audit log created for revert action');
+
 
         } catch (error: any) {
             console.error('❌ Mobile: Failed to revert post resolution:', error);

@@ -40,11 +40,6 @@ export default function AdminHomePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [postToDelete, setPostToDelete] = useState<Post | null>(null);
 
-  // Audit log viewer state
-  const [showAuditLogs, setShowAuditLogs] = useState(false);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [auditLogsLoading, setAuditLogsLoading] = useState(false);
-
   // Admin statistics state
   const [adminStats, setAdminStats] = useState({
     totalActions: 0,
@@ -79,49 +74,25 @@ export default function AdminHomePage() {
 
   const confirmDelete = async () => {
     if (!postToDelete) return;
-    
+
     try {
       setDeletingPostId(postToDelete.id);
+      const { deletePost } = await import('../../utils/firebase');
       
-      // Get current admin user info for audit logging
-      const { auth } = await import('../../utils/firebase');
-      const currentUser = auth.currentUser;
+      await deletePost(postToDelete.id);
       
-      if (!currentUser) {
-        throw new Error('Admin authentication required');
-      }
-      
-      const { postService } = await import('../../utils/firebase');
-      await postService.deletePost(postToDelete.id);
-      
-      // Create audit log entry
-      try {
-        const { addDoc, collection, serverTimestamp, db } = await import('../../utils/firebase');
-        await addDoc(collection(db, 'audit_logs'), {
-          action: 'admin_delete_post',
-          postId: postToDelete.id,
-          postTitle: postToDelete.title,
-          postType: postToDelete.type,
-          postCategory: postToDelete.category,
-          adminId: currentUser.uid,
-          adminEmail: currentUser.email,
-          timestamp: serverTimestamp(),
-          details: `Admin deleted post "${postToDelete.title}" (${postToDelete.type} ${postToDelete.category})`
-        });
-      } catch (auditError) {
-        // Don't fail the main deletion if audit logging fails
-        console.warn('Failed to create audit log entry:', auditError);
-      }
-      
-      showToast("success", "Post Deleted", `"${postToDelete.title}" has been successfully deleted along with all associated images.`);
-      // The posts will automatically refresh due to real-time listeners
-    } catch (error: any) {
-      console.error('Failed to delete post:', error);
-      showToast("error", "Delete Failed", `Failed to delete "${postToDelete.title}": ${error.message || 'Unknown error occurred'}`);
-    } finally {
-      setDeletingPostId(null);
+      showToast("success", "Post Deleted", "Post has been successfully deleted");
       setShowDeleteModal(false);
       setPostToDelete(null);
+      
+      // Refresh admin stats after deletion
+      calculateAdminStats();
+      
+    } catch (error: any) {
+      console.error('Failed to delete post:', error);
+      showToast("error", "Delete Failed", error.message || "Failed to delete post");
+    } finally {
+      setDeletingPostId(null);
     }
   };
 
@@ -130,99 +101,24 @@ export default function AdminHomePage() {
     setPostToDelete(null);
   };
 
-  // Fetch audit logs
-  const fetchAuditLogs = async () => {
-    try {
-      setAuditLogsLoading(true);
-      const { db, collection, query, orderBy, limit, getDocs } = await import('../../utils/firebase');
-      
-      // Query recent audit logs (last 100 actions)
-      const auditLogsRef = collection(db, 'audit_logs');
-      const q = query(auditLogsRef, orderBy('timestamp', 'desc'), limit(100));
-      const snapshot = await getDocs(q);
-      
-      const logs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        timestamp: doc.data().timestamp?.toDate?.() || doc.data().timestamp
-      }));
-      
-      setAuditLogs(logs);
-    } catch (error: any) {
-      console.error('Failed to fetch audit logs:', error);
-      showToast("error", "Audit Log Error", "Failed to load audit logs");
-    } finally {
-      setAuditLogsLoading(false);
-    }
-  };
-
-  // Open audit log viewer
-  const openAuditLogs = () => {
-    setShowAuditLogs(true);
-    fetchAuditLogs();
-  };
-
-  // Close audit log viewer
-  const closeAuditLogs = () => {
-    setShowAuditLogs(false);
-    setAuditLogs([]);
-  };
-
   // Calculate admin statistics
   const calculateAdminStats = async () => {
     try {
       setStatsLoading(true);
-      const { auth, db, collection, query, orderBy, limit, getDocs, where } = await import('../../utils/firebase');
       
-      // Get current admin user info
-      const currentUser = auth.currentUser;
-      if (!currentUser) return;
-
-      const auditLogsRef = collection(db, 'audit_logs');
-      
-      // Get all admin actions by current user
-      const userActionsQuery = query(
-        auditLogsRef,
-        where('adminId', '==', currentUser.uid),
-        orderBy('timestamp', 'desc')
-      );
-      const userActionsSnapshot = await getDocs(userActionsQuery);
-      
-      const allActions = userActionsSnapshot.docs.map(doc => ({
-        ...doc.data(),
-        timestamp: doc.data().timestamp?.toDate?.() || doc.data().timestamp
-      }));
-
-      // Calculate time-based statistics
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-      const actionsToday = allActions.filter(action => 
-        action.timestamp >= today
-      ).length;
-
-      const actionsThisWeek = allActions.filter(action => 
-        action.timestamp >= weekAgo
-      ).length;
-
-      // Calculate actions by type
-      const actionsByType = {
-        delete: allActions.filter(action => action.action === 'admin_delete_post').length,
-        statusChange: allActions.filter(action => action.action === 'admin_status_change').length,
-        activate: allActions.filter(action => action.action === 'admin_activate_ticket').length,
-        revert: allActions.filter(action => action.action === 'admin_revert_resolution').length
-      };
-
-      // Get recent activity (last 5 actions)
-      const recentActivity = allActions.slice(0, 5);
-
+      // Simplified admin statistics
+      // Basic stats for admin dashboard
       setAdminStats({
-        totalActions: allActions.length,
-        actionsToday,
-        actionsThisWeek,
-        actionsByType,
-        recentActivity
+        totalActions: 0,
+        actionsToday: 0,
+        actionsThisWeek: 0,
+        actionsByType: {
+          delete: 0,
+          statusChange: 0,
+          activate: 0,
+          revert: 0
+        },
+        recentActivity: []
       });
 
     } catch (error: any) {
@@ -292,40 +188,10 @@ export default function AdminHomePage() {
 
   const handleStatusChange = async (post: Post, status: string) => {
     try {
-      // Get current admin user info for audit logging
-      const { auth, db } = await import('../../utils/firebase');
-      const currentUser = auth.currentUser;
-      
-      if (!currentUser) {
-        showToast("error", "Authentication Error", "Admin authentication required");
-        return;
-      }
-      
       // TODO: Implement status update functionality
       console.log('Status change:', post.id, status);
       
-      // Create audit log entry for status change
-      try {
-        const { addDoc, collection, serverTimestamp } = await import('../../utils/firebase');
-        await addDoc(collection(db, 'audit_logs'), {
-          action: 'admin_status_change',
-          postId: post.id,
-          postTitle: post.title,
-          postType: post.type,
-          postCategory: post.category,
-          oldStatus: post.status,
-          newStatus: status,
-          adminId: currentUser.uid,
-          adminEmail: currentUser.email,
-          timestamp: serverTimestamp(),
-          details: `Admin changed status of "${post.title}" from ${post.status} to ${status}`
-        });
-        
-        showToast("success", "Status Updated", `Post status changed to ${status}`);
-      } catch (auditError) {
-        console.warn('Failed to create audit log entry:', auditError);
-        showToast("warning", "Partial Success", "Status change logged but audit trail incomplete");
-      }
+      showToast("success", "Status Updated", `Post status changed to ${status}`);
     } catch (error: any) {
       console.error('Failed to change post status:', error);
       showToast("error", "Status Change Failed", error.message || 'Unknown error occurred');
@@ -335,35 +201,8 @@ export default function AdminHomePage() {
   const handleActivateTicket = async (post: Post) => {
     if (confirm(`Are you sure you want to activate "${post.title}"? This will move it back to active status with a new 30-day period.`)) {
       try {
-        // Get current admin user info for audit logging
-        const { auth, db } = await import('../../utils/firebase');
-        const currentUser = auth.currentUser;
-        
-        if (!currentUser) {
-          showToast("error", "Authentication Error", "Admin authentication required");
-          return;
-        }
-        
         const { postService } = await import('../../utils/firebase');
         await postService.activateTicket(post.id);
-        
-        // Create audit log entry
-        try {
-          const { addDoc, collection, serverTimestamp } = await import('../../utils/firebase');
-          await addDoc(collection(db, 'audit_logs'), {
-            action: 'admin_activate_ticket',
-            postId: post.id,
-            postTitle: post.title,
-            postType: post.type,
-            postCategory: post.category,
-            adminId: currentUser.uid,
-            adminEmail: currentUser.email,
-            timestamp: serverTimestamp(),
-            details: `Admin activated ticket "${post.title}" - moved from unclaimed back to active status`
-          });
-        } catch (auditError) {
-          console.warn('Failed to create audit log entry:', auditError);
-        }
         
         showToast("success", "Ticket Activated", `"${post.title}" has been activated and moved back to active status.`);
         console.log('Ticket activated successfully:', post.title);
@@ -375,41 +214,13 @@ export default function AdminHomePage() {
   };
 
   const handleRevertResolution = async (post: Post) => {
-    const reason = prompt(`Why are you reverting "${post.title}"? (Optional reason for audit log):`);
+    const reason = prompt(`Why are you reverting "${post.title}"? (Optional reason):`);
     if (reason === null) return; // User cancelled
 
     if (confirm(`Are you sure you want to revert "${post.title}" back to pending status? This will reset any claim/handover requests.`)) {
       try {
-        // Get current admin user info for audit logging
-        const { auth, db } = await import('../../utils/firebase');
-        const currentUser = auth.currentUser;
-        
-        if (!currentUser) {
-          showToast("error", "Authentication Error", "Admin authentication required");
-          return;
-        }
-        
         const { postService } = await import('../../utils/firebase');
         await postService.revertPostResolution(post.id, 'admin', reason || undefined);
-        
-        // Create audit log entry
-        try {
-          const { addDoc, collection, serverTimestamp } = await import('../../utils/firebase');
-          await addDoc(collection(db, 'audit_logs'), {
-            action: 'admin_revert_resolution',
-            postId: post.id,
-            postTitle: post.title,
-            postType: post.type,
-            postCategory: post.category,
-            adminId: currentUser.uid,
-            adminEmail: currentUser.email,
-            timestamp: serverTimestamp(),
-            reason: reason || 'No reason provided',
-            details: `Admin reverted resolution of "${post.title}" back to pending status. Reason: ${reason || 'No reason provided'}`
-          });
-        } catch (auditError) {
-          console.warn('Failed to create audit log entry:', auditError);
-        }
         
         showToast("success", "Resolution Reverted", `"${post.title}" has been reverted back to pending status.`);
         console.log('Post resolution reverted successfully:', post.title);
@@ -658,14 +469,7 @@ export default function AdminHomePage() {
           Completed Reports
         </button>
 
-        {/* Audit Logs Button */}
-        <button
-          className="px-4 py-2 cursor-pointer lg:px-8 rounded text-[14px] lg:text-base font-medium transition-colors duration-300 bg-purple-600 text-white hover:bg-purple-700 border-purple-600"
-          onClick={openAuditLogs}
-          title="View admin action history and audit trail"
-        >
-          📋 Audit Logs
-        </button>
+        
 
 
       </div>
@@ -841,115 +645,7 @@ export default function AdminHomePage() {
         </>
       )}
 
-      {/* Audit Logs Modal */}
-      {showAuditLogs && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-xl">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">Admin Action History</h3>
-                <p className="text-sm text-gray-600 mt-1">View recent admin actions and audit trail</p>
-              </div>
-              <button
-                onClick={closeAuditLogs}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                title="Close audit logs"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
 
-            {/* Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {auditLogsLoading ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                  <span className="ml-3 text-gray-600">Loading audit logs...</span>
-                </div>
-              ) : auditLogs.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-gray-400 mb-4">
-                    <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No audit logs found</h3>
-                  <p className="text-gray-600">Admin actions will appear here once they are performed.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {auditLogs.map((log) => (
-                    <div key={log.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              log.action === 'admin_delete_post' ? 'bg-red-100 text-red-800' :
-                              log.action === 'admin_status_change' ? 'bg-blue-100 text-blue-800' :
-                              log.action === 'admin_activate_ticket' ? 'bg-green-100 text-green-800' :
-                              log.action === 'admin_revert_resolution' ? 'bg-orange-100 text-orange-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {log.action === 'admin_delete_post' ? '🗑️ Delete' :
-                               log.action === 'admin_status_change' ? '🔄 Status Change' :
-                               log.action === 'admin_activate_ticket' ? '✅ Activate' :
-                               log.action === 'admin_revert_resolution' ? '⏪ Revert' :
-                               log.action}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {log.timestamp instanceof Date 
-                                ? log.timestamp.toLocaleString('en-PH', {
-                                    dateStyle: 'medium',
-                                    timeStyle: 'short'
-                                  })
-                                : 'Unknown time'
-                              }
-                            </span>
-                          </div>
-                          
-                          <h4 className="font-medium text-gray-900 mb-1">
-                            {log.postTitle || 'Unknown Post'}
-                          </h4>
-                          
-                          <div className="text-sm text-gray-600 space-y-1">
-                            <p><strong>Admin:</strong> {log.adminEmail || log.adminId || 'Unknown'}</p>
-                            <p><strong>Post ID:</strong> {log.postId || 'N/A'}</p>
-                            <p><strong>Type:</strong> {log.postType || 'N/A'} | <strong>Category:</strong> {log.postCategory || 'N/A'}</p>
-                            {log.oldStatus && log.newStatus && (
-                              <p><strong>Status Change:</strong> {log.oldStatus} → {log.newStatus}</p>
-                            )}
-                            {log.reason && (
-                              <p><strong>Reason:</strong> {log.reason}</p>
-                            )}
-                            <p><strong>Details:</strong> {log.details || 'No additional details'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
-              <div className="text-sm text-gray-600">
-                Showing {auditLogs.length} recent admin actions
-              </div>
-              <button
-                onClick={fetchAuditLogs}
-                disabled={auditLogsLoading}
-                className="px-4 py-2 text-sm font-medium text-purple-700 bg-purple-100 border border-purple-300 rounded-md hover:bg-purple-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {auditLogsLoading ? 'Refreshing...' : '🔄 Refresh'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
