@@ -468,6 +468,26 @@ export const extractMessageImages = (message: any): string[] => {
             }
         }
 
+        // NEW: Check for evidence photos in claim requests (up to 3 photos)
+        if (message.claimData && message.claimData.evidencePhotos && Array.isArray(message.claimData.evidencePhotos)) {
+            message.claimData.evidencePhotos.forEach((photo: any, index: number) => {
+                if (photo.url && typeof photo.url === 'string' && photo.url.includes('cloudinary.com')) {
+                    console.log(`🗑️ Found claim evidence photo ${index + 1} for deletion:`, photo.url.split('/').pop());
+                    imageUrls.push(photo.url);
+                }
+            });
+        }
+
+        // NEW: Check for legacy verification photos in claim requests (backward compatibility)
+        if (message.claimData && message.claimData.verificationPhotos && Array.isArray(message.claimData.verificationPhotos)) {
+            message.claimData.verificationPhotos.forEach((photo: any, index: number) => {
+                if (photo.url && typeof photo.url === 'string' && photo.url.includes('cloudinary.com')) {
+                    console.log(`🗑️ Found legacy verification photo ${index + 1} for deletion:`, photo.url.split('/').pop());
+                    imageUrls.push(photo.url);
+                }
+            });
+        }
+
         // Check for other potential image fields (future extensibility)
         // This could include message attachments, profile pictures, etc.
 
@@ -528,5 +548,7 @@ export const deleteMessageImages = async (imageUrls: string[]): Promise<{ delete
         return { deleted: [], failed: [], success: false };
     }
 };
+
+
 
 export default cloudinaryService;
