@@ -27,6 +27,7 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [imageLoadingError, setImageLoadingError] = useState<string | null>(null);
   const inactivityIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -112,6 +113,7 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
 
   const handleImageClick = () => {
     setShowOverlay(false);
+    setHasUserInteracted(true);
     lastInteractionTimeRef.current = Date.now();
     setCurrentIndex((prev) => (prev + 1) % imageUrls.length);
   };
@@ -215,7 +217,7 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
                 title="Click to view next image"
               />
 
-              {showOverlay && (
+              {showOverlay && imageUrls.length > 1 && !hasUserInteracted && (
                 <div
                   className="absolute inset-0 flex items-center justify-center bg-black/45 text-white font-semibold text-sm rounded cursor-pointer animate-soft-blink"
                   onClick={handleImageClick}
