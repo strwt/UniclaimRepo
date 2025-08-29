@@ -10,6 +10,32 @@ body {
   .h-screen-fix {
     height: calc(var(--vh, 1vh) * 100);
   }
+
+  /* Mobile chat scrolling utilities */
+  .mobile-chat-container {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    /* iOS momentum scrolling */
+    overscroll-behavior: contain;
+    /* Prevent scroll chaining */
+  }
+
+  /* Ensure proper height on mobile */
+  @media (max-width: 640px) {
+    .mobile-chat-container {
+      height: 100vh;
+      height: 100dvh;
+      /* Dynamic viewport height for mobile */
+    }
+  }
 }
 
 @layer utilities {

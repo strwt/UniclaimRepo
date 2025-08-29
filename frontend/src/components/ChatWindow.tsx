@@ -274,7 +274,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
       {/* Messages Area */}
       <div 
-        className="overflow-y-auto p-4 bg-gray-50 scroll-smooth hover:scrollbar-thin hover:scrollbar-thumb-gray-300 hover:scrollbar-track-gray-100 relative flex-1"
+        className="overflow-y-auto p-4 bg-gray-50 scroll-smooth hover:scrollbar-thin hover:scrollbar-thumb-gray-300 hover:scrollbar-track-gray-100 relative flex-1 min-h-0"
         style={{ 
           scrollBehavior: 'smooth'
         }}
