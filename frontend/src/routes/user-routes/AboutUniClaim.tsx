@@ -20,14 +20,21 @@ import Amolato from "../../assets/amolato.png";
 const AboutUniClaim = () => {
   return (
     <>
-      <div className="mb-20">
+      <div className="font-albert-sans font-bold text-xl text-blue-950">
         <MobileNavText
-          title="About UniClaim"
+          title={
+            <span className="font-albert-sans font-bold text-xl text-blue-950">
+              About <span className="text-brand">Uni</span>Claim
+            </span>
+          }
           description="Get to know us more"
         />
 
         <div className="mx-4 lg:mx-6 hidden lg:flex items-center justify-between pt-4">
-          <h1 className="font-medium">About UniClaim</h1>
+          
+        <h1 className="font-albert-sans font-bold text-xl text-blue-950">
+                  About <span className="text-brand">Uni</span>Claim
+                </h1>
           <p className="text-sm text-gray-500">Get to know us more</p>
         </div>
 

@@ -1,5 +1,7 @@
+import React from "react";
+
 interface NavTitleProps {
-  title: string;
+  title: string | React.ReactNode;
   description: string;
 }
 
