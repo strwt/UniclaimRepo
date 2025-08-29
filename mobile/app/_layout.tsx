@@ -17,6 +17,7 @@ import { CoordinatesProvider } from "../context/CoordinatesContext";
 
 // utils
 import { onboardingStorage } from "../utils/onboardingStorage";
+import "../utils/cleanupScheduler"; // Start automatic cleanup scheduler
 
 // Separate component to access auth context
 const AppContent = ({ 

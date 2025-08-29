@@ -95,6 +95,19 @@ export default function AdminSideNav({
               hoverContainerBgClass="bg-gray-100"
             />
 
+            <NavText
+              icon={<HiOutlineCog className="size-6 stroke-[1.5px]" />}
+              label="System Cleanup"
+              to="/admin/cleanup"
+              isOpen={isOpen}
+              className="mt-2 hover:bg-gray-100"
+              iconClassName="text-black"
+              textClassName="text-black"
+              tooltipIconClassName="text-navyblue text-xl"
+              tooltipTextClassName="text-navyblue text-base"
+              hoverContainerBgClass="bg-gray-100"
+            />
+
 
             <NavText
               icon={<HiOutlineChartBar className="size-6 stroke-[1.5px]" />}

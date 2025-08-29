@@ -61,7 +61,7 @@ export default function AdminHomePage() {
   const [statsLoading, setStatsLoading] = useState(false);
 
   // e modify rani siya sa backend django
-  const [selectedPost] = useState<Post | null>(null);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   // e change dari pila ka post mu appear pag scroll down

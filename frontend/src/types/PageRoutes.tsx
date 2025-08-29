@@ -5,6 +5,7 @@ import AdminLogin from "../routes/admin-routes/AdminLogin";
 import AdminHomePage from "../routes/admin-routes/AdminHomePage";
 import AdminProfile from "../routes/admin-routes/AdminProfile";
 import AdminUserManagement from "../routes/admin-routes/AdminUserManagement";
+import ConversationCleanupAdmin from "../components/ConversationCleanupAdmin";
 
 import Login from "../routes/user-routes/Login";
 import Register from "../routes/user-routes/Register";
@@ -30,6 +31,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { MessageProvider } from "@/context/MessageContext";
 import PageWrapper from "@/components/PageWrapper";
 import ScrollToTop from "@/context/ScrollTop";
+import "@/utils/cleanupScheduler"; // Start automatic cleanup scheduler
 
 // Component that uses the useAuth hook
 function AppRoutesWithAuth() {
@@ -187,6 +189,14 @@ function AppRoutesWithAuth() {
             element={
               <PageWrapper title="Admin Profile">
                 <AdminProfile />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="cleanup"
+            element={
+              <PageWrapper title="System Cleanup">
+                <ConversationCleanupAdmin />
               </PageWrapper>
             }
           />
