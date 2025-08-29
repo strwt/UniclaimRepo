@@ -471,7 +471,7 @@ export const messageService = {
     },
 
     // Send a handover request message
-    async sendHandoverRequest(conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string): Promise<void> {
+    async sendHandoverRequest(conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, handoverReason?: string, idPhotoUrl?: string, itemPhotos?: { url: string; uploadedAt: any; description?: string }[]): Promise<void> {
         try {
             // First, check if this conversation already has a handover request
             const conversationRef = doc(db, 'conversations', conversationId);
@@ -498,7 +498,7 @@ export const messageService = {
                 senderId,
                 senderName,
                 senderProfilePicture: senderProfilePicture || null,
-                text: `I would like to handover the item "${postTitle}" to you.`,
+                text: handoverReason ? `I would like to handover the item "${postTitle}" to you. Reason: ${handoverReason}` : `I would like to handover the item "${postTitle}" to you.`,
                 timestamp: serverTimestamp(),
                 readBy: [senderId],
                 messageType: "handover_request",
@@ -506,7 +506,10 @@ export const messageService = {
                     postId,
                     postTitle,
                     status: "pending",
-                    requestedAt: serverTimestamp()
+                    requestedAt: serverTimestamp(),
+                    handoverReason: handoverReason || null,
+                    idPhotoUrl: idPhotoUrl || null,
+                    itemPhotos: itemPhotos || null
                 }
             };
 

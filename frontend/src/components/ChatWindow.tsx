@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import ProfilePicture from './ProfilePicture';
 import { messageService } from '../utils/firebase';
 import ClaimVerificationModal from './ClaimVerificationModal';
+import HandoverVerificationModal from './HandoverVerificationModal';
 import { cloudinaryService } from '../utils/cloudinary';
 
 interface ChatWindowProps {
@@ -21,6 +22,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [isClaimSubmitting, setIsClaimSubmitting] = useState(false);
+  const [showHandoverModal, setShowHandoverModal] = useState(false);
+  const [isHandoverSubmitting, setIsHandoverSubmitting] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { sendMessage, getConversationMessages, markConversationAsRead, sendClaimRequest } = useMessage();
@@ -109,21 +112,59 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     // The actual update is handled in the MessageBubble component
   };
 
-  const handleHandoverRequest = async () => {
-    if (!conversation || !userData) return;
+  const handleOpenHandoverModal = () => {
+    setShowHandoverModal(true);
+  };
 
+  const handleCloseHandoverModal = () => {
+    setShowHandoverModal(false);
+  };
+
+  const handleSubmitHandover = async (handoverReason: string, idPhotoFile: File | null, itemPhotoFiles: File[]) => {
+    if (!conversation || !userData || !idPhotoFile || itemPhotoFiles.length === 0) {
+      return;
+    }
+
+    setIsHandoverSubmitting(true);
     try {
+      // Upload ID photo to Cloudinary
+      const idPhotoUrl = await cloudinaryService.uploadImage(idPhotoFile, 'id_photos');
+      console.log('ID photo uploaded successfully:', idPhotoUrl);
+      
+      // Upload all item photos to Cloudinary
+      const itemPhotoUploadPromises = itemPhotoFiles.map(async (photoFile) => {
+        const photoUrl = await cloudinaryService.uploadImage(photoFile, 'item_photos');
+        return {
+          url: photoUrl,
+          uploadedAt: new Date(),
+          description: `Item photo ${photoFile.name}`
+        };
+      });
+      
+      const uploadedItemPhotos = await Promise.all(itemPhotoUploadPromises);
+      console.log('Item photos uploaded successfully:', uploadedItemPhotos);
+      
+      // Now send the handover request with verification photos
       await messageService.sendHandoverRequest(
         conversation.id,
         userData.uid,
         `${userData.firstName} ${userData.lastName}`,
         userData.profilePicture || userData.profileImageUrl || '',
         conversation.postId,
-        conversation.postTitle
+        conversation.postTitle,
+        handoverReason,
+        idPhotoUrl,
+        uploadedItemPhotos
       );
+      
+      // Close modal and show success message
+      setShowHandoverModal(false);
+      alert('Handover request sent successfully!');
     } catch (error) {
       console.error('Failed to send handover request:', error);
-      // You could add a toast notification here
+      alert('Failed to send handover request. Please try again.');
+    } finally {
+      setIsHandoverSubmitting(false);
     }
   };
 
@@ -296,7 +337,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
           {/* Handover Item Button */}
           {shouldShowHandoverButton() && (
             <button 
-              onClick={handleHandoverRequest}
+              onClick={handleOpenHandoverModal}
               className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
             >
               Handover Item
@@ -396,6 +437,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         onSubmit={handleSubmitClaim}
         itemTitle={conversation?.postTitle || ''}
         isLoading={isClaimSubmitting}
+      />
+
+      {/* Handover Verification Modal */}
+      <HandoverVerificationModal
+        isOpen={showHandoverModal}
+        onClose={handleCloseHandoverModal}
+        onSubmit={handleSubmitHandover}
+        itemTitle={conversation?.postTitle || ''}
+        isLoading={isHandoverSubmitting}
       />
     </div>
   );
