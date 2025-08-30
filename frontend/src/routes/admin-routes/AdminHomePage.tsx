@@ -77,9 +77,9 @@ export default function AdminHomePage() {
 
     try {
       setDeletingPostId(postToDelete.id);
-      const { deletePost } = await import('../../utils/firebase');
+      const { postService } = await import('../../utils/firebase');
       
-      await deletePost(postToDelete.id);
+      await postService.deletePost(postToDelete.id);
       
       showToast("success", "Post Deleted", "Post has been successfully deleted");
       setShowDeleteModal(false);
@@ -188,8 +188,9 @@ export default function AdminHomePage() {
 
   const handleStatusChange = async (post: Post, status: string) => {
     try {
-      // TODO: Implement status update functionality
-      console.log('Status change:', post.id, status);
+      // Import and use the postService to update the status
+      const { postService } = await import('../../utils/firebase');
+      await postService.updatePostStatus(post.id, status as 'pending' | 'resolved' | 'rejected');
       
       showToast("success", "Status Updated", `Post status changed to ${status}`);
     } catch (error: any) {
@@ -220,7 +221,7 @@ export default function AdminHomePage() {
     if (confirm(`Are you sure you want to revert "${post.title}" back to pending status? This will reset any claim/handover requests.`)) {
       try {
         const { postService } = await import('../../utils/firebase');
-        await postService.revertPostResolution(post.id, 'admin', reason || undefined);
+        await postService.updatePostStatus(post.id, 'pending');
         
         showToast("success", "Resolution Reverted", `"${post.title}" has been reverted back to pending status.`);
         console.log('Post resolution reverted successfully:', post.title);

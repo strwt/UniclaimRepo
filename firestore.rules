@@ -45,10 +45,10 @@ service cloud.firestore {
         && request.auth.uid != null
         && isValidPost(request.resource.data);
 
-      // Users can update their own posts
+      // Users can update their own posts, OR admins can update any post
       allow update: if request.auth != null
         && request.auth.uid != null
-        && resource.data.user.email == request.auth.token.email;
+        && (resource.data.user.email == request.auth.token.email || isAdmin());
 
       // Users can delete their own posts, or admins can delete any post
       allow delete: if request.auth != null
