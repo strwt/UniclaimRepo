@@ -49,8 +49,8 @@ export default function Login() {
     if (!hasEmptyFields) {
       if (!emailRegex.test(trimmedEmail))
         newError.email = "Invalid email format";
-      if (trimmedPassword.length < 6)
-        newError.password = "Password must be at least 6 characters";
+      if (trimmedPassword.length < 8)
+        newError.password = "Password must be at least 8 characters";
     }
 
     setError(newError);

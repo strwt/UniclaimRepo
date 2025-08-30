@@ -76,8 +76,8 @@ export default function AdminLogin() {
       if (!emailRegex.test(trimmedAdminEmail))
         newError.adminEmail = "Invalid email format";
 
-      if (trimmedAdminPassword.length < 6)
-        newError.adminPassword = "Password must be at least 6 characters";
+      if (trimmedAdminPassword.length < 8)
+        newError.adminPassword = "Password must be at least 8 characters";
     }
 
     // gamiton ang mga errors

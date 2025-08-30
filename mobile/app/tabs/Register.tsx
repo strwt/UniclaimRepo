@@ -52,8 +52,8 @@ export default function Register() {
     else if (!validateEmail(email)) newErrors.email = "Invalid email address";
 
     if (!password) newErrors.password = "Password is required";
-    else if (password.length < 6)
-      newErrors.password = "Password must be at least 6 characters";
+    else if (password.length < 8)
+      newErrors.password = "Password must be at least 8 characters";
 
     if (!confirmPassword) newErrors.confirmPassword = "Please confirm password";
     else if (confirmPassword !== password)
