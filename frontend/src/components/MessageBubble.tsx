@@ -3,6 +3,7 @@ import type { Message } from '@/types/Post';
 import ProfilePicture from './ProfilePicture';
 import { useMessage } from '../context/MessageContext';
 import ImagePicker from './ImagePicker';
+import ImageModal from './ImageModal';
 
 interface MessageBubbleProps {
   message: Message;
@@ -29,6 +30,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [showIdPhotoModal, setShowIdPhotoModal] = useState(false);
   const [selectedIdPhoto, setSelectedIdPhoto] = useState<File | null>(null);
   const [isUploadingIdPhoto, setIsUploadingIdPhoto] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{ url: string; altText: string } | null>(null);
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '';
     
@@ -223,6 +226,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
   };
 
+  // Handle image click to open in modal
+  const handleImageClick = (imageUrl: string, altText: string) => {
+    setSelectedImage({ url: imageUrl, altText });
+    setShowImageModal(true);
+  };
+
   const renderHandoverRequest = () => {
     if (message.messageType !== 'handover_request') return null;
     
@@ -247,7 +256,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             <img 
               src={handoverData.idPhotoUrl} 
               alt="ID Photo"
-              className="w-20 h-12 rounded object-cover"
+              className="w-20 h-12 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => handleImageClick(handoverData.idPhotoUrl!, 'ID Photo')}
+              title="Click to view full size"
             />
           </div>
         )}
@@ -352,10 +363,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 src={claimData.idPhotoUrl}
                 alt="ID Photo"
                 className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
-                onClick={() => {
-                  // Open ID photo in new tab for better viewing
-                  window.open(claimData.idPhotoUrl, '_blank');
-                }}
+                onClick={() => handleImageClick(claimData.idPhotoUrl!, 'ID Photo')}
                 title="Click to view full size"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
@@ -381,10 +389,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     src={photo.url}
                     alt={`Evidence Photo ${index + 1}`}
                     className="w-full h-32 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
-                    onClick={() => {
-                      // Open photo in new tab for better viewing
-                      window.open(photo.url, '_blank');
-                    }}
+                    onClick={() => handleImageClick(photo.url, `Evidence Photo ${index + 1}`)}
                     title="Click to view full size"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
@@ -417,10 +422,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     src={photo.url}
                     alt={`Verification Photo ${index + 1}`}
                     className="w-full h-32 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
-                    onClick={() => {
-                      // Open photo in new tab for better viewing
-                      window.open(photo.url, '_blank');
-                    }}
+                    onClick={() => handleImageClick(photo.url, `Verification Photo ${index + 1}`)}
                     title="Click to view full size"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
@@ -637,6 +639,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             </div>
           </div>
+        )}
+
+        {/* Image Modal */}
+        {showImageModal && selectedImage && (
+          <ImageModal
+            imageUrl={selectedImage.url}
+            altText={selectedImage.altText}
+            onClose={() => {
+              setShowImageModal(false);
+              setSelectedImage(null);
+            }}
+          />
         )}
       </div>
     </div>
