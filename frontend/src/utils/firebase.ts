@@ -494,6 +494,58 @@ export const messageService = {
             }
 
             const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+
+            // Validate handover data before creating message
+            const isProduction = process.env.NODE_ENV === 'production';
+            const logLevel = isProduction ? console.warn : console.log;
+
+            logLevel('🔍 Validating handover data before Firestore storage...');
+            logLevel('🔍 ID photo URL provided:', idPhotoUrl ? 'yes' : 'no');
+            logLevel('🔍 Item photos array provided:', itemPhotos ? 'yes' : 'no');
+            logLevel('🔍 Item photos length:', itemPhotos?.length || 0);
+
+            // Validate ID photo URL
+            if (!idPhotoUrl || typeof idPhotoUrl !== 'string' || !idPhotoUrl.includes('cloudinary.com')) {
+                console.error('❌ Invalid ID photo URL in sendHandoverRequest:', {
+                    idPhotoUrl: idPhotoUrl ? idPhotoUrl.substring(0, 50) + '...' : 'null',
+                    type: typeof idPhotoUrl,
+                    isCloudinary: idPhotoUrl?.includes('cloudinary.com')
+                });
+                throw new Error('Invalid ID photo URL provided to sendHandoverRequest');
+            }
+
+            // Validate item photos array
+            if (!Array.isArray(itemPhotos) || itemPhotos.length === 0) {
+                console.error('❌ Invalid item photos array in sendHandoverRequest:', {
+                    isArray: Array.isArray(itemPhotos),
+                    length: itemPhotos?.length || 0,
+                    itemPhotos: itemPhotos
+                });
+                throw new Error('Invalid item photos array provided to sendHandoverRequest');
+            }
+
+            // Validate each item photo object
+            itemPhotos.forEach((photo, index) => {
+                if (!photo || typeof photo !== 'object') {
+                    console.error(`❌ Item photo ${index} is not an object:`, photo);
+                    throw new Error(`Invalid item photo object at index ${index}`);
+                }
+
+                if (!photo.url || typeof photo.url !== 'string' || !photo.url.includes('cloudinary.com')) {
+                    console.error(`❌ Item photo ${index} has invalid URL:`, {
+                        url: photo.url ? photo.url.substring(0, 50) + '...' : 'missing',
+                        type: typeof photo.url,
+                        isCloudinary: photo.url?.includes('cloudinary.com'),
+                        photo: photo
+                    });
+                    throw new Error(`Invalid URL in item photo at index ${index}`);
+                }
+
+                logLevel(`✅ Item photo ${index} validation passed:`, photo.url.split('/').pop());
+            });
+
+            logLevel('✅ All handover data validated, creating message...');
+
             const handoverMessage = {
                 senderId,
                 senderName,
@@ -508,12 +560,14 @@ export const messageService = {
                     status: "pending",
                     requestedAt: serverTimestamp(),
                     handoverReason: handoverReason || null,
-                    idPhotoUrl: idPhotoUrl || null,
-                    itemPhotos: itemPhotos || null
+                    idPhotoUrl: idPhotoUrl,
+                    itemPhotos: itemPhotos
                 }
             };
 
+            logLevel('💾 Storing handover message in Firestore...');
             await addDoc(messagesRef, handoverMessage);
+            logLevel('✅ Handover message stored successfully');
 
             // Get conversation data to find other participants for unread count updates
             const conversationDataForUnread = await getDoc(conversationRef);
@@ -573,6 +627,58 @@ export const messageService = {
             }
 
             const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+
+            // Validate claim data before creating message
+            const isProduction = process.env.NODE_ENV === 'production';
+            const logLevel = isProduction ? console.warn : console.log;
+
+            logLevel('🔍 Validating claim data before Firestore storage...');
+            logLevel('🔍 ID photo URL provided:', idPhotoUrl ? 'yes' : 'no');
+            logLevel('🔍 Evidence photos array provided:', evidencePhotos ? 'yes' : 'no');
+            logLevel('🔍 Evidence photos length:', evidencePhotos?.length || 0);
+
+            // Validate ID photo URL
+            if (!idPhotoUrl || typeof idPhotoUrl !== 'string' || !idPhotoUrl.includes('cloudinary.com')) {
+                console.error('❌ Invalid ID photo URL in sendClaimRequest:', {
+                    idPhotoUrl: idPhotoUrl ? idPhotoUrl.substring(0, 50) + '...' : 'null',
+                    type: typeof idPhotoUrl,
+                    isCloudinary: idPhotoUrl?.includes('cloudinary.com')
+                });
+                throw new Error('Invalid ID photo URL provided to sendClaimRequest');
+            }
+
+            // Validate evidence photos array
+            if (!Array.isArray(evidencePhotos) || evidencePhotos.length === 0) {
+                console.error('❌ Invalid evidence photos array in sendClaimRequest:', {
+                    isArray: Array.isArray(evidencePhotos),
+                    length: evidencePhotos?.length || 0,
+                    evidencePhotos: evidencePhotos
+                });
+                throw new Error('Invalid evidence photos array provided to sendClaimRequest');
+            }
+
+            // Validate each evidence photo object
+            evidencePhotos.forEach((photo, index) => {
+                if (!photo || typeof photo !== 'object') {
+                    console.error(`❌ Evidence photo ${index} is not an object:`, photo);
+                    throw new Error(`Invalid evidence photo object at index ${index}`);
+                }
+
+                if (!photo.url || typeof photo.url !== 'string' || !photo.url.includes('cloudinary.com')) {
+                    console.error(`❌ Evidence photo ${index} has invalid URL:`, {
+                        url: photo.url ? photo.url.substring(0, 50) + '...' : 'missing',
+                        type: typeof photo.url,
+                        isCloudinary: photo.url?.includes('cloudinary.com'),
+                        photo: photo
+                    });
+                    throw new Error(`Invalid URL in evidence photo at index ${index}`);
+                }
+
+                logLevel(`✅ Evidence photo ${index} validation passed:`, photo.url.split('/').pop());
+            });
+
+            logLevel('✅ All claim data validated, creating message...');
+
             const claimMessage = {
                 senderId,
                 senderName,
@@ -587,12 +693,14 @@ export const messageService = {
                     status: "pending",
                     requestedAt: serverTimestamp(),
                     claimReason: claimReason || null,
-                    idPhotoUrl: idPhotoUrl || null,
-                    evidencePhotos: evidencePhotos || null
+                    idPhotoUrl: idPhotoUrl,
+                    evidencePhotos: evidencePhotos
                 }
             };
 
+            logLevel('💾 Storing claim message in Firestore...');
             await addDoc(messagesRef, claimMessage);
+            logLevel('✅ Claim message stored successfully');
 
             // Get conversation data to find other participants for unread count updates
             const conversationDataForUnread = await getDoc(conversationRef);
@@ -1084,15 +1192,103 @@ export const messageService = {
                 throw new Error('You can only delete your own messages');
             }
 
+            // Validate retrieved message data structure
+            const isProduction = process.env.NODE_ENV === 'production';
+            const logLevel = isProduction ? console.warn : console.log;
+
+            logLevel('🔍 Validating retrieved message data for deletion...');
+            logLevel('🔍 Message type:', messageData.messageType);
+            logLevel('🔍 Has handoverData:', !!messageData.handoverData);
+            logLevel('🔍 Has claimData:', !!messageData.claimData);
+
+            // Additional validation for handover messages
+            if (messageData.messageType === 'handover_request' && messageData.handoverData) {
+                logLevel('🔍 Validating handover message data...');
+                logLevel('🔍 Handover ID photo URL exists:', !!messageData.handoverData.idPhotoUrl);
+                logLevel('🔍 Handover item photos array exists:', !!messageData.handoverData.itemPhotos);
+                logLevel('🔍 Handover item photos length:', messageData.handoverData.itemPhotos?.length || 0);
+
+                // Validate handover ID photo URL
+                if (messageData.handoverData.idPhotoUrl) {
+                    if (typeof messageData.handoverData.idPhotoUrl !== 'string' || !messageData.handoverData.idPhotoUrl.includes('cloudinary.com')) {
+                        console.warn('⚠️ Retrieved handover ID photo URL is invalid:', {
+                            url: messageData.handoverData.idPhotoUrl?.substring(0, 50) + '...',
+                            type: typeof messageData.handoverData.idPhotoUrl,
+                            isCloudinary: messageData.handoverData.idPhotoUrl?.includes('cloudinary.com')
+                        });
+                    }
+                }
+
+                // Validate handover item photos array
+                if (messageData.handoverData.itemPhotos) {
+                    if (!Array.isArray(messageData.handoverData.itemPhotos)) {
+                        console.warn('⚠️ Retrieved handover itemPhotos is not an array:', messageData.handoverData.itemPhotos);
+                    } else {
+                        messageData.handoverData.itemPhotos.forEach((photo, index) => {
+                            if (!photo?.url || typeof photo.url !== 'string' || !photo.url.includes('cloudinary.com')) {
+                                console.warn(`⚠️ Retrieved handover item photo ${index} is invalid:`, {
+                                    url: photo?.url?.substring(0, 50) + '...',
+                                    type: typeof photo?.url,
+                                    isCloudinary: photo?.url?.includes('cloudinary.com'),
+                                    photo: photo
+                                });
+                            } else {
+                                console.log(`✅ Retrieved handover item photo ${index} is valid:`, photo.url.split('/').pop());
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Additional validation for claim messages
+            if (messageData.messageType === 'claim_request' && messageData.claimData) {
+                console.log('🔍 Validating claim message data...');
+                console.log('🔍 Claim ID photo URL exists:', !!messageData.claimData.idPhotoUrl);
+                console.log('🔍 Claim evidence photos array exists:', !!messageData.claimData.evidencePhotos);
+                console.log('🔍 Claim evidence photos length:', messageData.claimData.evidencePhotos?.length || 0);
+
+                // Similar validation logic for claim data...
+                if (messageData.claimData.idPhotoUrl) {
+                    if (typeof messageData.claimData.idPhotoUrl !== 'string' || !messageData.claimData.idPhotoUrl.includes('cloudinary.com')) {
+                        console.warn('⚠️ Retrieved claim ID photo URL is invalid:', {
+                            url: messageData.claimData.idPhotoUrl?.substring(0, 50) + '...',
+                            type: typeof messageData.claimData.idPhotoUrl,
+                            isCloudinary: messageData.claimData.idPhotoUrl?.includes('cloudinary.com')
+                        });
+                    }
+                }
+
+                if (messageData.claimData.evidencePhotos) {
+                    if (!Array.isArray(messageData.claimData.evidencePhotos)) {
+                        console.warn('⚠️ Retrieved claim evidencePhotos is not an array:', messageData.claimData.evidencePhotos);
+                    } else {
+                        messageData.claimData.evidencePhotos.forEach((photo, index) => {
+                            if (!photo?.url || typeof photo.url !== 'string' || !photo.url.includes('cloudinary.com')) {
+                                console.warn(`⚠️ Retrieved claim evidence photo ${index} is invalid:`, {
+                                    url: photo?.url?.substring(0, 50) + '...',
+                                    type: typeof photo?.url,
+                                    isCloudinary: photo?.url?.includes('cloudinary.com'),
+                                    photo: photo
+                                });
+                            } else {
+                                console.log(`✅ Retrieved claim evidence photo ${index} is valid:`, photo.url.split('/').pop());
+                            }
+                        });
+                    }
+                }
+            }
+
+            logLevel('✅ Message data validation completed, proceeding with deletion...');
+
             // NEW: Extract and delete images from Cloudinary before deleting the message
             try {
-                console.log('🗑️ Starting image cleanup for message type:', messageData.messageType);
+                logLevel('🗑️ Starting image cleanup for message type:', messageData.messageType);
                 const { extractMessageImages, deleteMessageImages } = await import('./cloudinary');
                 const imageUrls = extractMessageImages(messageData);
 
-                console.log(`🗑️ Found ${imageUrls.length} images to delete`);
+                logLevel(`🗑️ Found ${imageUrls.length} images to delete`);
                 if (imageUrls.length > 0) {
-                    console.log('🗑️ Images to delete:', imageUrls.map(url => url.split('/').pop()));
+                    logLevel('🗑️ Images to delete:', imageUrls.map(url => url.split('/').pop()));
                     const imageDeletionResult = await deleteMessageImages(imageUrls);
 
                     if (!imageDeletionResult.success) {

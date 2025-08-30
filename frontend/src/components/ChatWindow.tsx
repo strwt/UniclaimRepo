@@ -127,23 +127,83 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
     setIsHandoverSubmitting(true);
     try {
-      // Upload ID photo to Cloudinary
+      // Upload ID photo to Cloudinary with validation
+      console.log('📤 Uploading ID photo...');
       const idPhotoUrl = await cloudinaryService.uploadImage(idPhotoFile, 'id_photos');
-      console.log('ID photo uploaded successfully:', idPhotoUrl);
-      
-      // Upload all item photos to Cloudinary
-      const itemPhotoUploadPromises = itemPhotoFiles.map(async (photoFile) => {
-        const photoUrl = await cloudinaryService.uploadImage(photoFile, 'item_photos');
-        return {
-          url: photoUrl,
-          uploadedAt: new Date(),
-          description: 'Item photo'
-        };
+
+      // Validate the uploaded ID photo URL
+      if (!idPhotoUrl || typeof idPhotoUrl !== 'string' || !idPhotoUrl.includes('cloudinary.com')) {
+        console.error('❌ Invalid ID photo URL returned:', idPhotoUrl);
+        throw new Error('Invalid ID photo URL returned from upload');
+      }
+
+      console.log('✅ ID photo uploaded and validated successfully:', idPhotoUrl.split('/').pop());
+
+      // Upload all item photos to Cloudinary with validation
+      console.log('📤 Starting item photo uploads...', itemPhotoFiles.length, 'files');
+
+      const itemPhotoUploadPromises = itemPhotoFiles.map(async (photoFile, index) => {
+        try {
+          console.log(`📤 Uploading item photo ${index + 1}:`, photoFile.name);
+          const photoUrl = await cloudinaryService.uploadImage(photoFile, 'item_photos');
+
+          // Validate the uploaded URL
+          if (!photoUrl || typeof photoUrl !== 'string' || !photoUrl.includes('cloudinary.com')) {
+            console.error(`❌ Invalid photo URL returned for item photo ${index + 1}:`, photoUrl);
+            throw new Error(`Invalid photo URL for item photo ${index + 1}`);
+          }
+
+          const photoObject = {
+            url: photoUrl,
+            uploadedAt: new Date(),
+            description: 'Item photo'
+          };
+
+          console.log(`✅ Item photo ${index + 1} uploaded successfully:`, photoUrl.split('/').pop());
+          return photoObject;
+
+        } catch (error: any) {
+          console.error(`❌ Failed to upload item photo ${index + 1}:`, error.message);
+          throw new Error(`Failed to upload item photo ${index + 1}: ${error.message}`);
+        }
       });
-      
+
       const uploadedItemPhotos = await Promise.all(itemPhotoUploadPromises);
-      console.log('Item photos uploaded successfully:', uploadedItemPhotos);
-      
+
+      // Validate the final array
+      console.log('🔍 Validating uploaded item photos array...');
+      uploadedItemPhotos.forEach((photo, index) => {
+        if (!photo?.url || typeof photo.url !== 'string' || !photo.url.includes('cloudinary.com')) {
+          console.error(`❌ Invalid photo object in uploadedItemPhotos[${index}]:`, photo);
+          throw new Error(`Invalid photo object at index ${index}`);
+        }
+        console.log(`✅ Photo ${index + 1} validation passed:`, photo.url.split('/').pop());
+      });
+
+      console.log('🎉 All item photos uploaded and validated successfully:', uploadedItemPhotos.length, 'photos');
+
+      // Final validation before sending to Firestore
+      console.log('🔍 Final validation before sending handover request...');
+      console.log('🔍 ID photo URL:', idPhotoUrl ? 'valid' : 'invalid');
+      console.log('🔍 Item photos array:', uploadedItemPhotos.length, 'photos');
+
+      // Validate all data before sending
+      if (!idPhotoUrl || typeof idPhotoUrl !== 'string' || !idPhotoUrl.includes('cloudinary.com')) {
+        throw new Error('ID photo URL is invalid before sending handover request');
+      }
+
+      if (!Array.isArray(uploadedItemPhotos) || uploadedItemPhotos.length === 0) {
+        throw new Error('Item photos array is invalid before sending handover request');
+      }
+
+      uploadedItemPhotos.forEach((photo, index) => {
+        if (!photo?.url || typeof photo.url !== 'string' || !photo.url.includes('cloudinary.com')) {
+          throw new Error(`Item photo ${index + 1} is invalid before sending handover request`);
+        }
+      });
+
+      console.log('✅ All data validated, sending handover request...');
+
       // Now send the handover request with verification photos
       await messageService.sendHandoverRequest(
         conversation.id,
@@ -185,25 +245,84 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
     setIsClaimSubmitting(true);
     try {
-      // Upload ID photo to Cloudinary
+      // Upload ID photo to Cloudinary with validation
+      console.log('📤 Uploading claim ID photo...');
       const idPhotoUrl = await cloudinaryService.uploadImage(idPhotoFile, 'id_photos');
-      console.log('ID photo uploaded successfully:', idPhotoUrl);
-      
-      // Upload all evidence photos to Cloudinary
-      const photoUploadPromises = evidencePhotos.map(async (photoFile) => {
-        const photoUrl = await cloudinaryService.uploadImage(photoFile, 'evidence_photos');
-        return {
-          url: photoUrl,
-          uploadedAt: new Date(),
-          description: 'Evidence photo'
-        };
+
+      // Validate the uploaded ID photo URL
+      if (!idPhotoUrl || typeof idPhotoUrl !== 'string' || !idPhotoUrl.includes('cloudinary.com')) {
+        console.error('❌ Invalid claim ID photo URL returned:', idPhotoUrl);
+        throw new Error('Invalid claim ID photo URL returned from upload');
+      }
+
+      console.log('✅ Claim ID photo uploaded and validated successfully:', idPhotoUrl.split('/').pop());
+
+      // Upload all evidence photos to Cloudinary with validation
+      console.log('📤 Starting evidence photo uploads...', evidencePhotos.length, 'files');
+
+      const photoUploadPromises = evidencePhotos.map(async (photoFile, index) => {
+        try {
+          console.log(`📤 Uploading evidence photo ${index + 1}:`, photoFile.name);
+          const photoUrl = await cloudinaryService.uploadImage(photoFile, 'evidence_photos');
+
+          // Validate the uploaded URL
+          if (!photoUrl || typeof photoUrl !== 'string' || !photoUrl.includes('cloudinary.com')) {
+            console.error(`❌ Invalid photo URL returned for evidence photo ${index + 1}:`, photoUrl);
+            throw new Error(`Invalid photo URL for evidence photo ${index + 1}`);
+          }
+
+          const photoObject = {
+            url: photoUrl,
+            uploadedAt: new Date(),
+            description: 'Evidence photo'
+          };
+
+          console.log(`✅ Evidence photo ${index + 1} uploaded successfully:`, photoUrl.split('/').pop());
+          return photoObject;
+
+        } catch (error: any) {
+          console.error(`❌ Failed to upload evidence photo ${index + 1}:`, error.message);
+          throw new Error(`Failed to upload evidence photo ${index + 1}: ${error.message}`);
+        }
       });
-      
+
       const uploadedEvidencePhotos = await Promise.all(photoUploadPromises);
-      
-      console.log('Evidence photos uploaded successfully:', uploadedEvidencePhotos);
-      console.log('Claim reason provided:', claimReason);
-      
+
+      // Validate the final array
+      console.log('🔍 Validating uploaded evidence photos array...');
+      uploadedEvidencePhotos.forEach((photo, index) => {
+        if (!photo?.url || typeof photo.url !== 'string' || !photo.url.includes('cloudinary.com')) {
+          console.error(`❌ Invalid photo object in uploadedEvidencePhotos[${index}]:`, photo);
+          throw new Error(`Invalid photo object at index ${index}`);
+        }
+        console.log(`✅ Evidence photo ${index + 1} validation passed:`, photo.url.split('/').pop());
+      });
+
+      console.log('🎉 All evidence photos uploaded and validated successfully:', uploadedEvidencePhotos.length, 'photos');
+      console.log('📝 Claim reason provided:', claimReason);
+
+      // Final validation before sending to Firestore
+      console.log('🔍 Final validation before sending claim request...');
+      console.log('🔍 ID photo URL:', idPhotoUrl ? 'valid' : 'invalid');
+      console.log('🔍 Evidence photos array:', uploadedEvidencePhotos.length, 'photos');
+
+      // Validate all data before sending
+      if (!idPhotoUrl || typeof idPhotoUrl !== 'string' || !idPhotoUrl.includes('cloudinary.com')) {
+        throw new Error('ID photo URL is invalid before sending claim request');
+      }
+
+      if (!Array.isArray(uploadedEvidencePhotos) || uploadedEvidencePhotos.length === 0) {
+        throw new Error('Evidence photos array is invalid before sending claim request');
+      }
+
+      uploadedEvidencePhotos.forEach((photo, index) => {
+        if (!photo?.url || typeof photo.url !== 'string' || !photo.url.includes('cloudinary.com')) {
+          throw new Error(`Evidence photo ${index + 1} is invalid before sending claim request`);
+        }
+      });
+
+      console.log('✅ All claim data validated, sending claim request...');
+
       // Now send the claim request with both ID photo and evidence photos
       await sendClaimRequest(
         conversation.id,

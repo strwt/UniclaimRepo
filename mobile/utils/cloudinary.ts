@@ -587,6 +587,16 @@ export const extractMessageImages = (message: any): string[] => {
             }
         }
 
+        // NEW: Check for item photos in handover requests (up to 3 photos)
+        if (message.handoverData && message.handoverData.itemPhotos && Array.isArray(message.handoverData.itemPhotos)) {
+            message.handoverData.itemPhotos.forEach((photo: any, index: number) => {
+                if (photo.url && typeof photo.url === 'string' && photo.url.includes('cloudinary.com')) {
+                    console.log(`🗑️ Mobile: Found handover item photo ${index + 1} for deletion:`, photo.url.split('/').pop());
+                    imageUrls.push(photo.url);
+                }
+            });
+        }
+
         // Check if message has claim data with ID photo
         if (message.claimData && message.claimData.idPhotoUrl) {
             const idPhotoUrl = message.claimData.idPhotoUrl;

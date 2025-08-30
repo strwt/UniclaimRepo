@@ -12,6 +12,65 @@ const CLOUDINARY_URL = import.meta.env.VITE_CLOUDINARY_URL;
 
 
 
+// Test function to verify handover item photo extraction
+export const testHandoverItemPhotoExtraction = () => {
+    console.log('🧪 Testing handover item photo extraction...');
+
+    // Create a mock handover message with item photos
+    const mockHandoverMessage = {
+        id: 'test-message',
+        messageType: 'handover_request',
+        handoverData: {
+            postId: 'test-post',
+            postTitle: 'Test Item',
+            status: 'pending',
+            idPhotoUrl: 'https://res.cloudinary.com/demo/image/upload/v1234567890/posts/id_photo.jpg',
+            itemPhotos: [
+                {
+                    url: 'https://res.cloudinary.com/demo/image/upload/v1234567890/posts/item_photo1.jpg',
+                    uploadedAt: new Date(),
+                    description: 'Item photo 1'
+                },
+                {
+                    url: 'https://res.cloudinary.com/demo/image/upload/v1234567890/posts/item_photo2.jpg',
+                    uploadedAt: new Date(),
+                    description: 'Item photo 2'
+                },
+                {
+                    url: 'https://res.cloudinary.com/demo/image/upload/v1234567890/posts/item_photo3.jpg',
+                    uploadedAt: new Date(),
+                    description: 'Item photo 3'
+                }
+            ]
+        }
+    };
+
+    // Test the extraction function
+    const extractedUrls = extractMessageImages(mockHandoverMessage);
+
+    console.log('Expected: 4 images (1 ID photo + 3 item photos)');
+    console.log('Actual extracted URLs:', extractedUrls.length);
+    console.log('URLs:', extractedUrls);
+
+    // Verify results
+    const expectedUrls = [
+        'https://res.cloudinary.com/demo/image/upload/v1234567890/posts/id_photo.jpg',
+        'https://res.cloudinary.com/demo/image/upload/v1234567890/posts/item_photo1.jpg',
+        'https://res.cloudinary.com/demo/image/upload/v1234567890/posts/item_photo2.jpg',
+        'https://res.cloudinary.com/demo/image/upload/v1234567890/posts/item_photo3.jpg'
+    ];
+
+    const success = extractedUrls.length === 4 && expectedUrls.every(url => extractedUrls.includes(url));
+
+    if (success) {
+        console.log('✅ Test PASSED: All handover item photos correctly extracted');
+    } else {
+        console.log('❌ Test FAILED: Missing or incorrect photo extraction');
+    }
+
+    return success;
+};
+
 // Simple test function to call from browser console
 export const testImageDeletion = async (publicId: string = 'test') => {
     console.log('🧪 Testing image deletion...');
@@ -442,19 +501,81 @@ export const extractPublicIdFromUrl = (url: string): string | null => {
     }
 };
 
+// Utility function for conditional logging
+const logMessage = (level: 'log' | 'warn' | 'error', message: string, ...args: any[]) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction && level === 'log') {
+        // Skip verbose logs in production
+        return;
+    }
+    console[level](message, ...args);
+};
+
 // Function to extract image URLs from messages
 export const extractMessageImages = (message: any): string[] => {
     try {
         const imageUrls: string[] = [];
 
+        // Check if message has handover data
+        logMessage('log', '🔍 Checking message for handover data...');
+        logMessage('log', '🔍 message.handoverData exists:', !!message.handoverData);
+
         // Check if message has handover data with ID photo
         if (message.handoverData && message.handoverData.idPhotoUrl) {
             const idPhotoUrl = message.handoverData.idPhotoUrl;
+            logMessage('log', '🔍 Found handover ID photo URL:', idPhotoUrl ? idPhotoUrl.substring(0, 50) + '...' : 'null/undefined');
 
             // Only include Cloudinary URLs
             if (idPhotoUrl && typeof idPhotoUrl === 'string' && idPhotoUrl.includes('cloudinary.com')) {
+                logMessage('log', '🗑️ Found handover ID photo for deletion:', idPhotoUrl.split('/').pop());
                 imageUrls.push(idPhotoUrl);
+            } else {
+                logMessage('warn', '⚠️ Handover ID photo failed validation:', {
+                    exists: !!idPhotoUrl,
+                    type: typeof idPhotoUrl,
+                    isCloudinary: idPhotoUrl?.includes('cloudinary.com')
+                });
             }
+        } else {
+            logMessage('log', '🔍 No handover ID photo found or handoverData missing');
+        }
+
+        // Check for item photos in handover requests
+        logMessage('log', '🔍 Checking for handover item photos...');
+        logMessage('log', '🔍 message.handoverData.itemPhotos exists:', !!message.handoverData?.itemPhotos);
+        logMessage('log', '🔍 message.handoverData.itemPhotos is array:', Array.isArray(message.handoverData?.itemPhotos));
+        logMessage('log', '🔍 handover item photos length:', message.handoverData?.itemPhotos?.length || 0);
+
+        if (message.handoverData && message.handoverData.itemPhotos && Array.isArray(message.handoverData.itemPhotos)) {
+            logMessage('log', '✅ Handover item photos detection conditions met, processing array...');
+
+            message.handoverData.itemPhotos.forEach((photo: any, index: number) => {
+                logMessage('log', `🔍 Validating handover item photo ${index + 1}:`, {
+                    photo: photo ? 'exists' : 'null/undefined',
+                    hasUrl: !!photo?.url,
+                    urlType: typeof photo?.url,
+                    urlPreview: photo?.url ? photo.url.substring(0, 50) + '...' : 'no url',
+                    isCloudinary: photo?.url?.includes('cloudinary.com')
+                });
+
+                if (photo.url && typeof photo.url === 'string' && photo.url.includes('cloudinary.com')) {
+                    logMessage('log', `🗑️ Found handover item photo ${index + 1} for deletion:`, photo.url.split('/').pop());
+                    imageUrls.push(photo.url);
+                } else {
+                    logMessage('warn', `⚠️ Handover item photo ${index + 1} failed validation:`, {
+                        hasUrl: !!photo?.url,
+                        urlType: typeof photo?.url,
+                        isCloudinary: photo?.url?.includes('cloudinary.com'),
+                        photoStructure: photo
+                    });
+                }
+            });
+        } else {
+            logMessage('warn', '❌ Handover item photos detection failed:', {
+                handoverDataExists: !!message.handoverData,
+                itemPhotosExists: !!message.handoverData?.itemPhotos,
+                isArray: Array.isArray(message.handoverData?.itemPhotos)
+            });
         }
 
         // Check if message has claim data with ID photo
@@ -463,7 +584,7 @@ export const extractMessageImages = (message: any): string[] => {
 
             // Only include Cloudinary URLs
             if (idPhotoUrl && typeof idPhotoUrl === 'string' && idPhotoUrl.includes('cloudinary.com')) {
-                console.log('🗑️ Found claim ID photo for deletion:', idPhotoUrl.split('/').pop());
+                logMessage('log', '🗑️ Found claim ID photo for deletion:', idPhotoUrl.split('/').pop());
                 imageUrls.push(idPhotoUrl);
             }
         }
@@ -472,7 +593,7 @@ export const extractMessageImages = (message: any): string[] => {
         if (message.claimData && message.claimData.evidencePhotos && Array.isArray(message.claimData.evidencePhotos)) {
             message.claimData.evidencePhotos.forEach((photo: any, index: number) => {
                 if (photo.url && typeof photo.url === 'string' && photo.url.includes('cloudinary.com')) {
-                    console.log(`🗑️ Found claim evidence photo ${index + 1} for deletion:`, photo.url.split('/').pop());
+                    logMessage('log', `🗑️ Found claim evidence photo ${index + 1} for deletion:`, photo.url.split('/').pop());
                     imageUrls.push(photo.url);
                 }
             });
@@ -482,7 +603,7 @@ export const extractMessageImages = (message: any): string[] => {
         if (message.claimData && message.claimData.verificationPhotos && Array.isArray(message.claimData.verificationPhotos)) {
             message.claimData.verificationPhotos.forEach((photo: any, index: number) => {
                 if (photo.url && typeof photo.url === 'string' && photo.url.includes('cloudinary.com')) {
-                    console.log(`🗑️ Found legacy verification photo ${index + 1} for deletion:`, photo.url.split('/').pop());
+                    logMessage('log', `🗑️ Found legacy verification photo ${index + 1} for deletion:`, photo.url.split('/').pop());
                     imageUrls.push(photo.url);
                 }
             });
