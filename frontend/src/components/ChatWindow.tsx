@@ -137,7 +137,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         return {
           url: photoUrl,
           uploadedAt: new Date(),
-          description: `Item photo ${photoFile.name}`
+          description: 'Item photo'
         };
       });
       
@@ -195,7 +195,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         return {
           url: photoUrl,
           uploadedAt: new Date(),
-          description: `Evidence photo ${photoFile.name}`
+          description: 'Evidence photo'
         };
       });
       

@@ -397,11 +397,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                       Click to expand
                     </span>
                   </div>
-                  {photo.description && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {photo.description}
-                    </div>
-                  )}
+                  <div className="text-xs text-gray-500 mt-1">
+                    Evidence photo
+                  </div>
                 </div>
               ))}
             </div>
@@ -430,11 +428,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                       Click to expand
                     </span>
                   </div>
-                  {photo.description && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {photo.description}
-                    </div>
-                  )}
+                  <div className="text-xs text-gray-500 mt-1">
+                    Verification photo
+                  </div>
                 </div>
               ))}
             </div>

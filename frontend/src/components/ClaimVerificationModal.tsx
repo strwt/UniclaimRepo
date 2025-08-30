@@ -236,7 +236,6 @@ const ClaimVerificationModal: React.FC<ClaimVerificationModalProps> = ({
                   </div>
                   
                   <div className="text-xs text-gray-600">
-                    <div>File: {idPhotoFile.name}</div>
                     <div>Size: {(idPhotoFile.size / 1024).toFixed(1)} KB</div>
                   </div>
                 </div>
@@ -318,7 +317,6 @@ const ClaimVerificationModal: React.FC<ClaimVerificationModalProps> = ({
                         </div>
                         
                         <div className="text-xs text-gray-600">
-                          <div>File: {photo.name}</div>
                           <div>Size: {(photo.size / 1024).toFixed(1)} KB</div>
                         </div>
                       </div>
