@@ -11,6 +11,7 @@ interface MessageBubbleProps {
   showSenderName?: boolean;
   conversationId: string;
   currentUserId: string;
+  postOwnerId?: string; // Add post owner ID for handover confirmation logic
   onHandoverResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
   onClaimResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
 }
@@ -21,6 +22,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   showSenderName = false,
   conversationId,
   currentUserId,
+  postOwnerId,
   onHandoverResponse,
   onClaimResponse
 }) => {
@@ -116,7 +118,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     try {
       await confirmHandoverIdPhoto(conversationId, message.id);
     } catch (error: any) {
-      console.error('Failed to confirm ID photo:', error);
+      console.error('Failed to confirm ID photo:', error.message);
       alert('Failed to confirm ID photo. Please try again.');
     }
   };
@@ -236,8 +238,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
     // Show different UI based on status and user role
     const canRespond = handoverData.status === 'pending' && !isOwnMessage;
-    const canConfirm = handoverData.status === 'pending_confirmation' && isOwnMessage;
+    const canConfirm = handoverData.status === 'pending_confirmation' && postOwnerId === currentUserId;
     const isCompleted = handoverData.status === 'accepted' || handoverData.status === 'rejected';
+
+
 
     return (
       <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -270,28 +274,49 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         )}
 
         {/* Show owner's ID photo if uploaded */}
-        {handoverData.ownerIdPhotoUrl && (
-          <div className="mb-3 p-2 bg-white rounded border">
-            <div className="text-xs text-gray-600 mb-1">Owner ID Photo:</div>
-            <div className="relative">
-              <img
-                src={handoverData.ownerIdPhotoUrl}
-                alt="Owner ID Photo"
-                className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
-                onClick={() => handleImageClick(handoverData.ownerIdPhotoUrl!, 'Owner ID Photo')}
-                title="Click to view full size"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
-                <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
-                  Click to expand
-                </span>
-              </div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              Click the photo to view full size
-            </div>
-          </div>
-        )}
+        {(() => {
+          try {
+            if (handoverData.ownerIdPhotoUrl && typeof handoverData.ownerIdPhotoUrl === 'string') {
+              console.log('🔍 Displaying owner ID photo:', handoverData.ownerIdPhotoUrl.substring(0, 50) + '...');
+              return (
+                <div className="mb-3 p-2 bg-white rounded border">
+                  <div className="text-xs text-gray-600 mb-1">Owner ID Photo:</div>
+                  <div className="relative">
+                    <img
+                      src={handoverData.ownerIdPhotoUrl}
+                      alt="Owner ID Photo"
+                      className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
+                      onClick={() => {
+                        try {
+                          handleImageClick(handoverData.ownerIdPhotoUrl!, 'Owner ID Photo');
+                        } catch (clickError) {
+                          console.error('❌ Error in owner photo click:', clickError);
+                        }
+                      }}
+                      onError={(e) => {
+                        console.error('❌ Error loading owner ID photo:', handoverData.ownerIdPhotoUrl);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      title="Click to view full size"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
+                      <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
+                        Click to expand
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Click the photo to view full size
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          } catch (photoError) {
+            console.error('❌ Error rendering owner ID photo:', photoError);
+            return null;
+          }
+        })()}
 
         {/* Show item photos if uploaded */}
         {handoverData.itemPhotos && handoverData.itemPhotos.length > 0 && (

@@ -116,8 +116,13 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
 
   const confirmHandoverIdPhoto = async (conversationId: string, messageId: string): Promise<void> => {
     try {
-      await messageService.confirmHandoverIdPhoto(conversationId, messageId, userId!);
+      if (!userId) {
+        throw new Error('User not authenticated - userId is null');
+      }
+
+      await messageService.confirmHandoverIdPhoto(conversationId, messageId, userId);
     } catch (error: any) {
+      console.error('Failed to confirm handover ID photo:', error.message);
       throw new Error(error.message || 'Failed to confirm handover ID photo');
     }
   };

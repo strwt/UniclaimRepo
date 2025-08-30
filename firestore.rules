@@ -46,13 +46,15 @@ service cloud.firestore {
         && isValidPost(request.resource.data);
 
       // Users can update their own posts, OR admins can update any post
+      // FIXED: Case-insensitive email comparison to handle different cases
       allow update: if request.auth != null
         && request.auth.uid != null
-        && (resource.data.user.email == request.auth.token.email || isAdmin());
+        && (resource.data.user.email.lower() == request.auth.token.email.lower() || isAdmin());
 
       // Users can delete their own posts, or admins can delete any post
+      // FIXED: Case-insensitive email comparison for consistency
       allow delete: if request.auth != null
-        && (resource.data.user.email == request.auth.token.email || isAdmin());
+        && (resource.data.user.email.lower() == request.auth.token.email.lower() || isAdmin());
     }
     
     // SIMPLIFIED: Conversations collection for messaging

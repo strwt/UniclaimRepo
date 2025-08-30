@@ -903,6 +903,11 @@ export const messageService = {
                                     photoCleanupData['handoverData.idPhotoUrl'] = null;
                                 }
 
+                                // Clear owner's ID photo URL
+                                if (messageData.handoverData?.ownerIdPhotoUrl) {
+                                    photoCleanupData['handoverData.ownerIdPhotoUrl'] = null;
+                                }
+
                                 // Clear item photos array
                                 if (messageData.handoverData?.itemPhotos && messageData.handoverData.itemPhotos.length > 0) {
                                     photoCleanupData['handoverData.itemPhotos'] = [];
@@ -965,12 +970,7 @@ export const messageService = {
                 if (postId) {
                     // Update post status to resolved
                     await this.updatePostStatus(postId, 'resolved');
-                    console.log('✅ Post auto-resolved after handover ID photo confirmation:', postId);
-                } else {
-                    console.warn('⚠️ No postId found in conversation, cannot auto-resolve');
                 }
-            } else {
-                console.warn('⚠️ Conversation not found, cannot auto-resolve post');
             }
 
         } catch (error: any) {
@@ -1167,11 +1167,19 @@ export const messageService = {
     // Update post status
     async updatePostStatus(postId: string, status: 'pending' | 'resolved' | 'rejected'): Promise<void> {
         try {
-            await updateDoc(doc(db, 'posts', postId), {
+            const postRef = doc(db, 'posts', postId);
+
+            await updateDoc(postRef, {
                 status,
                 updatedAt: serverTimestamp()
             });
         } catch (error: any) {
+            console.error('❌ Firebase updatePostStatus failed:', error);
+            console.error('❌ Error details:', {
+                message: error.message,
+                code: error.code,
+                name: error.name
+            });
             throw new Error(error.message || 'Failed to update post status');
         }
     },

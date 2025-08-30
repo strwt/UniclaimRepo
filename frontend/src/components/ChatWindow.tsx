@@ -502,6 +502,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
                 showSenderName={Object.keys(conversation.participants).length > 2}
                 conversationId={conversation.id}
                 currentUserId={userData?.uid || ''}
+                postOwnerId={conversation.postCreatorId}
                 onHandoverResponse={handleHandoverResponse}
                 onClaimResponse={handleClaimResponse}
               />

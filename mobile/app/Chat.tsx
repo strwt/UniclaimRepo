@@ -261,7 +261,7 @@ const MessageBubble = ({
 
     // Show different UI based on status and user role
     const canRespond = handoverData.status === 'pending' && !isOwnMessage;
-    const canConfirm = handoverData.status === 'pending_confirmation' && isOwnMessage;
+    const canConfirm = handoverData.status === 'pending_confirmation' && postOwnerId === user?.uid;
     const isCompleted = handoverData.status === 'accepted' || handoverData.status === 'rejected';
 
     return (
