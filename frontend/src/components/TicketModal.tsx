@@ -217,6 +217,10 @@ const TicketModal = ({
                     </p>
                   </div>
                 )}
+                {/* Image Counter - shows current position and total images */}
+                <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
+                  {currentImageIdx + 1}/{previewImages.length}
+                </div>
               </div>
             </div>
           ) : (
@@ -396,6 +400,10 @@ const TicketModal = ({
             <h2 className="text-center text-lg font-semibold mb-2">
               Edit Uploaded Images
             </h2>
+            {/* Image Counter for editing modal */}
+            <div className="text-center text-sm text-gray-600 mb-4">
+              {editedImages.length}/3 photos selected
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {previewImages.map((img, idx) => (
                 <div key={idx} className="relative">
