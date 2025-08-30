@@ -82,7 +82,7 @@ export const db = getFirestore(app);
 
 // Import Post interface and Cloudinary service
 import type { Post } from '../types/type';
-import { cloudinaryService } from './cloudinary';
+import { cloudinaryService, extractMessageImages, deleteMessageImages } from './cloudinary';
 
 // User data interface for Firestore
 export interface UserData {
@@ -568,8 +568,57 @@ export const messageService = {
 
             await updateDoc(messageRef, updateData);
 
-            // If claim is rejected, reset the claimRequested flag to allow new requests
+            // If claim is rejected, delete all photos and reset the claimRequested flag
             if (status === 'rejected') {
+                try {
+                    // Step 1: Extract all photos from the claim message
+                    const messageDoc = await getDoc(messageRef);
+                    if (messageDoc.exists()) {
+                        const messageData = messageDoc.data();
+                        const imageUrls = extractMessageImages(messageData);
+
+                        // Step 2: Delete photos from Cloudinary
+                        if (imageUrls.length > 0) {
+                            try {
+                                await deleteMessageImages(imageUrls);
+                                console.log('✅ Mobile: Photos deleted after claim rejection:', imageUrls.length);
+
+                                // Step 3: Clear photo URLs from the message data in database
+                                const photoCleanupData: any = {};
+
+                                // Clear ID photo URL
+                                if (messageData.claimData?.idPhotoUrl) {
+                                    photoCleanupData['claimData.idPhotoUrl'] = null;
+                                }
+
+                                // Clear evidence photos array
+                                if (messageData.claimData?.evidencePhotos && messageData.claimData.evidencePhotos.length > 0) {
+                                    photoCleanupData['claimData.evidencePhotos'] = [];
+                                }
+
+                                // Clear legacy verification photos array
+                                if (messageData.claimData?.verificationPhotos && messageData.claimData.verificationPhotos.length > 0) {
+                                    photoCleanupData['claimData.verificationPhotos'] = [];
+                                }
+
+                                // Update the message to remove photo references
+                                if (Object.keys(photoCleanupData).length > 0) {
+                                    await updateDoc(messageRef, photoCleanupData);
+                                    console.log('✅ Mobile: Photo URLs cleared from database:', photoCleanupData);
+                                }
+
+                            } catch (photoError: any) {
+                                console.warn('⚠️ Mobile: Failed to delete photos after rejection:', photoError.message);
+                                // Continue with rejection even if photo cleanup fails
+                            }
+                        }
+                    }
+                } catch (photoExtractionError: any) {
+                    console.warn('⚠️ Mobile: Failed to extract photos for deletion:', photoExtractionError.message);
+                    // Continue with rejection even if photo extraction fails
+                }
+
+                // Step 4: Reset conversation flags
                 const conversationRef = doc(db, 'conversations', conversationId);
                 await updateDoc(conversationRef, {
                     claimRequested: false

@@ -73,8 +73,8 @@ export const db = getFirestore(app);
 // Import Post interface
 import type { Post } from '../types/Post';
 
-// Import Cloudinary service
-import { cloudinaryService } from './cloudinary';
+// Import Cloudinary service and utility functions
+import { cloudinaryService, extractMessageImages, deleteMessageImages } from './cloudinary';
 
 // User data interface for Firestore
 export interface UserData {
@@ -625,6 +625,7 @@ export const messageService = {
     // Update claim response
     async updateClaimResponse(conversationId: string, messageId: string, status: 'accepted' | 'rejected', responderId: string, idPhotoUrl?: string): Promise<void> {
         try {
+            console.log('🔄 Firebase: updateClaimResponse called with:', { conversationId, messageId, status, responderId, idPhotoUrl });
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
 
             // Update the claim message with the response
@@ -642,8 +643,60 @@ export const messageService = {
 
             await updateDoc(messageRef, updateData);
 
-            // If claim is rejected, reset the claimRequested flag to allow new requests
+            // If claim is rejected, delete all photos and reset the claimRequested flag
             if (status === 'rejected') {
+                console.log('🗑️ Firebase: Claim rejected, starting photo deletion process...');
+                try {
+                    // Step 1: Extract all photos from the claim message
+                    const messageDoc = await getDoc(messageRef);
+                    if (messageDoc.exists()) {
+                        const messageData = messageDoc.data();
+                        console.log('🗑️ Firebase: Message data retrieved:', messageData);
+                        const imageUrls = extractMessageImages(messageData);
+                        console.log('🗑️ Firebase: Extracted image URLs:', imageUrls);
+
+                        // Step 2: Delete photos from Cloudinary
+                        if (imageUrls.length > 0) {
+                            try {
+                                await deleteMessageImages(imageUrls);
+                                console.log('✅ Photos deleted after claim rejection:', imageUrls.length);
+
+                                // Step 3: Clear photo URLs from the message data in database
+                                const photoCleanupData: any = {};
+
+                                // Clear ID photo URL
+                                if (messageData.claimData?.idPhotoUrl) {
+                                    photoCleanupData['claimData.idPhotoUrl'] = null;
+                                }
+
+                                // Clear evidence photos array
+                                if (messageData.claimData?.evidencePhotos && messageData.claimData.evidencePhotos.length > 0) {
+                                    photoCleanupData['claimData.evidencePhotos'] = [];
+                                }
+
+                                // Clear legacy verification photos array
+                                if (messageData.claimData?.verificationPhotos && messageData.claimData.verificationPhotos.length > 0) {
+                                    photoCleanupData['claimData.verificationPhotos'] = [];
+                                }
+
+                                // Update the message to remove photo references
+                                if (Object.keys(photoCleanupData).length > 0) {
+                                    await updateDoc(messageRef, photoCleanupData);
+                                    console.log('✅ Photo URLs cleared from database:', photoCleanupData);
+                                }
+
+                            } catch (photoError: any) {
+                                console.warn('⚠️ Failed to delete photos after rejection:', photoError.message);
+                                // Continue with rejection even if photo cleanup fails
+                            }
+                        }
+                    }
+                } catch (photoExtractionError: any) {
+                    console.warn('⚠️ Failed to extract photos for deletion:', photoExtractionError.message);
+                    // Continue with rejection even if photo extraction fails
+                }
+
+                // Step 4: Reset conversation flags
                 const conversationRef = doc(db, 'conversations', conversationId);
                 await updateDoc(conversationRef, {
                     claimRequested: false

@@ -132,8 +132,12 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
 
   const updateClaimResponse = async (conversationId: string, messageId: string, status: 'accepted' | 'rejected'): Promise<void> => {
     try {
+      console.log('🔄 MessageContext: Calling updateClaimResponse with status:', status);
+      console.log('🔄 MessageContext: Parameters:', { conversationId, messageId, status, responderId: userId });
       await messageService.updateClaimResponse(conversationId, messageId, status, userId!);
+      console.log('✅ MessageContext: updateClaimResponse completed successfully');
     } catch (error: any) {
+      console.error('❌ MessageContext: updateClaimResponse failed:', error);
       throw new Error(error.message || 'Failed to update claim response');
     }
   };
