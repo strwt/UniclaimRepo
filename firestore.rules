@@ -117,9 +117,7 @@ service cloud.firestore {
         // Admins can update any handover responses
         allow update: if request.auth != null &&
           (!isUserBanned() || isAdmin()) &&
-          (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants || isAdmin()) &&
-          // Only allow updates to handoverData field for handover responses
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handoverData']);
+          (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants || isAdmin());
       }
     }
     

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { Conversation } from "@/types/Post";
 import ConversationList from "../../components/ConversationList";
@@ -9,21 +9,32 @@ import NavHeader from "../../components/NavHeadComp";
 const MessagesPage: React.FC = () => {
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [isGoingBack, setIsGoingBack] = useState(false);
 
   const handleSelectConversation = (conversation: Conversation) => {
-    setSelectedConversation(conversation);
+    if (!isGoingBack) {
+      setSelectedConversation(conversation);
+    }
   };
 
-  // Auto-select conversation from URL parameter
-  useEffect(() => {
-    const conversationId = searchParams.get("conversation");
-    if (conversationId && !selectedConversation) {
-      // Find the conversation in the list and select it
-      // This will be handled by the ConversationList component
-      // We'll pass the conversationId as a prop to auto-select
-    }
-  }, [searchParams, selectedConversation]);
+  const handleBackToConversations = () => {
+    // Prevent auto-selection while going back
+    setIsGoingBack(true);
+
+    // Clear the conversation parameter from URL
+    setSearchParams(new URLSearchParams());
+
+    // Clear the selected conversation state immediately
+    setSelectedConversation(null);
+
+    // Reset the flag after a short delay to allow normal operation
+    setTimeout(() => {
+      setIsGoingBack(false);
+    }, 100);
+  };
+
+  // Auto-selection is now handled entirely by ConversationList component
 
   return (
     <PageWrapper title="Messages">
@@ -67,7 +78,7 @@ const MessagesPage: React.FC = () => {
                 {/* Mobile Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white flex-shrink-0">
                   <button
-                    onClick={() => setSelectedConversation(null)}
+                    onClick={handleBackToConversations}
                     className="p-2 text-gray-500 hover:text-gray-700"
                   >
                     <svg

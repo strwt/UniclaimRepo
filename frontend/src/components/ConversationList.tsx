@@ -21,11 +21,9 @@ const ConversationList: React.FC<ConversationListProps> = ({
 
   // Auto-select conversation when component mounts or conversations change
   useEffect(() => {
-    if (
-      autoSelectConversationId &&
-      conversations.length > 0 &&
-      !selectedConversationId
-    ) {
+    if (autoSelectConversationId && conversations.length > 0) {
+      // Always try to find and select the conversation from URL parameter
+      // Remove the !selectedConversationId condition to allow re-selection
       const conversationToSelect = conversations.find(
         (conv) => conv.id === autoSelectConversationId
       );
@@ -36,7 +34,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
   }, [
     autoSelectConversationId,
     conversations,
-    selectedConversationId,
     onSelectConversation,
   ]);
 

@@ -692,9 +692,9 @@ export const messageService = {
                 'handoverData.responderId': responderId
             };
 
-            // If accepting with ID photo, add the photo URL and change status to pending confirmation
+            // If accepting with ID photo, add the owner photo URL and change status to pending confirmation
             if (status === 'accepted' && idPhotoUrl) {
-                updateData['handoverData.idPhotoUrl'] = idPhotoUrl;
+                updateData['handoverData.ownerIdPhotoUrl'] = idPhotoUrl; // Store owner's photo separately
                 updateData['handoverData.status'] = 'pending_confirmation'; // New status for photo confirmation
             }
 
@@ -729,6 +729,29 @@ export const messageService = {
                 'handoverData.idPhotoConfirmedBy': confirmBy,
                 'handoverData.status': 'accepted' // Final status after confirmation
             });
+
+            // STEP 2: Auto-resolve the post after ID confirmation
+            // Get conversation data to retrieve postId
+            const conversationRef = doc(db, 'conversations', conversationId);
+            const conversationSnap = await getDoc(conversationRef);
+
+            if (conversationSnap.exists()) {
+                const conversationData = conversationSnap.data();
+                const postId = conversationData.postId;
+
+                if (postId) {
+                    // Update post status to resolved
+                    await updateDoc(doc(db, 'posts', postId), {
+                        status: 'resolved',
+                        updatedAt: serverTimestamp()
+                    });
+                    console.log('✅ Post auto-resolved after handover ID photo confirmation:', postId);
+                } else {
+                    console.warn('⚠️ No postId found in conversation, cannot auto-resolve');
+                }
+            } else {
+                console.warn('⚠️ Conversation not found, cannot auto-resolve post');
+            }
 
         } catch (error: any) {
             console.error('❌ Mobile: Failed to confirm handover ID photo:', error);

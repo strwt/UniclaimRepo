@@ -248,13 +248,37 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {/* Show ID photo if uploaded */}
         {handoverData.idPhotoUrl && (
           <div className="mb-3 p-2 bg-white rounded border">
-            <div className="text-xs text-gray-600 mb-1">ID Photo:</div>
+            <div className="text-xs text-gray-600 mb-1">Finder ID Photo:</div>
             <div className="relative">
               <img
                 src={handoverData.idPhotoUrl}
-                alt="ID Photo"
+                alt="Finder ID Photo"
                 className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
-                onClick={() => handleImageClick(handoverData.idPhotoUrl!, 'ID Photo')}
+                onClick={() => handleImageClick(handoverData.idPhotoUrl!, 'Finder ID Photo')}
+                title="Click to view full size"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
+                <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
+                  Click to expand
+                </span>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Click the photo to view full size
+            </div>
+          </div>
+        )}
+
+        {/* Show owner's ID photo if uploaded */}
+        {handoverData.ownerIdPhotoUrl && (
+          <div className="mb-3 p-2 bg-white rounded border">
+            <div className="text-xs text-gray-600 mb-1">Owner ID Photo:</div>
+            <div className="relative">
+              <img
+                src={handoverData.ownerIdPhotoUrl}
+                alt="Owner ID Photo"
+                className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
+                onClick={() => handleImageClick(handoverData.ownerIdPhotoUrl!, 'Owner ID Photo')}
                 title="Click to view full size"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
@@ -323,6 +347,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               className="px-3 py-1 bg-blue-500 text-white text-xs rounded-md hover:bg-blue-600 transition-colors"
             >
               Confirm ID Photo
+            </button>
+            <button
+              onClick={() => handleHandoverResponse('rejected')}
+              className="px-3 py-1 bg-red-500 text-white text-xs rounded-md hover:bg-red-600 transition-colors"
+            >
+              Reject Handover
             </button>
           </div>
         ) : (

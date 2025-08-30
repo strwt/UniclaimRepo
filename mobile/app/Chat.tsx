@@ -273,14 +273,14 @@ const MessageBubble = ({
         {/* Show ID photo if uploaded */}
         {handoverData.idPhotoUrl && (
           <View className="mb-3 p-2 bg-white rounded border">
-            <Text className="text-xs text-gray-600 mb-1">ID Photo:</Text>
+            <Text className="text-xs text-gray-600 mb-1">Finder ID Photo:</Text>
             <TouchableOpacity
               onPress={() => {
                 if (handoverData.idPhotoUrl) {
                   // For mobile, we'll use a simple alert with option to view
                   Alert.alert(
-                    'View ID Photo',
-                    'Would you like to view the full-size ID photo?',
+                    'View Finder ID Photo',
+                    'Would you like to view the full-size finder ID photo?',
                     [
                       { text: 'Cancel', style: 'cancel' },
                       {
@@ -299,6 +299,45 @@ const MessageBubble = ({
             >
               <Image
                 source={{ uri: handoverData.idPhotoUrl }}
+                className="w-24 h-16 rounded"
+                resizeMode="cover"
+              />
+              <Text className="text-xs text-blue-500 text-center mt-1">
+                Tap to view full size
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Show owner's ID photo if uploaded */}
+        {handoverData.ownerIdPhotoUrl && (
+          <View className="mb-3 p-2 bg-white rounded border">
+            <Text className="text-xs text-gray-600 mb-1">Owner ID Photo:</Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (handoverData.ownerIdPhotoUrl) {
+                  // For mobile, we'll use a simple alert with option to view
+                  Alert.alert(
+                    'View Owner ID Photo',
+                    'Would you like to view the full-size owner ID photo?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'View Full Size',
+                        onPress: () => {
+                          // Open in device's default image viewer
+                          if (handoverData.ownerIdPhotoUrl) {
+                            Linking.openURL(handoverData.ownerIdPhotoUrl);
+                          }
+                        }
+                      }
+                    ]
+                  );
+                }
+              }}
+            >
+              <Image
+                source={{ uri: handoverData.ownerIdPhotoUrl }}
                 className="w-24 h-16 rounded"
                 resizeMode="cover"
               />
@@ -374,6 +413,12 @@ const MessageBubble = ({
               className="px-3 py-1 bg-blue-500 rounded-md"
             >
               <Text className="text-white text-xs">Confirm ID Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleHandoverResponse('rejected')}
+              className="px-3 py-1 bg-red-500 rounded-md"
+            >
+              <Text className="text-white text-xs">Reject Handover</Text>
             </TouchableOpacity>
           </View>
         ) : (

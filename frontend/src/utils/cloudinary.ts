@@ -540,6 +540,27 @@ export const extractMessageImages = (message: any): string[] => {
             logMessage('log', '🔍 No handover ID photo found or handoverData missing');
         }
 
+        // Check for owner's ID photo in handover requests
+        logMessage('log', '🔍 Checking for handover owner ID photo...');
+        if (message.handoverData && message.handoverData.ownerIdPhotoUrl) {
+            const ownerIdPhotoUrl = message.handoverData.ownerIdPhotoUrl;
+            logMessage('log', '🔍 Found handover owner ID photo URL:', ownerIdPhotoUrl ? ownerIdPhotoUrl.substring(0, 50) + '...' : 'null/undefined');
+
+            // Only include Cloudinary URLs
+            if (ownerIdPhotoUrl && typeof ownerIdPhotoUrl === 'string' && ownerIdPhotoUrl.includes('cloudinary.com')) {
+                logMessage('log', '🗑️ Found handover owner ID photo for deletion:', ownerIdPhotoUrl.split('/').pop());
+                imageUrls.push(ownerIdPhotoUrl);
+            } else {
+                logMessage('warn', '⚠️ Handover owner ID photo failed validation:', {
+                    exists: !!ownerIdPhotoUrl,
+                    type: typeof ownerIdPhotoUrl,
+                    isCloudinary: ownerIdPhotoUrl?.includes('cloudinary.com')
+                });
+            }
+        } else {
+            logMessage('log', '🔍 No handover owner ID photo found or handoverData missing');
+        }
+
         // Check for item photos in handover requests
         logMessage('log', '🔍 Checking for handover item photos...');
         logMessage('log', '🔍 message.handoverData.itemPhotos exists:', !!message.handoverData?.itemPhotos);
