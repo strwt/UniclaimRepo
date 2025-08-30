@@ -877,8 +877,55 @@ export const messageService = {
 
             await updateDoc(messageRef, updateData);
 
-            // If handover is rejected, reset the handoverRequested flag to allow new requests
+            // If handover is rejected, delete all photos and reset the handoverRequested flag
             if (status === 'rejected') {
+                console.log('🗑️ Firebase: Handover rejected, starting photo deletion process...');
+                try {
+                    // Step 1: Extract all photos from the handover message
+                    const messageDoc = await getDoc(messageRef);
+                    if (messageDoc.exists()) {
+                        const messageData = messageDoc.data();
+                        console.log('🗑️ Firebase: Message data retrieved:', messageData);
+                        const imageUrls = extractMessageImages(messageData);
+                        console.log('🗑️ Firebase: Extracted image URLs:', imageUrls);
+
+                        // Step 2: Delete photos from Cloudinary
+                        if (imageUrls.length > 0) {
+                            try {
+                                await deleteMessageImages(imageUrls);
+                                console.log('✅ Photos deleted after handover rejection:', imageUrls.length);
+
+                                // Step 3: Clear photo URLs from the message data in database
+                                const photoCleanupData: any = {};
+
+                                // Clear ID photo URL
+                                if (messageData.handoverData?.idPhotoUrl) {
+                                    photoCleanupData['handoverData.idPhotoUrl'] = null;
+                                }
+
+                                // Clear item photos array
+                                if (messageData.handoverData?.itemPhotos && messageData.handoverData.itemPhotos.length > 0) {
+                                    photoCleanupData['handoverData.itemPhotos'] = [];
+                                }
+
+                                // Update the message to remove photo references
+                                if (Object.keys(photoCleanupData).length > 0) {
+                                    await updateDoc(messageRef, photoCleanupData);
+                                    console.log('✅ Photo URLs cleared from database:', photoCleanupData);
+                                }
+
+                            } catch (photoError: any) {
+                                console.warn('⚠️ Failed to delete photos after rejection:', photoError.message);
+                                // Continue with rejection even if photo cleanup fails
+                            }
+                        }
+                    }
+                } catch (photoExtractionError: any) {
+                    console.warn('⚠️ Failed to extract photos for deletion:', photoExtractionError.message);
+                    // Continue with rejection even if photo extraction fails
+                }
+
+                // Step 4: Reset conversation flags
                 const conversationRef = doc(db, 'conversations', conversationId);
                 await updateDoc(conversationRef, {
                     handoverRequested: false

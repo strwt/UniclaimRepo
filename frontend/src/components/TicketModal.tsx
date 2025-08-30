@@ -1,5 +1,5 @@
 import { FiX } from "react-icons/fi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Post } from "@/types/Post";
 import DropdownWithSearch from "./DropdownWithSearch";
 
@@ -46,6 +46,10 @@ const TicketModal = ({
   const [showImgModal, setShowImgModal] = useState(false);
   const [showImgOverlay, setShowImgOverlay] = useState(false);
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
+  const [showOverlay, setShowOverlay] = useState(true);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const inactivityIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastInteractionTimeRef = useRef<number>(Date.now());
 
   const [editedImages, setEditedImages] = useState<(string | File)[]>(
     post.images
@@ -74,11 +78,48 @@ const TicketModal = ({
     setNewImageFiles([]);
   }, [post]);
 
+  // Show the overlay after a couple of seconds if user doesn't click
+  useEffect(() => {
+    const checkInactivity = () => {
+      const now = Date.now();
+      const secondsSinceLastClick =
+        (now - lastInteractionTimeRef.current) / 1000;
+
+      if (secondsSinceLastClick >= 2) {
+        setShowOverlay(true);
+      }
+    };
+
+    inactivityIntervalRef.current = setInterval(checkInactivity, 1000);
+
+    return () => {
+      if (inactivityIntervalRef.current) {
+        clearInterval(inactivityIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (inactivityIntervalRef.current) {
+        clearInterval(inactivityIntervalRef.current);
+      }
+    };
+  }, []);
+
   const previewImages = editedImages.map((img) =>
     typeof img === "string" ? img : URL.createObjectURL(img)
   );
 
   const handleNextImage = () => {
+    setCurrentImageIdx((prev) => (prev + 1) % previewImages.length);
+  };
+
+  const handleImageClick = () => {
+    setShowOverlay(false);
+    setHasUserInteracted(true);
+    lastInteractionTimeRef.current = Date.now();
     setCurrentImageIdx((prev) => (prev + 1) % previewImages.length);
   };
 
@@ -196,7 +237,7 @@ const TicketModal = ({
           className="relative w-full flex flex-col justify-center items-center overflow-hidden"
           onClick={() => {
             if (!isEditing && previewImages.length > 1) {
-              setCurrentImageIdx((prev) => (prev + 1) % previewImages.length);
+              handleImageClick();
             } else if (isEditing) {
               setShowImgModal(true);
             }
@@ -209,11 +250,12 @@ const TicketModal = ({
                   src={previewImages[currentImageIdx]}
                   className="w-full h-auto object-cover rounded cursor-pointer"
                   alt={`Image ${currentImageIdx + 1}`}
+                  title="Click to view next image"
                 />
-                {!isEditing && previewImages.length > 1 && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded animate-soft-blink">
+                {showOverlay && previewImages.length > 1 && !hasUserInteracted && !isEditing && (
+                  <div className="absolute inset-0 bg-black/45 flex items-center justify-center rounded animate-soft-blink">
                     <p className="text-white text-sm px-3 py-1">
-                      Click image to view next
+                      Click to view more images
                     </p>
                   </div>
                 )}
@@ -363,7 +405,11 @@ const TicketModal = ({
       {showImgOverlay && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
-          onClick={() => handleNextImage()}
+          onClick={() => {
+            handleNextImage();
+            setHasUserInteracted(true);
+            lastInteractionTimeRef.current = Date.now();
+          }}
         >
           <div className="relative max-w-3xl w-full p-6">
             <img
