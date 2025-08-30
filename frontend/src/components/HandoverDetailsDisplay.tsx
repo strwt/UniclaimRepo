@@ -3,9 +3,13 @@ import type { Post } from '@/types/Post';
 
 interface HandoverDetailsDisplayProps {
   handoverDetails: Post['handoverDetails'];
+  conversationData?: Post['conversationData']; // Add conversation data prop
 }
 
-const HandoverDetailsDisplay: React.FC<HandoverDetailsDisplayProps> = ({ handoverDetails }) => {
+const HandoverDetailsDisplay: React.FC<HandoverDetailsDisplayProps> = ({ 
+  handoverDetails, 
+  conversationData 
+}) => {
   if (!handoverDetails) return null;
 
   const formatDateTime = (datetime: any) => {
@@ -135,9 +139,143 @@ const HandoverDetailsDisplay: React.FC<HandoverDetailsDisplayProps> = ({ handove
           </h4>
           <div className="text-xs text-gray-600">
             <p>Confirmed on: {formatDateTime(handoverDetails.handoverConfirmedAt)}</p>
-            <p>Confirmed by: {handoverDetails.handoverConfirmedBy}</p>
+            {handoverDetails.ownerName ? (
+              <p>Confirmed by: {handoverDetails.ownerName}</p>
+            ) : (
+              <p>Confirmed by: {handoverDetails.handoverConfirmedBy}</p>
+            )}
           </div>
         </div>
+
+        {/* Handover Request Chat Bubble Details - Show the preserved chat bubble information */}
+        {handoverDetails.handoverRequestDetails && (
+          <div className="bg-white p-3 rounded border">
+            <h4 className="text-xs font-semibold text-gray-700 mb-2">
+              💬 Original Handover Request Details:
+            </h4>
+            <div className="space-y-2 text-xs text-gray-600">
+              {/* Original Message Information */}
+              <div className="bg-gray-50 p-2 rounded">
+                <p className="font-medium text-gray-700 mb-1">Original Message:</p>
+                <p className="text-gray-600">{handoverDetails.handoverRequestDetails.messageText}</p>
+                <p className="text-gray-500 mt-1">
+                  Sent on: {formatDateTime(handoverDetails.handoverRequestDetails.messageTimestamp)}
+                </p>
+              </div>
+
+              {/* Handover Reason */}
+              {handoverDetails.handoverRequestDetails.handoverReason && (
+                <div className="bg-gray-50 p-2 rounded">
+                  <p className="font-medium text-gray-700 mb-1">Handover Reason:</p>
+                  <p className="text-gray-600">{handoverDetails.handoverRequestDetails.handoverReason}</p>
+                </div>
+              )}
+
+              {/* Handover Timeline */}
+              <div className="bg-gray-50 p-2 rounded">
+                <p className="font-medium text-gray-700 mb-1">Handover Timeline:</p>
+                <div className="space-y-1">
+                  <p className="text-gray-600">
+                    Requested: {formatDateTime(handoverDetails.handoverRequestDetails.handoverRequestedAt)}
+                  </p>
+                  {handoverDetails.handoverRequestDetails.handoverRespondedAt && (
+                    <p className="text-gray-600">
+                      Responded: {formatDateTime(handoverDetails.handoverRequestDetails.handoverRespondedAt)}
+                    </p>
+                  )}
+                  {handoverDetails.handoverRequestDetails.handoverResponseMessage && (
+                    <p className="text-gray-600">
+                      Response: "{handoverDetails.handoverRequestDetails.handoverResponseMessage}"
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* ID Photo Verification Status */}
+              <div className="bg-gray-50 p-2 rounded">
+                <p className="font-medium text-gray-700 mb-1">ID Photo Verification:</p>
+                <div className="space-y-1">
+                  <p className="text-gray-600">
+                    Status: {handoverDetails.handoverRequestDetails.idPhotoConfirmed ? '✅ Confirmed' : '⏳ Pending'}
+                  </p>
+                  {handoverDetails.handoverRequestDetails.idPhotoConfirmed && (
+                    <>
+                      <p className="text-gray-600">
+                        Confirmed on: {formatDateTime(handoverDetails.handoverRequestDetails.idPhotoConfirmedAt)}
+                      </p>
+                      <p className="text-gray-600">
+                        Confirmed by: {handoverDetails.handoverRequestDetails.idPhotoConfirmedBy}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Item Photos Verification Status */}
+              {handoverDetails.handoverRequestDetails.itemPhotos && handoverDetails.handoverRequestDetails.itemPhotos.length > 0 && (
+                <div className="bg-gray-50 p-2 rounded">
+                  <p className="font-medium text-gray-700 mb-1">Item Photos Verification:</p>
+                  <div className="space-y-1">
+                    <p className="text-gray-600">
+                      Photos uploaded: {handoverDetails.handoverRequestDetails.itemPhotos.length}
+                    </p>
+                    <p className="text-gray-600">
+                      Status: {handoverDetails.handoverRequestDetails.itemPhotosConfirmed ? '✅ Confirmed' : '⏳ Pending'}
+                    </p>
+                    {handoverDetails.handoverRequestDetails.itemPhotosConfirmed && (
+                      <>
+                        <p className="text-gray-600">
+                          Confirmed on: {formatDateTime(handoverDetails.handoverRequestDetails.itemPhotosConfirmedAt)}
+                        </p>
+                        <p className="text-gray-600">
+                          Confirmed by: {handoverDetails.handoverRequestDetails.itemPhotosConfirmedBy}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Owner Verification Status */}
+              {handoverDetails.handoverRequestDetails.ownerIdPhoto && (
+                <div className="bg-gray-50 p-2 rounded">
+                  <p className="font-medium text-gray-700 mb-1">Owner ID Photo Verification:</p>
+                  <div className="space-y-1">
+                    <p className="text-gray-600">
+                      Status: {handoverDetails.handoverRequestDetails.ownerIdPhotoConfirmed ? '✅ Confirmed' : '⏳ Pending'}
+                    </p>
+                    {handoverDetails.handoverRequestDetails.ownerIdPhotoConfirmed && (
+                      <>
+                        <p className="text-gray-600">
+                          Confirmed on: {formatDateTime(handoverDetails.handoverRequestDetails.ownerIdPhotoConfirmedAt)}
+                        </p>
+                        <p className="text-gray-600">
+                          Confirmed by: {handoverDetails.handoverRequestDetails.ownerIdPhotoConfirmedBy}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Conversation Data - Show if available */}
+        {conversationData && (
+          <div className="bg-white p-3 rounded border">
+            <h4 className="text-xs font-semibold text-gray-700 mb-2">
+              💬 Conversation Summary:
+            </h4>
+            <div className="text-xs text-gray-600 space-y-1">
+              <p>Total messages: {conversationData.messages?.length || 0}</p>
+              <p>Conversation started: {formatDateTime(conversationData.createdAt)}</p>
+              {conversationData.lastMessage && (
+                <p>Last message: {conversationData.lastMessage.text}</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

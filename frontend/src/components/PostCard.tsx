@@ -221,6 +221,56 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
           }}
         />
 
+        {/* Handover Information - only show for resolved posts with handover details */}
+        {post.status === 'resolved' && post.handoverDetails && post.handoverDetails.handoverRequestDetails && (
+          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+            {/* Show handover request details summary if available */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-green-600 text-lg">💬</span>
+                <h4 className="text-sm font-semibold text-green-800">Handover Request Details</h4>
+              </div>
+              
+              {/* Show handover reason if available */}
+              {post.handoverDetails.handoverRequestDetails.handoverReason && (
+                <div className="text-green-700 mb-2">
+                  <span className="font-medium">Reason: </span>
+                  <span className="italic">"{post.handoverDetails.handoverRequestDetails.handoverReason}"</span>
+                </div>
+              )}
+              
+              {/* Show verification status */}
+              <div className="flex items-center gap-4 text-xs text-green-600">
+                <span>
+                  ID Photo: {post.handoverDetails.handoverRequestDetails.idPhotoConfirmed ? '✅' : '⏳'}
+                </span>
+                {post.handoverDetails.handoverRequestDetails.itemPhotos && (
+                  <span>
+                    Item Photos: {post.handoverDetails.handoverRequestDetails.itemPhotosConfirmed ? '✅' : '⏳'}
+                  </span>
+                )}
+                {post.handoverDetails.handoverRequestDetails.ownerIdPhoto && (
+                  <span>
+                    Owner ID: {post.handoverDetails.handoverRequestDetails.ownerIdPhotoConfirmed ? '✅' : '⏳'}
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            {/* Conversation Summary */}
+            {post.conversationData && (
+              <div className="mt-3 pt-2 border-t border-green-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-green-600">💬</span>
+                  <span className="text-xs font-medium text-green-700">Conversation Summary</span>
+                </div>
+                <div className="text-xs text-green-600">
+                  {post.conversationData.messages?.length || 0} messages exchanged
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
 
       </div>

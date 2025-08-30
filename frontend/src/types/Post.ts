@@ -44,6 +44,55 @@ export interface Post {
     ownerIdPhoto: string; // ID photo of the item owner
     handoverConfirmedAt: any; // When the handover was confirmed
     handoverConfirmedBy: string; // User ID who confirmed the handover
+    ownerName?: string; // Name of the person who confirmed the handover
+
+    // New field: Complete handover request chat bubble details
+    handoverRequestDetails?: {
+      // Original message details
+      messageId: string;
+      messageText: string;
+      messageTimestamp: any;
+      senderId: string;
+      senderName: string;
+      senderProfilePicture?: string;
+
+      // Handover data from the message
+      handoverReason?: string;
+      handoverRequestedAt: any;
+      handoverRespondedAt?: any;
+      handoverResponseMessage?: string;
+
+      // ID photo verification details
+      idPhotoUrl?: string;
+      idPhotoConfirmed: boolean;
+      idPhotoConfirmedAt: any;
+      idPhotoConfirmedBy: string;
+
+      // Item photos
+      itemPhotos: {
+        url: string;
+        uploadedAt: any;
+        description?: string;
+      }[];
+      itemPhotosConfirmed?: boolean;
+      itemPhotosConfirmedAt?: any;
+      itemPhotosConfirmedBy?: string;
+
+      // Owner verification details
+      ownerIdPhoto?: string;
+      ownerIdPhotoConfirmed?: boolean;
+      ownerIdPhotoConfirmedAt?: any;
+      ownerIdPhotoConfirmedBy?: string;
+    };
+  };
+
+  // New field for conversation data when post is resolved
+  conversationData?: {
+    conversationId: string;
+    messages: any[]; // Array of conversation messages
+    participants: any; // Conversation participants
+    createdAt: any; // When the conversation was created
+    lastMessage: any; // Last message in the conversation
   };
 }
 

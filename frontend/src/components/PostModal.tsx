@@ -376,7 +376,10 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
 
         {/* Show handover details if post is resolved */}
         {post.status === 'resolved' && post.handoverDetails && (
-          <HandoverDetailsDisplay handoverDetails={post.handoverDetails} />
+          <HandoverDetailsDisplay 
+            handoverDetails={post.handoverDetails} 
+            conversationData={post.conversationData}
+          />
         )}
 
       </div>
