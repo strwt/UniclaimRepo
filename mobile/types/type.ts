@@ -68,11 +68,21 @@ export interface Message {
     requestedAt: any;
     respondedAt?: any;
     responseMessage?: string;
+    handoverReason?: string; // Reason for handover request
     // New fields for ID photo verification
     idPhotoUrl?: string; // URL of the uploaded ID photo
     idPhotoConfirmed?: boolean; // Whether the item owner confirmed the ID photo
     idPhotoConfirmedAt?: any; // When the ID photo was confirmed
     idPhotoConfirmedBy?: string; // User ID who confirmed the ID photo
+    // Item photos for handover verification (REQUIRED - up to 3)
+    itemPhotos?: {
+      url: string;
+      uploadedAt: any;
+      description?: string;
+    }[];
+    itemPhotosConfirmed?: boolean; // Whether the item owner confirmed the item photos
+    itemPhotosConfirmedAt?: any; // When the item photos were confirmed
+    itemPhotosConfirmedBy?: string; // User ID who confirmed the item photos
   };
   // Fields for claim requests
   claimData?: {

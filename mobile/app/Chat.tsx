@@ -100,7 +100,7 @@ const MessageBubble = ({
       console.log('✅ Handover response updated with ID photo');
       
       // Call the callback to update UI
-      onHandoverResponse(message.id, 'accepted');
+      onHandoverResponse?.(message.id, 'accepted');
       
       // Close modal and reset state
       setShowIdPhotoModal(false);
@@ -185,7 +185,7 @@ const MessageBubble = ({
       console.log('✅ Claim response updated with ID photo');
 
       // Call the callback to update UI
-      onClaimResponse(message.id, 'accepted');
+      onClaimResponse?.(message.id, 'accepted');
 
       // Close modal and reset state
       setShowIdPhotoModal(false);
@@ -217,7 +217,7 @@ const MessageBubble = ({
     try {
       await confirmClaimIdPhoto(conversationId, message.id);
       // Call the callback to update UI
-      onClaimResponse(message.id, 'accepted');
+      onClaimResponse?.(message.id, 'accepted');
     } catch (error: any) {
       console.error('Failed to confirm claim ID photo:', error);
       Alert.alert('Error', 'Failed to confirm ID photo. Please try again.');
@@ -283,11 +283,13 @@ const MessageBubble = ({
                     'Would you like to view the full-size ID photo?',
                     [
                       { text: 'Cancel', style: 'cancel' },
-                      { 
-                        text: 'View Full Size', 
+                      {
+                        text: 'View Full Size',
                         onPress: () => {
                           // Open in device's default image viewer
-                          Linking.openURL(handoverData.idPhotoUrl);
+                          if (handoverData.idPhotoUrl) {
+                            Linking.openURL(handoverData.idPhotoUrl);
+                          }
                         }
                       }
                     ]
@@ -295,9 +297,9 @@ const MessageBubble = ({
                 }
               }}
             >
-              <Image 
-                source={{ uri: handoverData.idPhotoUrl }} 
-                className="w-20 h-12 rounded"
+              <Image
+                source={{ uri: handoverData.idPhotoUrl }}
+                className="w-24 h-16 rounded"
                 resizeMode="cover"
               />
               <Text className="text-xs text-blue-500 text-center mt-1">
@@ -306,7 +308,49 @@ const MessageBubble = ({
             </TouchableOpacity>
           </View>
         )}
-        
+
+        {/* Show item photos if uploaded */}
+        {handoverData.itemPhotos && handoverData.itemPhotos.length > 0 && (
+          <View className="mb-3 p-2 bg-white rounded border">
+            <Text className="text-xs text-gray-600 mb-1 font-medium">Item Photos:</Text>
+            <View className="gap-2">
+              {handoverData.itemPhotos.map((photo, index) => (
+                <View key={index}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Alert.alert(
+                        `View Item Photo ${index + 1}`,
+                        'Would you like to view the full-size item photo?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'View Full Size',
+                            onPress: () => {
+                              Linking.openURL(photo.url);
+                            }
+                          }
+                        ]
+                      );
+                    }}
+                  >
+                    <Image
+                      source={{ uri: photo.url }}
+                      className="w-full h-32 rounded"
+                      resizeMode="cover"
+                    />
+                    <Text className="text-xs text-gray-500 mt-1">
+                      Item photo {index + 1}
+                    </Text>
+                    <Text className="text-xs text-blue-500 text-center mt-1">
+                      Tap to view full size
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Action buttons */}
         {canRespond ? (
           <View className="flex-row gap-2">
@@ -343,6 +387,11 @@ const MessageBubble = ({
             {handoverData.status === 'accepted' && handoverData.idPhotoConfirmed && (
               <Text className="ml-2 text-green-600">
                 ✓ ID Photo Confirmed
+              </Text>
+            )}
+            {handoverData.status === 'accepted' && handoverData.itemPhotosConfirmed && (
+              <Text className="ml-2 text-green-600">
+                ✓ Item Photos Confirmed
               </Text>
             )}
           </Text>
@@ -757,7 +806,7 @@ export default function Chat() {
         conversationId,
         user!.uid,
         `${userData.firstName} ${userData.lastName}`,
-        userData.profilePicture || userData.profileImageUrl || '',
+        userData.profilePicture || '',
         postId,
         postTitle,
         'Claiming this item as my own', // Default claim reason

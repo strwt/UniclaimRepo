@@ -84,7 +84,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       console.log('✅ Handover response updated with ID photo');
       
       // Call the callback to update UI
-      onHandoverResponse(message.id, 'accepted');
+      onHandoverResponse?.(message.id, 'accepted');
       
       // Close modal and reset state
       setShowIdPhotoModal(false);
@@ -163,17 +163,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         message.id,
         'accepted',
         currentUserId,
-        [{
-          url: uploadedUrl,
-          uploadedAt: new Date(),
-          description: 'Verification photo'
-        }]
+        uploadedUrl
       );
 
       console.log('✅ Claim response updated with ID photo');
 
       // Call the callback to update UI
-      onClaimResponse(message.id, 'accepted');
+      onClaimResponse?.(message.id, 'accepted');
 
       // Close modal and reset state
       setShowIdPhotoModal(false);
@@ -205,7 +201,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     try {
       await confirmClaimIdPhoto(conversationId, message.id);
       // Call the callback to update UI
-      onClaimResponse(message.id, 'accepted');
+      onClaimResponse?.(message.id, 'accepted');
     } catch (error: any) {
       console.error('Failed to confirm claim ID photo:', error);
       alert('Failed to confirm ID photo. Please try again.');
@@ -253,16 +249,57 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {handoverData.idPhotoUrl && (
           <div className="mb-3 p-2 bg-white rounded border">
             <div className="text-xs text-gray-600 mb-1">ID Photo:</div>
-            <img 
-              src={handoverData.idPhotoUrl} 
-              alt="ID Photo"
-              className="w-20 h-12 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => handleImageClick(handoverData.idPhotoUrl!, 'ID Photo')}
-              title="Click to view full size"
-            />
+            <div className="relative">
+              <img
+                src={handoverData.idPhotoUrl}
+                alt="ID Photo"
+                className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
+                onClick={() => handleImageClick(handoverData.idPhotoUrl!, 'ID Photo')}
+                title="Click to view full size"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
+                <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
+                  Click to expand
+                </span>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Click the photo to view full size
+            </div>
           </div>
         )}
-        
+
+        {/* Show item photos if uploaded */}
+        {handoverData.itemPhotos && handoverData.itemPhotos.length > 0 && (
+          <div className="mb-3 p-2 bg-white rounded border">
+            <div className="text-xs text-gray-600 mb-1 font-medium">Item Photos:</div>
+            <div className="grid grid-cols-1 gap-2">
+              {handoverData.itemPhotos.map((photo, index) => (
+                <div key={index} className="relative">
+                  <img
+                    src={photo.url}
+                    alt={`Item Photo ${index + 1}`}
+                    className="w-full h-32 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
+                    onClick={() => handleImageClick(photo.url, `Item Photo ${index + 1}`)}
+                    title="Click to view full size"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
+                    <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
+                      Click to expand
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Item photo
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="text-xs text-gray-500 mt-2">
+              Click any photo to view full size
+            </div>
+          </div>
+        )}
+
         {/* Action buttons */}
         {canRespond ? (
           <div className="flex gap-2">
@@ -299,6 +336,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             {handoverData.status === 'accepted' && handoverData.idPhotoConfirmed && (
               <span className="ml-2 text-green-600">
                 ✓ ID Photo Confirmed
+              </span>
+            )}
+            {handoverData.status === 'accepted' && handoverData.itemPhotosConfirmed && (
+              <span className="ml-2 text-green-600">
+                ✓ Item Photos Confirmed
               </span>
             )}
           </div>
