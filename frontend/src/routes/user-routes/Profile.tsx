@@ -33,6 +33,9 @@ const Profile = () => {
   const [selectedProfileFile, setSelectedProfileFile] = useState<File | null>(null);
   const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] = useState<string | null>(null);
 
+  // State for pending deletion (Option 1: Immediate Preview + Deferred Action)
+  const [isProfilePictureMarkedForDeletion, setIsProfilePictureMarkedForDeletion] = useState(false);
+
   // Update local state when Firebase data loads
   useEffect(() => {
     if (userData) {
@@ -49,6 +52,7 @@ const Profile = () => {
       // Reset local file state when user data loads
       setSelectedProfileFile(null);
       setProfilePicturePreviewUrl(null);
+      setIsProfilePictureMarkedForDeletion(false);
     }
   }, [userData]);
 
@@ -74,11 +78,14 @@ const Profile = () => {
     // Reset local file state when canceling
     setSelectedProfileFile(null);
     cleanupPreviewUrl();
+    setIsProfilePictureMarkedForDeletion(false);
     setIsEdit(false);
   };
 
   const handleEdit = () => {
     setInitialUserInfo(userInfo); // snapshot of current state
+    // Reset pending deletion flag when starting edit
+    setIsProfilePictureMarkedForDeletion(false);
     setIsEdit(true);
   };
 
@@ -118,15 +125,29 @@ const Profile = () => {
 
   const handleRemoveProfilePicture = async () => {
     try {
-      // Clear the local file selection
-      setSelectedProfileFile(null);
-      cleanupPreviewUrl();
-      
-      showToast("success", "Profile Picture Removed", "Profile picture will be removed when you save changes.");
-      
+      // Check if there's a current profile picture to mark for deletion
+      const hasCurrentPicture = userInfo.profilePicture && userInfo.profilePicture.trim() !== '';
+
+      if (hasCurrentPicture) {
+        // Mark the current profile picture for deletion on save
+        setIsProfilePictureMarkedForDeletion(true);
+
+        // Clear any local file selection that might override the deletion
+        setSelectedProfileFile(null);
+        cleanupPreviewUrl();
+
+        // Update the displayed profile picture to show default immediately
+        setUserInfo(prev => ({ ...prev, profilePicture: '' }));
+
+        showToast("success", "Profile Picture Marked for Removal", "Your profile picture will be removed when you save changes.");
+      } else {
+        // No current picture to remove
+        showToast("info", "No Profile Picture", "You don't have a profile picture to remove.");
+      }
+
     } catch (error: any) {
-      console.error("Error removing profile picture:", error);
-      showToast("error", "Removal Failed", "Failed to remove profile picture. Please try again.");
+      console.error("Error marking profile picture for removal:", error);
+      showToast("error", "Removal Failed", "Failed to mark profile picture for removal. Please try again.");
     }
   };
 
@@ -149,7 +170,7 @@ const Profile = () => {
     }
 
     // Check if values actually changed (including profile picture)
-    const hasProfilePictureChanged = selectedProfileFile !== null || profilePicturePreviewUrl !== null;
+    const hasProfilePictureChanged = selectedProfileFile !== null || profilePicturePreviewUrl !== null || isProfilePictureMarkedForDeletion;
     const isChanged =
       firstName !== initialUserInfo.firstName ||
       lastName !== initialUserInfo.lastName ||
@@ -216,18 +237,21 @@ const Profile = () => {
           } finally {
     
           }
-        } else if (profilePicturePreviewUrl === null && userInfo.profilePicture === "") {
-          // Profile picture was removed
+        } else if (isProfilePictureMarkedForDeletion) {
+          // Profile picture was marked for deletion (Option 1 behavior)
           if (oldProfilePicture && oldProfilePicture !== "") {
             if (isCloudinaryImage(oldProfilePicture)) {
               try {
                 await imageService.deleteProfilePicture(oldProfilePicture, userData.uid);
+                showToast("success", "Profile Picture Removed", "Your profile picture has been successfully removed.");
               } catch (deleteError: any) {
                 // Don't fail the save operation - continue with profile update
                 showToast("warning", "Cleanup Warning", "Profile picture removed from profile, but there was an issue deleting it from storage.");
               }
             }
           }
+          // Clear the pending deletion flag
+          setIsProfilePictureMarkedForDeletion(false);
         }
 
         // Use the new profile update service to update everything
@@ -340,23 +364,34 @@ const Profile = () => {
                     )}
                   </button>
                   {(userInfo.profilePicture || profilePicturePreviewUrl) && (
-                    <button
-                      onClick={handleRemoveProfilePicture}
-                      disabled={isUpdating}
-                      className="bg-red-500 text-white rounded-full p-2 hover:bg-red-600 disabled:bg-red-400 disabled:cursor-not-allowed"
-                      title="Remove profile picture"
-                    >
-                      {isUpdating ? (
-                        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                      ) : (
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                    <div className="relative">
+                      <button
+                        onClick={handleRemoveProfilePicture}
+                        disabled={isUpdating}
+                        className={`text-white rounded-full p-2 disabled:cursor-not-allowed ${
+                          isProfilePictureMarkedForDeletion
+                            ? 'bg-orange-500 hover:bg-orange-600 disabled:bg-orange-400'
+                            : 'bg-red-500 hover:bg-red-600 disabled:bg-red-400'
+                        }`}
+                        title={isProfilePictureMarkedForDeletion ? "Profile picture marked for removal" : "Remove profile picture"}
+                      >
+                        {isUpdating ? (
+                          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        )}
+                      </button>
+                      {isProfilePictureMarkedForDeletion && (
+                        <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                          !
+                        </div>
                       )}
-                    </button>
+                    </div>
                   )}
                 </div>
               )}

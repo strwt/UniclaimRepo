@@ -47,6 +47,9 @@ export default function Profile() {
   });
   const [hasImageChanged, setHasImageChanged] = useState(false);
 
+  // State for pending deletion (Option 1: Immediate Preview + Deferred Action)
+  const [isProfilePictureMarkedForDeletion, setIsProfilePictureMarkedForDeletion] = useState(false);
+
   // Update profile when userData changes
   React.useEffect(() => {
     if (userData) {
@@ -61,6 +64,7 @@ export default function Profile() {
           : require("../../assets/images/squarepic.jpg"),
       });
       setHasImageChanged(false);
+      setIsProfilePictureMarkedForDeletion(false);
     }
   }, [userData]);
 
@@ -146,8 +150,28 @@ export default function Profile() {
             }
           }
         }
+      } else if (isProfilePictureMarkedForDeletion) {
+        // Profile picture was marked for deletion (Option 1 behavior)
+        profileImageUrl = ""; // Set to empty to remove profile picture
+
+        if (userData.profilePicture) {
+          try {
+            const deletionSuccess = await deleteOldProfilePicture(userData.profilePicture);
+            if (deletionSuccess) {
+              Alert.alert("Success", "Profile picture removed successfully!");
+            } else {
+              Alert.alert("Warning", "Profile picture removed, but there was an issue deleting it from storage.");
+            }
+          } catch (deleteError: any) {
+            console.error('Error deleting profile picture:', deleteError.message);
+            Alert.alert("Warning", "Profile picture removed from profile, but there was an issue deleting it from storage.");
+          }
+        }
+
+        // Clear the pending deletion flag
+        setIsProfilePictureMarkedForDeletion(false);
       }
-      
+
       // Prepare update data
       const updateData: any = {
         firstName: profile.firstName,
@@ -206,6 +230,7 @@ export default function Profile() {
     }
     setIsEditing(false);
     setHasImageChanged(false);
+    setIsProfilePictureMarkedForDeletion(false);
   };
 
   const handleLogout = async () => {
@@ -267,29 +292,41 @@ export default function Profile() {
   };
 
   const handleRemoveProfilePicture = () => {
-    // Show confirmation dialog
+    // Check if there's a current profile picture to mark for deletion
+    const hasCurrentPicture = userData?.profilePicture && userData.profilePicture.trim() !== '';
+
+    if (!hasCurrentPicture) {
+      Alert.alert("No Profile Picture", "You don't have a profile picture to remove.");
+      return;
+    }
+
+    // Show confirmation dialog for Option 1 behavior
     Alert.alert(
-      "Remove Profile Picture",
-      "Are you sure you want to remove your profile picture? This will be applied when you save your changes.",
+      "Mark Profile Picture for Removal",
+      "This will mark your profile picture for removal. The change will be applied when you save your profile. Continue?",
       [
         {
           text: "Cancel",
           style: "cancel",
         },
         {
-          text: "Remove",
+          text: "Mark for Removal",
           style: "destructive",
           onPress: () => {
-            // Only update local state - no immediate deletion
+            // Mark for deletion and show immediate preview (Option 1)
+            setIsProfilePictureMarkedForDeletion(true);
+
+            // Update local state to show default image immediately
             setProfile((prev) => ({
               ...prev,
               imageUri: require("../../assets/images/squarepic.jpg"), // Use default image
             }));
+
             setHasImageChanged(true);
-            
+
             Alert.alert(
-              "Profile Picture Removed",
-              "Profile picture has been removed from your profile. Click 'Save Changes' to apply this change permanently."
+              "Profile Picture Marked for Removal",
+              "Your profile picture is marked for removal and will be deleted when you save changes."
             );
           },
         },
@@ -376,8 +413,15 @@ export default function Profile() {
                 className="size-[7.8rem] rounded-full"
               />
               {isEditing && (
-                <View className="absolute bottom-0 right-0 bg-black/60 p-1 rounded-full">
-                  <Ionicons name="camera-outline" size={18} color="white" />
+                <View className="absolute bottom-0 right-0 flex-row gap-1">
+                  <View className="bg-black/60 p-1 rounded-full">
+                    <Ionicons name="camera-outline" size={18} color="white" />
+                  </View>
+                  {isProfilePictureMarkedForDeletion && (
+                    <View className="bg-orange-500 p-1 rounded-full">
+                      <Ionicons name="warning-outline" size={18} color="white" />
+                    </View>
+                  )}
                 </View>
               )}
             </TouchableOpacity>
@@ -385,12 +429,20 @@ export default function Profile() {
             {/* Remove profile picture button - only show when editing and has a profile picture */}
             {isEditing && userData?.profilePicture && (
               <TouchableOpacity
-                className="mt-2 bg-red-500 rounded-md py-2 px-3 flex-row items-center gap-2"
+                className={`mt-2 rounded-md py-2 px-3 flex-row items-center gap-2 ${
+                  isProfilePictureMarkedForDeletion
+                    ? 'bg-orange-500'
+                    : 'bg-red-500'
+                }`}
                 onPress={handleRemoveProfilePicture}
               >
-                <Ionicons name="trash-outline" size={16} color="white" />
+                <Ionicons
+                  name={isProfilePictureMarkedForDeletion ? "warning-outline" : "trash-outline"}
+                  size={16}
+                  color="white"
+                />
                 <Text className="text-white text-sm font-manrope-medium">
-                  Remove Photo
+                  {isProfilePictureMarkedForDeletion ? "Marked for Removal" : "Remove Photo"}
                 </Text>
               </TouchableOpacity>
             )}
