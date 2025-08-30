@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useMessage } from "@/context/MessageContext";
 import ProfilePicture from "./ProfilePicture";
+import HandoverDetailsDisplay from "./HandoverDetailsDisplay";
 
 interface PostModalProps {
   post: Post;
@@ -288,6 +289,13 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
                  "Campus Security"}
               </span>
             )}
+            
+            {/* Status Badge - show when post is resolved */}
+            {post.status === 'resolved' && (
+              <span className="px-2 py-1 rounded-[3px] font-medium bg-green-100 text-green-700">
+                ✅ RESOLVED
+              </span>
+            )}
           </div>
         </div>
 
@@ -366,6 +374,10 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
           </div>
         </div>
 
+        {/* Show handover details if post is resolved */}
+        {post.status === 'resolved' && post.handoverDetails && (
+          <HandoverDetailsDisplay handoverDetails={post.handoverDetails} />
+        )}
 
       </div>
     </div>

@@ -30,3 +30,14 @@ node_modules/
 # Test files
 test-*.html
 test-*.js
+__tests__/
+*.test.tsx
+*.test.ts
+*.spec.tsx
+*.spec.ts
+
+# Documentation and setup files
+*.md
+README*.md
+setup*.md
+instructions*.md

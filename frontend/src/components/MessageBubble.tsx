@@ -276,25 +276,25 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {/* Show owner's ID photo if uploaded */}
         {(() => {
           try {
-            if (handoverData.ownerIdPhotoUrl && typeof handoverData.ownerIdPhotoUrl === 'string') {
-              console.log('🔍 Displaying owner ID photo:', handoverData.ownerIdPhotoUrl.substring(0, 50) + '...');
+            if (handoverData.ownerIdPhoto && typeof handoverData.ownerIdPhoto === 'string') {
+              console.log('🔍 Displaying owner ID photo:', handoverData.ownerIdPhoto.substring(0, 50) + '...');
               return (
                 <div className="mb-3 p-2 bg-white rounded border">
                   <div className="text-xs text-gray-600 mb-1">Owner ID Photo:</div>
                   <div className="relative">
                     <img
-                      src={handoverData.ownerIdPhotoUrl}
+                      src={handoverData.ownerIdPhoto}
                       alt="Owner ID Photo"
                       className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
                       onClick={() => {
                         try {
-                          handleImageClick(handoverData.ownerIdPhotoUrl!, 'Owner ID Photo');
+                          handleImageClick(handoverData.ownerIdPhoto!, 'Owner ID Photo');
                         } catch (clickError) {
                           console.error('❌ Error in owner photo click:', clickError);
                         }
                       }}
                       onError={(e) => {
-                        console.error('❌ Error loading owner ID photo:', handoverData.ownerIdPhotoUrl);
+                        console.error('❌ Error loading owner ID photo:', handoverData.ownerIdPhoto);
                         e.currentTarget.style.display = 'none';
                       }}
                       title="Click to view full size"

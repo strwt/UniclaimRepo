@@ -694,7 +694,7 @@ export const messageService = {
 
             // If accepting with ID photo, add the owner photo URL and change status to pending confirmation
             if (status === 'accepted' && idPhotoUrl) {
-                updateData['handoverData.ownerIdPhotoUrl'] = idPhotoUrl; // Store owner's photo separately
+                updateData['handoverData.ownerIdPhoto'] = idPhotoUrl; // Store owner's photo with correct field name
                 updateData['handoverData.status'] = 'pending_confirmation'; // New status for photo confirmation
             }
 
@@ -727,8 +727,8 @@ export const messageService = {
                                 }
 
                                 // Clear owner's ID photo URL
-                                if (messageData.handoverData?.ownerIdPhotoUrl) {
-                                    photoCleanupData['handoverData.ownerIdPhotoUrl'] = null;
+                                if (messageData.handoverData?.ownerIdPhoto) {
+                                    photoCleanupData['handoverData.ownerIdPhoto'] = null;
                                 }
 
                                 // Clear item photos array
@@ -783,8 +783,7 @@ export const messageService = {
                 'handoverData.status': 'accepted' // Final status after confirmation
             });
 
-            // STEP 2: Auto-resolve the post after ID confirmation
-            // Get conversation data to retrieve postId
+            // STEP 2: Get conversation data to retrieve postId and handover details
             const conversationRef = doc(db, 'conversations', conversationId);
             const conversationSnap = await getDoc(conversationRef);
 
@@ -793,17 +792,70 @@ export const messageService = {
                 const postId = conversationData.postId;
 
                 if (postId) {
-                    // Update post status to resolved
-                    await updateDoc(doc(db, 'posts', postId), {
-                        status: 'resolved',
-                        updatedAt: serverTimestamp()
-                    });
-                    console.log('✅ Post auto-resolved after handover ID photo confirmation:', postId);
+                    // Get the handover message data to extract handover details
+                    const messageSnap = await getDoc(messageRef);
+                    if (messageSnap.exists()) {
+                        const messageData = messageSnap.data();
+                        const handoverData = messageData.handoverData;
+
+                        if (handoverData) {
+                            // Get the handover person's user data
+                            const handoverPersonId = messageData.senderId;
+                            const handoverPersonDoc = await getDoc(doc(db, 'users', handoverPersonId));
+
+                            if (handoverPersonDoc.exists()) {
+                                const handoverPersonData = handoverPersonDoc.data();
+
+                                // Prepare handover details for the post
+                                const handoverDetails = {
+                                    handoverPersonName: `${handoverPersonData.firstName} ${handoverPersonData.lastName}`,
+                                    handoverPersonContact: handoverPersonData.contactNum,
+                                    handoverPersonStudentId: handoverPersonData.studentId,
+                                    handoverPersonEmail: handoverPersonData.email,
+                                    handoverItemPhotos: handoverData.itemPhotos || [],
+                                    handoverIdPhoto: handoverData.idPhotoUrl,
+                                    ownerIdPhoto: handoverData.ownerIdPhoto || '', // This will be set when owner confirms
+                                    handoverConfirmedAt: serverTimestamp(),
+                                    handoverConfirmedBy: confirmBy
+                                };
+
+                                // Update post with handover details and status
+                                await updateDoc(doc(db, 'posts', postId), {
+                                    status: 'resolved',
+                                    handoverDetails: handoverDetails,
+                                    updatedAt: serverTimestamp()
+                                });
+
+                                console.log('✅ Mobile: Post updated with handover details:', postId);
+                            } else {
+                                console.warn('⚠️ Mobile: Handover person not found, updating post status only');
+                                // Update post status to resolved even if handover person data not found
+                                await updateDoc(doc(db, 'posts', postId), {
+                                    status: 'resolved',
+                                    updatedAt: serverTimestamp()
+                                });
+                            }
+                        } else {
+                            console.warn('⚠️ Mobile: No handover data found, updating post status only');
+                            // Update post status to resolved even if handover data not found
+                            await updateDoc(doc(db, 'posts', postId), {
+                                status: 'resolved',
+                                updatedAt: serverTimestamp()
+                            });
+                        }
+                    } else {
+                        console.warn('⚠️ Mobile: Handover message not found, updating post status only');
+                        // Update post status to resolved even if message not found
+                        await updateDoc(doc(db, 'posts', postId), {
+                            status: 'resolved',
+                            updatedAt: serverTimestamp()
+                        });
+                    }
                 } else {
-                    console.warn('⚠️ No postId found in conversation, cannot auto-resolve');
+                    console.warn('⚠️ Mobile: No postId found in conversation, cannot update post');
                 }
             } else {
-                console.warn('⚠️ Conversation not found, cannot auto-resolve post');
+                console.warn('⚠️ Mobile: Conversation not found, cannot update post');
             }
 
         } catch (error: any) {

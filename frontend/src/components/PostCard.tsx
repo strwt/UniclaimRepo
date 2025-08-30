@@ -109,6 +109,13 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
             </span>
           )}
           
+          {/* Status Badge */}
+          {post.status === 'resolved' && (
+            <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-green-100 text-green-700 text-[11px]">
+              ✅ RESOLVED
+            </span>
+          )}
+          
           {/* Expiry Countdown Badge */}
           {post.expiryDate && (
             <>

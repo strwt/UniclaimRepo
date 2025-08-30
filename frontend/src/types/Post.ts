@@ -28,6 +28,23 @@ export interface Post {
   isExpired?: boolean; // Boolean flag for quick filtering
   movedToUnclaimed?: boolean; // Boolean flag to track if moved to unclaimed
   originalStatus?: "pending" | "resolved" | "rejected"; // Store the original status before moving to unclaimed
+
+  // New fields for handover details (when ID photo is confirmed)
+  handoverDetails?: {
+    handoverPersonName: string; // Full name of person who handed over
+    handoverPersonContact: string; // Contact number of person who handed over
+    handoverPersonStudentId: string; // Student ID of person who handed over
+    handoverPersonEmail: string; // Email of person who handed over
+    handoverItemPhotos: {
+      url: string;
+      uploadedAt: any;
+      description?: string;
+    }[]; // Photos of the item during handover
+    handoverIdPhoto: string; // ID photo of person who handed over
+    ownerIdPhoto: string; // ID photo of the item owner
+    handoverConfirmedAt: any; // When the handover was confirmed
+    handoverConfirmedBy: string; // User ID who confirmed the handover
+  };
 }
 
 // Message Types
@@ -64,6 +81,8 @@ export interface Message {
     itemPhotosConfirmed?: boolean; // Whether the item owner confirmed the item photos
     itemPhotosConfirmedAt?: any; // When the item photos were confirmed
     itemPhotosConfirmedBy?: string; // User ID who confirmed the item photos
+    // New field for owner ID photo during handover verification
+    ownerIdPhoto?: string; // ID photo of the item owner for verification
   };
   // Fields for claim requests
   claimData?: {
