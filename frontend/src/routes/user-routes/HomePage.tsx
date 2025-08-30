@@ -243,7 +243,11 @@ export default function HomePage() {
       )}
 
       {selectedPost && (
-        <PostModal post={selectedPost} onClose={() => setSelectedPost(null)} />
+        <PostModal 
+          post={selectedPost} 
+          onClose={() => setSelectedPost(null)} 
+          hideSendMessage={viewType === "completed"} 
+        />
       )}
     </div>
   );
