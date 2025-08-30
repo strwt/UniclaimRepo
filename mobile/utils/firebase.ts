@@ -771,7 +771,7 @@ export const messageService = {
     },
 
     // Confirm ID photo for handover
-    async confirmHandoverIdPhoto(conversationId: string, messageId: string, confirmBy: string): Promise<void> {
+    async confirmHandoverIdPhoto(conversationId: string, messageId: string, confirmBy: string): Promise<{ success: boolean; conversationDeleted: boolean; postId?: string; error?: string }> {
         try {
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
 
@@ -806,27 +806,123 @@ export const messageService = {
                             if (handoverPersonDoc.exists()) {
                                 const handoverPersonData = handoverPersonDoc.data();
 
-                                // Prepare handover details for the post
-                                const handoverDetails = {
-                                    handoverPersonName: `${handoverPersonData.firstName} ${handoverPersonData.lastName}`,
-                                    handoverPersonContact: handoverPersonData.contactNum,
-                                    handoverPersonStudentId: handoverPersonData.studentId,
-                                    handoverPersonEmail: handoverPersonData.email,
-                                    handoverItemPhotos: handoverData.itemPhotos || [],
-                                    handoverIdPhoto: handoverData.idPhotoUrl,
-                                    ownerIdPhoto: handoverData.ownerIdPhoto || '', // This will be set when owner confirms
-                                    handoverConfirmedAt: serverTimestamp(),
-                                    handoverConfirmedBy: confirmBy
+                                // STEP 3: Extract the complete handover request chat bubble details
+                                // This preserves all the information from the chat bubble before it gets cleaned up
+                                const handoverRequestDetails = {
+                                    // Original message details
+                                    messageId: messageId,
+                                    messageText: messageData.text || '',
+                                    messageTimestamp: messageData.timestamp,
+                                    senderId: messageData.senderId,
+                                    senderName: messageData.senderName || '',
+                                    senderProfilePicture: messageData.senderProfilePicture || '',
+
+                                    // Handover data from the message
+                                    handoverReason: handoverData.handoverReason || '',
+                                    handoverRequestedAt: handoverData.requestedAt || null,
+                                    handoverRespondedAt: handoverData.respondedAt || null,
+                                    handoverResponseMessage: handoverData.responseMessage || '',
+
+                                    // ID photo verification details
+                                    idPhotoUrl: handoverData.idPhotoUrl || '',
+                                    idPhotoConfirmed: true,
+                                    idPhotoConfirmedAt: serverTimestamp(),
+                                    idPhotoConfirmedBy: confirmBy,
+
+                                    // Item photos
+                                    itemPhotos: handoverData.itemPhotos || [],
+                                    itemPhotosConfirmed: handoverData.itemPhotosConfirmed || false,
+                                    itemPhotosConfirmedAt: handoverData.itemPhotosConfirmedAt || null,
+                                    itemPhotosConfirmedBy: handoverData.itemPhotosConfirmedBy || '',
+
+                                    // Owner verification details
+                                    ownerIdPhoto: handoverData.ownerIdPhoto || '',
+                                    ownerIdPhotoConfirmed: handoverData.ownerIdPhotoConfirmed || false,
+                                    ownerIdPhotoConfirmedAt: handoverData.ownerIdPhotoConfirmedAt || null,
+                                    ownerIdPhotoConfirmedBy: handoverData.ownerIdPhotoConfirmedBy || ''
                                 };
 
-                                // Update post with handover details and status
+                                // STEP 4: Prepare handover details for the post
+                                const handoverDetails = {
+                                    handoverPersonName: `${handoverPersonData.firstName || ''} ${handoverPersonData.lastName || ''}`,
+                                    handoverPersonContact: handoverPersonData.contactNum || '',
+                                    handoverPersonStudentId: handoverPersonData.studentId || '',
+                                    handoverPersonEmail: handoverPersonData.email || '',
+                                    handoverItemPhotos: handoverData.itemPhotos || [],
+                                    handoverIdPhoto: handoverData.idPhotoUrl || '',
+                                    ownerIdPhoto: handoverData.ownerIdPhoto || '',
+                                    handoverConfirmedAt: serverTimestamp(),
+                                    handoverConfirmedBy: confirmBy,
+                                    // Store the complete handover request chat bubble details
+                                    handoverRequestDetails: handoverRequestDetails
+                                };
+
+                                // STEP 5: Get all messages from the conversation to preserve the chat history
+                                const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+                                const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
+                                const messagesSnap = await getDocs(messagesQuery);
+
+                                const conversationMessages = messagesSnap.docs.map(doc => ({
+                                    id: doc.id,
+                                    ...doc.data()
+                                }));
+
+                                // STEP 6: Update post with handover details, status, and conversation data
                                 await updateDoc(doc(db, 'posts', postId), {
                                     status: 'resolved',
                                     handoverDetails: handoverDetails,
+                                    conversationData: {
+                                        conversationId: conversationId,
+                                        messages: conversationMessages,
+                                        participants: conversationData.participants,
+                                        createdAt: conversationData.createdAt,
+                                        lastMessage: conversationData.lastMessage
+                                    },
                                     updatedAt: serverTimestamp()
                                 });
 
-                                console.log('✅ Mobile: Post updated with handover details:', postId);
+                                console.log('✅ Mobile: Post updated with complete handover details and conversation data:', postId);
+                                console.log('✅ Mobile: Handover request chat bubble details preserved in post');
+
+                                // STEP 7: Delete the conversation after successful data preservation
+                                try {
+                                    console.log('🗑️ Mobile: Starting conversation deletion after successful handover confirmation...');
+
+                                    // Delete all messages in the conversation first
+                                    const messagesToDelete = messagesSnap.docs.map(doc => doc.ref);
+                                    if (messagesToDelete.length > 0) {
+                                        const deleteBatch = writeBatch(db);
+                                        messagesToDelete.forEach(messageRef => {
+                                            deleteBatch.delete(messageRef);
+                                        });
+                                        await deleteBatch.commit();
+                                        console.log(`✅ Mobile: Deleted ${messagesToDelete.length} messages from conversation`);
+                                    }
+
+                                    // Delete the conversation document
+                                    await deleteDoc(conversationRef);
+                                    console.log('✅ Mobile: Conversation deleted successfully');
+
+                                    // Return success with conversation deleted
+                                    return {
+                                        success: true,
+                                        conversationDeleted: true,
+                                        postId: postId
+                                    };
+
+                                } catch (deletionError: any) {
+                                    console.warn('⚠️ Mobile: Failed to delete conversation after handover confirmation:', deletionError.message);
+                                    // Don't throw error here - the handover was successful, conversation deletion is cleanup
+                                    // The conversation will remain but all important data is already preserved in the post
+
+                                    // Return success but conversation not deleted
+                                    return {
+                                        success: true,
+                                        conversationDeleted: false,
+                                        postId: postId
+                                    };
+                                }
+
                             } else {
                                 console.warn('⚠️ Mobile: Handover person not found, updating post status only');
                                 // Update post status to resolved even if handover person data not found
@@ -834,6 +930,12 @@ export const messageService = {
                                     status: 'resolved',
                                     updatedAt: serverTimestamp()
                                 });
+
+                                return {
+                                    success: true,
+                                    conversationDeleted: false,
+                                    postId: postId
+                                };
                             }
                         } else {
                             console.warn('⚠️ Mobile: No handover data found, updating post status only');
@@ -842,6 +944,12 @@ export const messageService = {
                                 status: 'resolved',
                                 updatedAt: serverTimestamp()
                             });
+
+                            return {
+                                success: true,
+                                conversationDeleted: false,
+                                postId: postId
+                            };
                         }
                     } else {
                         console.warn('⚠️ Mobile: Handover message not found, updating post status only');
@@ -850,12 +958,30 @@ export const messageService = {
                             status: 'resolved',
                             updatedAt: serverTimestamp()
                         });
+
+                        return {
+                            success: true,
+                            conversationDeleted: false,
+                            postId: postId
+                        };
                     }
                 } else {
                     console.warn('⚠️ Mobile: No postId found in conversation, cannot update post');
+
+                    return {
+                        success: false,
+                        conversationDeleted: false,
+                        error: 'No postId found in conversation'
+                    };
                 }
             } else {
                 console.warn('⚠️ Mobile: Conversation not found, cannot update post');
+
+                return {
+                    success: false,
+                    conversationDeleted: false,
+                    error: 'Conversation not found'
+                };
             }
 
         } catch (error: any) {

@@ -9,6 +9,7 @@ import { messageService } from '../utils/firebase';
 import ClaimVerificationModal from './ClaimVerificationModal';
 import HandoverVerificationModal from './HandoverVerificationModal';
 import { cloudinaryService } from '../utils/cloudinary';
+import { useNavigate } from 'react-router-dom';
 
 interface ChatWindowProps {
   conversation: Conversation | null;
@@ -24,10 +25,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [isClaimSubmitting, setIsClaimSubmitting] = useState(false);
   const [showHandoverModal, setShowHandoverModal] = useState(false);
   const [isHandoverSubmitting, setIsHandoverSubmitting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { sendMessage, getConversationMessages, markConversationAsRead, sendClaimRequest } = useMessage();
+  const { sendMessage, getConversationMessages, markConversationAsRead, sendClaimRequest, conversations } = useMessage();
   const { userData } = useAuth();
+  const navigate = useNavigate();
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -65,6 +68,51 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
     return () => unsubscribe();
   }, [conversation, getConversationMessages, markConversationAsRead, userData]);
+
+  // Check if conversation still exists (wasn't deleted)
+  useEffect(() => {
+    if (!conversation) return;
+
+    // First check: Immediate check using local conversations state
+    const conversationStillExists = conversations.some(conv => conv.id === conversation.id);
+    if (!conversationStillExists) {
+      console.log('🗑️ Conversation was deleted from local state, redirecting user...');
+      setIsRedirecting(true);
+      navigate('/messages'); // Redirect to messages page
+      return;
+    }
+
+    const checkConversationExists = async () => {
+      try {
+        // Try to access the conversation to see if it still exists
+        // We'll use a simple Firestore query to check if the conversation document exists
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('../utils/firebase');
+        
+        const conversationRef = doc(db, 'conversations', conversation.id);
+        const conversationSnap = await getDoc(conversationRef);
+        
+        // If conversation doesn't exist, it was deleted
+        if (!conversationSnap.exists()) {
+          console.log('🗑️ Conversation was deleted from database, redirecting user...');
+          setIsRedirecting(true);
+          navigate('/messages'); // Redirect to messages page
+        }
+      } catch (error: any) {
+        // If we get a permission error, the conversation was likely deleted
+        if (error.message?.includes('permission') || error.message?.includes('not-found')) {
+          console.log('🗑️ Conversation access denied (likely deleted), redirecting user...');
+          setIsRedirecting(true);
+          navigate('/messages'); // Redirect to messages page
+        }
+      }
+    };
+
+    // Check every 5 seconds if the conversation still exists
+    const interval = setInterval(checkConversationExists, 5000);
+    
+    return () => clearInterval(interval);
+  }, [conversation, conversations]);
 
   // Update existing conversations with missing post data
   useEffect(() => {
@@ -483,7 +531,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         }}
         onScroll={handleScroll}
       >
-        {isLoading ? (
+        {isRedirecting ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="text-center">
+              <LoadingSpinner />
+              <p className="mt-2 text-gray-600">Conversation was deleted, redirecting...</p>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="flex items-center justify-center h-32">
             <LoadingSpinner />
           </div>

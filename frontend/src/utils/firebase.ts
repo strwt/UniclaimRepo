@@ -946,7 +946,7 @@ export const messageService = {
     },
 
     // Confirm ID photo for handover
-    async confirmHandoverIdPhoto(conversationId: string, messageId: string, confirmBy: string): Promise<void> {
+    async confirmHandoverIdPhoto(conversationId: string, messageId: string, confirmBy: string): Promise<{ success: boolean; conversationDeleted: boolean; postId?: string; error?: string }> {
         try {
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
 
@@ -994,20 +994,20 @@ export const messageService = {
                                 const handoverRequestDetails = {
                                     // Original message details
                                     messageId: messageId,
-                                    messageText: messageData.text,
+                                    messageText: messageData.text || '',
                                     messageTimestamp: messageData.timestamp,
                                     senderId: messageData.senderId,
-                                    senderName: messageData.senderName,
-                                    senderProfilePicture: messageData.senderProfilePicture,
+                                    senderName: messageData.senderName || '',
+                                    senderProfilePicture: messageData.senderProfilePicture || '',
 
                                     // Handover data from the message
-                                    handoverReason: handoverData.handoverReason,
-                                    handoverRequestedAt: handoverData.requestedAt,
-                                    handoverRespondedAt: handoverData.respondedAt,
-                                    handoverResponseMessage: handoverData.responseMessage,
+                                    handoverReason: handoverData.handoverReason || '',
+                                    handoverRequestedAt: handoverData.requestedAt || null,
+                                    handoverRespondedAt: handoverData.respondedAt || null,
+                                    handoverResponseMessage: handoverData.responseMessage || '',
 
                                     // ID photo verification details
-                                    idPhotoUrl: handoverData.idPhotoUrl,
+                                    idPhotoUrl: handoverData.idPhotoUrl || '',
                                     idPhotoConfirmed: true,
                                     idPhotoConfirmedAt: serverTimestamp(),
                                     idPhotoConfirmedBy: confirmBy,
@@ -1015,28 +1015,28 @@ export const messageService = {
                                     // Item photos
                                     itemPhotos: handoverData.itemPhotos || [],
                                     itemPhotosConfirmed: handoverData.itemPhotosConfirmed || false,
-                                    itemPhotosConfirmedAt: handoverData.itemPhotosConfirmedAt,
-                                    itemPhotosConfirmedBy: handoverData.itemPhotosConfirmedBy,
+                                    itemPhotosConfirmedAt: handoverData.itemPhotosConfirmedAt || null,
+                                    itemPhotosConfirmedBy: handoverData.itemPhotosConfirmedBy || '',
 
                                     // Owner verification details
                                     ownerIdPhoto: handoverData.ownerIdPhoto || '',
                                     ownerIdPhotoConfirmed: handoverData.ownerIdPhotoConfirmed || false,
-                                    ownerIdPhotoConfirmedAt: handoverData.ownerIdPhotoConfirmedAt,
-                                    ownerIdPhotoConfirmedBy: handoverData.ownerIdPhotoConfirmedBy
+                                    ownerIdPhotoConfirmedAt: handoverData.ownerIdPhotoConfirmedAt || null,
+                                    ownerIdPhotoConfirmedBy: handoverData.ownerIdPhotoConfirmedBy || ''
                                 };
 
                                 // STEP 4: Prepare handover details for the post
                                 const handoverDetails = {
-                                    handoverPersonName: `${handoverPersonData.firstName} ${handoverPersonData.lastName}`,
-                                    handoverPersonContact: handoverPersonData.contactNum,
-                                    handoverPersonStudentId: handoverPersonData.studentId,
-                                    handoverPersonEmail: handoverPersonData.email,
+                                    handoverPersonName: `${handoverPersonData.firstName || ''} ${handoverPersonData.lastName || ''}`,
+                                    handoverPersonContact: handoverPersonData.contactNum || '',
+                                    handoverPersonStudentId: handoverPersonData.studentId || '',
+                                    handoverPersonEmail: handoverPersonData.email || '',
                                     handoverItemPhotos: handoverData.itemPhotos || [],
-                                    handoverIdPhoto: handoverData.idPhotoUrl,
+                                    handoverIdPhoto: handoverData.idPhotoUrl || '',
                                     ownerIdPhoto: handoverData.ownerIdPhoto || '',
                                     handoverConfirmedAt: serverTimestamp(),
                                     handoverConfirmedBy: confirmBy,
-                                    ownerName: ownerName,
+                                    ownerName: ownerName || 'Unknown',
                                     // Store the complete handover request chat bubble details
                                     handoverRequestDetails: handoverRequestDetails
                                 };
@@ -1068,26 +1068,95 @@ export const messageService = {
                                 console.log('✅ Post updated with complete handover details and conversation data:', postId);
                                 console.log('✅ Handover request chat bubble details preserved in post');
 
+                                // STEP 7: Delete the conversation after successful data preservation
+                                try {
+                                    console.log('🗑️ Starting conversation deletion after successful handover confirmation...');
+
+                                    // Delete all messages in the conversation first
+                                    const messagesToDelete = messagesSnap.docs.map(doc => doc.ref);
+                                    if (messagesToDelete.length > 0) {
+                                        const deleteBatch = writeBatch(db);
+                                        messagesToDelete.forEach(messageRef => {
+                                            deleteBatch.delete(messageRef);
+                                        });
+                                        await deleteBatch.commit();
+                                        console.log(`✅ Deleted ${messagesToDelete.length} messages from conversation`);
+                                    }
+
+                                    // Delete the conversation document
+                                    await deleteDoc(conversationRef);
+                                    console.log('✅ Conversation deleted successfully');
+
+                                    // Return success with conversation deleted
+                                    return {
+                                        success: true,
+                                        conversationDeleted: true,
+                                        postId: postId
+                                    };
+
+                                } catch (deletionError: any) {
+                                    console.warn('⚠️ Failed to delete conversation after handover confirmation:', deletionError.message);
+                                    // Don't throw error here - the handover was successful, conversation deletion is cleanup
+                                    // The conversation will remain but all important data is already preserved in the post
+
+                                    // Return success but conversation not deleted
+                                    return {
+                                        success: true,
+                                        conversationDeleted: false,
+                                        postId: postId
+                                    };
+                                }
+
                             } else {
                                 console.warn('⚠️ Handover person not found, updating post status only');
                                 // Update post status to resolved even if handover person data not found
                                 await this.updatePostStatus(postId, 'resolved');
+
+                                return {
+                                    success: true,
+                                    conversationDeleted: false,
+                                    postId: postId
+                                };
                             }
                         } else {
                             console.warn('⚠️ No handover data found, updating post status only');
                             // Update post status to resolved even if handover data not found
                             await this.updatePostStatus(postId, 'resolved');
+
+                            return {
+                                success: true,
+                                conversationDeleted: false,
+                                postId: postId
+                            };
                         }
                     } else {
                         console.warn('⚠️ Handover message not found, updating post status only');
                         // Update post status to resolved even if message not found
                         await this.updatePostStatus(postId, 'resolved');
+
+                        return {
+                            success: true,
+                            conversationDeleted: false,
+                            postId: postId
+                        };
                     }
                 } else {
                     console.warn('⚠️ No postId found in conversation, cannot update post');
+
+                    return {
+                        success: false,
+                        conversationDeleted: false,
+                        error: 'No postId found in conversation'
+                    };
                 }
             } else {
                 console.warn('⚠️ Conversation not found, cannot update post');
+
+                return {
+                    success: false,
+                    conversationDeleted: false,
+                    error: 'Conversation not found'
+                };
             }
 
         } catch (error: any) {
@@ -2148,8 +2217,78 @@ export const postService = {
             // Get post data to delete associated images
             const post = await this.getPostById(postId);
 
+            // Collect all images that need to be deleted
+            const allImagesToDelete: string[] = [];
+
+            // 1. Add original post images
             if (post && post.images && post.images.length > 0) {
-                await imageService.deleteImages(post.images as string[]);
+                allImagesToDelete.push(...post.images as string[]);
+            }
+
+            // 2. Add handover photos from completed handovers
+            if (post && post.handoverDetails) {
+                const handoverDetails = post.handoverDetails;
+
+                // Add handover ID photo
+                if (handoverDetails.handoverIdPhoto && typeof handoverDetails.handoverIdPhoto === 'string' && handoverDetails.handoverIdPhoto.includes('cloudinary.com')) {
+                    allImagesToDelete.push(handoverDetails.handoverIdPhoto);
+                    console.log('🗑️ Found handover ID photo for deletion:', handoverDetails.handoverIdPhoto.split('/').pop());
+                }
+
+                // Add owner ID photo
+                if (handoverDetails.ownerIdPhoto && typeof handoverDetails.ownerIdPhoto === 'string' && handoverDetails.ownerIdPhoto.includes('cloudinary.com')) {
+                    allImagesToDelete.push(handoverDetails.ownerIdPhoto);
+                    console.log('🗑️ Found owner ID photo for deletion:', handoverDetails.ownerIdPhoto.split('/').pop());
+                }
+
+                // Add handover item photos
+                if (handoverDetails.handoverItemPhotos && Array.isArray(handoverDetails.handoverItemPhotos)) {
+                    handoverDetails.handoverItemPhotos.forEach((photo: any, index: number) => {
+                        if (photo.url && typeof photo.url === 'string' && photo.url.includes('cloudinary.com')) {
+                            allImagesToDelete.push(photo.url);
+                            console.log(`🗑️ Found handover item photo ${index + 1} for deletion:`, photo.url.split('/').pop());
+                        }
+                    });
+                }
+
+                // Add photos from handover request details
+                if (handoverDetails.handoverRequestDetails) {
+                    const requestDetails = handoverDetails.handoverRequestDetails;
+
+                    // Add ID photo from request details
+                    if (requestDetails.idPhotoUrl && typeof requestDetails.idPhotoUrl === 'string' && requestDetails.idPhotoUrl.includes('cloudinary.com')) {
+                        allImagesToDelete.push(requestDetails.idPhotoUrl);
+                        console.log('🗑️ Found handover request ID photo for deletion:', requestDetails.idPhotoUrl.split('/').pop());
+                    }
+
+                    // Add owner ID photo from request details
+                    if (requestDetails.ownerIdPhoto && typeof requestDetails.ownerIdPhoto === 'string' && requestDetails.ownerIdPhoto.includes('cloudinary.com')) {
+                        allImagesToDelete.push(requestDetails.ownerIdPhoto);
+                        console.log('🗑️ Found handover request owner ID photo for deletion:', requestDetails.ownerIdPhoto.split('/').pop());
+                    }
+
+                    // Add item photos from request details
+                    if (requestDetails.itemPhotos && Array.isArray(requestDetails.itemPhotos)) {
+                        requestDetails.itemPhotos.forEach((photo: any, index: number) => {
+                            if (photo.url && typeof photo.url === 'string' && photo.url.includes('cloudinary.com')) {
+                                allImagesToDelete.push(photo.url);
+                                console.log(`🗑️ Found handover request item photo ${index + 1} for deletion:`, photo.url.split('/').pop());
+                            }
+                        });
+                    }
+                }
+            }
+
+            // 3. Delete all collected images from Cloudinary
+            if (allImagesToDelete.length > 0) {
+                console.log(`🗑️ Deleting ${allImagesToDelete.length} total images from Cloudinary (post + handover photos)`);
+                console.log('🗑️ Image breakdown:', {
+                    postImages: post?.images?.length || 0,
+                    handoverPhotos: allImagesToDelete.length - (post?.images?.length || 0)
+                });
+                await imageService.deleteImages(allImagesToDelete);
+            } else {
+                console.log('🗑️ No images found to delete from this post');
             }
 
             // Delete the post first

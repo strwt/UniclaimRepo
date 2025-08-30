@@ -116,7 +116,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const handleConfirmIdPhoto = async () => {
     try {
-      await confirmHandoverIdPhoto(conversationId, message.id);
+      const result = await confirmHandoverIdPhoto(conversationId, message.id);
+      
+      if (result.success) {
+        if (result.conversationDeleted) {
+          // Handover confirmed and conversation deleted successfully
+          alert('✅ Handover confirmed successfully! The conversation has been archived and the post is now marked as completed.');
+        } else {
+          // Handover confirmed but conversation not deleted (fallback case)
+          alert('✅ Handover confirmed successfully! The post is now marked as completed.');
+        }
+      } else {
+        // Handover failed
+        const errorMessage = result.error || 'Unknown error occurred';
+        alert(`❌ Failed to confirm handover: ${errorMessage}`);
+      }
     } catch (error: any) {
       console.error('Failed to confirm ID photo:', error.message);
       alert('Failed to confirm ID photo. Please try again.');

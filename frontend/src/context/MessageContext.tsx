@@ -13,7 +13,7 @@ interface MessageContextType {
   markMessageAsRead: (conversationId: string, messageId: string) => Promise<void>;
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>; // New: Delete message function
   updateHandoverResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update handover response
-  confirmHandoverIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm ID photo function
+  confirmHandoverIdPhoto: (conversationId: string, messageId: string) => Promise<{ success: boolean; conversationDeleted: boolean; postId?: string; error?: string }>; // New: Confirm ID photo function
   sendClaimRequest: (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string, evidencePhotos?: { url: string; uploadedAt: any; description?: string }[]) => Promise<void>; // New: Send claim request
   updateClaimResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update claim response
   confirmClaimIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm claim ID photo
@@ -114,13 +114,23 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
   };
 
-  const confirmHandoverIdPhoto = async (conversationId: string, messageId: string): Promise<void> => {
+  const confirmHandoverIdPhoto = async (conversationId: string, messageId: string): Promise<{ success: boolean; conversationDeleted: boolean; postId?: string; error?: string }> => {
     try {
       if (!userId) {
         throw new Error('User not authenticated - userId is null');
       }
 
-      await messageService.confirmHandoverIdPhoto(conversationId, messageId, userId);
+      const result = await messageService.confirmHandoverIdPhoto(conversationId, messageId, userId);
+      
+      // If conversation was successfully deleted, remove it from local state
+      if (result.success && result.conversationDeleted) {
+        console.log('🗑️ Removing deleted conversation from local state:', conversationId);
+        setConversations(prevConversations => 
+          prevConversations.filter(conv => conv.id !== conversationId)
+        );
+      }
+      
+      return result;
     } catch (error: any) {
       console.error('Failed to confirm handover ID photo:', error.message);
       throw new Error(error.message || 'Failed to confirm handover ID photo');
