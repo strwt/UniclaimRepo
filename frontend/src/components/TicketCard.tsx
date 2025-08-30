@@ -50,6 +50,15 @@ const TicketCard = ({ post, onClick }: PostCardProps) => {
           </p>
         </div>
         
+        {/* Status-specific information */}
+        {post.status === 'resolved' && (
+          <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded">
+            <p className="text-xs text-green-700 font-medium">
+              ✅ Handover completed - This ticket cannot be edited or deleted
+            </p>
+          </div>
+        )}
+        
         {/* Found Action Display - only show for found items */}
         {post.type === "found" && post.foundAction && (
           <div className="mb-2">
