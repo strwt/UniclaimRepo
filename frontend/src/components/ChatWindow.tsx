@@ -73,7 +73,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   useEffect(() => {
     if (!conversation) return;
 
-    // First check: Immediate check using local conversations state
+    // Immediate check using local conversations state
     const conversationStillExists = conversations.some(conv => conv.id === conversation.id);
     if (!conversationStillExists) {
       console.log('🗑️ Conversation was deleted from local state, redirecting user...');
@@ -81,11 +81,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       navigate('/messages'); // Redirect to messages page
       return;
     }
+  }, [conversation, conversations, navigate]);
+
+  // Additional check for conversation existence in database (less frequent)
+  useEffect(() => {
+    if (!conversation) return;
 
     const checkConversationExists = async () => {
       try {
         // Try to access the conversation to see if it still exists
-        // We'll use a simple Firestore query to check if the conversation document exists
         const { doc, getDoc } = await import('firebase/firestore');
         const { db } = await import('../utils/firebase');
         
@@ -108,11 +112,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       }
     };
 
-    // Check every 5 seconds if the conversation still exists
-    const interval = setInterval(checkConversationExists, 5000);
+    // Check every 10 seconds if the conversation still exists (reduced frequency)
+    const interval = setInterval(checkConversationExists, 10000);
     
     return () => clearInterval(interval);
-  }, [conversation, conversations]);
+  }, [conversation, navigate]);
 
   // Update existing conversations with missing post data
   useEffect(() => {
@@ -460,6 +464,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     return true;
   };
 
+  // Show redirecting state if conversation is being deleted
+  if (isRedirecting) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="w-16 h-16 mx-auto mb-4">
+            <LoadingSpinner />
+          </div>
+          <p className="text-xl font-semibold text-gray-800 mb-2">Handover Completed! 🎉</p>
+          <p className="text-gray-600 mb-4">The conversation has been successfully completed and archived.</p>
+          <p className="text-sm text-gray-500">Redirecting you to the conversation list...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!conversation) {
     return (
       <div className="flex-1 flex items-center justify-center  mt-50">
@@ -531,14 +551,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         }}
         onScroll={handleScroll}
       >
-        {isRedirecting ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="text-center">
-              <LoadingSpinner />
-              <p className="mt-2 text-gray-600">Conversation was deleted, redirecting...</p>
-            </div>
-          </div>
-        ) : isLoading ? (
+        {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <LoadingSpinner />
           </div>

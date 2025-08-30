@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { Conversation } from "@/types/Post";
 import ConversationList from "../../components/ConversationList";
@@ -11,6 +11,15 @@ const MessagesPage: React.FC = () => {
     useState<Conversation | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [isGoingBack, setIsGoingBack] = useState(false);
+
+  // Handle URL changes and clear selected conversation when no conversation is specified
+  useEffect(() => {
+    const conversationParam = searchParams.get("conversation");
+    if (!conversationParam) {
+      // No conversation in URL, clear the selected conversation
+      setSelectedConversation(null);
+    }
+  }, [searchParams]);
 
   const handleSelectConversation = (conversation: Conversation) => {
     if (!isGoingBack) {
