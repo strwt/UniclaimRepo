@@ -114,7 +114,10 @@ const MessagesPage: React.FC = () => {
 
                 {/* Mobile Chat */}
                 <div className="flex-1 overflow-hidden">
-                  <ChatWindow conversation={selectedConversation} />
+                  <ChatWindow
+                    conversation={selectedConversation}
+                    onClearConversation={() => setSelectedConversation(null)}
+                  />
                 </div>
               </div>
             )}

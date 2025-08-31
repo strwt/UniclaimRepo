@@ -14,9 +14,13 @@ import NoChat from "../assets/no_chat.png";
 
 interface ChatWindowProps {
   conversation: Conversation | null;
+  onClearConversation?: () => void; // New prop to clear selected conversation
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({
+  conversation,
+  onClearConversation,
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +32,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [isHandoverSubmitting, setIsHandoverSubmitting] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
+  const navigate = useNavigate();
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const {
     sendMessage,
@@ -37,7 +43,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     conversations,
   } = useMessage();
   const { userData } = useAuth();
-  const navigate = useNavigate();
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -93,10 +98,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         "🗑️ Conversation was deleted from local state, redirecting user..."
       );
       setIsRedirecting(true);
-      navigate("/messages"); // Redirect to messages page
+      navigate("/messages"); // Redirect to messages page b1eb10c578051989894bb0b7fcc26ca096ed5fa6
       return;
     }
-  }, [conversation, conversations, navigate]);
+  }, [conversation, conversations, onClearConversation]);
 
   // Additional check for conversation existence in database (less frequent)
   useEffect(() => {
@@ -129,7 +134,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
             "🗑️ Conversation access denied (likely deleted), redirecting user..."
           );
           setIsRedirecting(true);
-          navigate("/messages"); // Redirect to messages page
+          navigate("/messages"); // Redirect to messages page b1eb10c578051989894bb0b7fcc26ca096ed5fa6
         }
       }
     };
@@ -138,7 +143,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     const interval = setInterval(checkConversationExists, 10000);
 
     return () => clearInterval(interval);
-  }, [conversation, navigate]);
+  }, [conversation, onClearConversation]);
 
   // Update existing conversations with missing post data
   useEffect(() => {
@@ -700,6 +705,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     );
   }
 
+  function handleConfirmIdPhotoSuccess(_messageId: string): void {
+    throw new Error("Function not implemented.");
+  }
+
   return (
     <div className="flex-1 flex flex-col bg-white h-full">
       {/* Chat Header */}
@@ -787,6 +796,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
                 postOwnerId={conversation.postCreatorId}
                 onHandoverResponse={handleHandoverResponse}
                 onClaimResponse={handleClaimResponse}
+                onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
               />
             ))}
             <div ref={messagesEndRef} />

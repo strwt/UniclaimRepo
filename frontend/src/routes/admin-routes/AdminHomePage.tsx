@@ -218,14 +218,30 @@ export default function AdminHomePage() {
     const reason = prompt(`Why are you reverting "${post.title}"? (Optional reason):`);
     if (reason === null) return; // User cancelled
 
-    if (confirm(`Are you sure you want to revert "${post.title}" back to pending status? This will reset any claim/handover requests.`)) {
+    if (confirm(`Are you sure you want to revert "${post.title}" back to pending status? This will reset any claim/handover requests and delete associated photos.`)) {
       try {
         const { postService } = await import('../../utils/firebase');
+        
+        // First, clean up handover details and photos
+        console.log('🧹 Starting cleanup of handover details and photos...');
+        const cleanupResult = await postService.cleanupHandoverDetailsAndPhotos(post.id);
+        
+        // Then update the post status to pending
         await postService.updatePostStatus(post.id, 'pending');
         
-        showToast("success", "Resolution Reverted", `"${post.title}" has been reverted back to pending status.`);
-        console.log('Post resolution reverted successfully:', post.title);
-        // Optionally refresh the posts list here if needed
+        // Show success message with cleanup details
+        let successMessage = `"${post.title}" has been reverted back to pending status.`;
+        if (cleanupResult.photosDeleted > 0) {
+          successMessage += ` ${cleanupResult.photosDeleted} photos were deleted from storage.`;
+        }
+        if (cleanupResult.errors.length > 0) {
+          console.warn('⚠️ Some cleanup errors occurred:', cleanupResult.errors);
+          successMessage += ` Note: Some cleanup operations had issues.`;
+        }
+        
+        showToast("success", "Resolution Reverted", successMessage);
+        console.log('Post resolution reverted successfully:', post.title, 'Cleanup result:', cleanupResult);
+        
       } catch (error: any) {
         console.error('Failed to revert post resolution:', error);
         showToast("error", "Revert Failed", error.message || 'Failed to revert post resolution');

@@ -89,6 +89,7 @@ CRYPTOJS_*.md
 FIRESTORE_*.md
 DUPLICATE_*.md
 CENTRALIZED_*.md
+README_HANDOVER_CLEANUP_FEATURE.md
 
 # Sensitive data
 secrets/
