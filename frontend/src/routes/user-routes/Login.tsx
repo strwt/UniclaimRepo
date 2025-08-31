@@ -60,7 +60,7 @@ export default function Login() {
     if (isValid) {
       try {
         await login(trimmedEmail, trimmedPassword);
-        
+
         // Check if user is admin and redirect accordingly
         const currentUser = authService.getCurrentUser();
         if (currentUser) {
@@ -157,18 +157,20 @@ export default function Login() {
                 </div>
               )}
 
-              <Link
-                to="/"
-                className="text-manrope my-4 flex justify-end text-sm text-black hover:text-brand hover:underline"
-              >
-                Forgot Password?
-              </Link>
+              <div className="flex justify-end">
+                <Link
+                  to="/"
+                  className="text-manrope my-4 text-sm text-black hover:text-brand hover:underline"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
 
               <div className="space-y-5">
                 <button
                   className={`w-full py-2 text-white rounded-lg transition-all duration-200 ${
                     loading || isRedirecting
-                      ? "bg-gray-400 cursor-not-allowed" 
+                      ? "bg-gray-400 cursor-not-allowed"
                       : "bg-brand hover:bg-teal-600 hover:cursor-pointer"
                   }`}
                   type="submit"
