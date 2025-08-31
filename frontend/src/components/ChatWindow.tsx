@@ -807,12 +807,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       {/* Message Input - Sticky at bottom */}
       <div className="p-4 border-t border-gray-200 bg-white mt-auto relative">
         {/* Scroll to Bottom Button - Above Input */}
-        {showScrollToBottom && (
-          <button
-            onClick={scrollToBottom}
-            className="absolute -top-15 left-1/2 transform -translate-x-1/2 p-2 border border-gray-300 rounded-full shadow-sm hover:bg-gray-50 transition-colors duration-200 bg-white z-10"
-            title="Scroll to bottom"
-          >
+        <button
+          onClick={scrollToBottom}
+          className={`absolute -top-15 left-1/2 transform -translate-x-1/2 p-2 border border-gray-300 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-300 bg-white z-10 ${
+            showScrollToBottom ? 'animate-slide-up opacity-100' : 'animate-slide-down opacity-0'
+          }`}
+          title="Scroll to bottom"
+          style={{ 
+            visibility: showScrollToBottom ? 'visible' : 'hidden',
+            pointerEvents: showScrollToBottom ? 'auto' : 'none'
+          }}
+        >
             <svg
               className="w-4 h-4 text-gray-600"
               fill="none"
@@ -827,7 +832,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               />
             </svg>
           </button>
-        )}
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <div className="flex-1 relative">
             <input

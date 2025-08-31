@@ -10,25 +10,17 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import PageLayout from '../../layout/PageLayout';
 import { useAuth } from '../../context/AuthContext';
+import type { RootStackParamList } from '../../types/type';
 
-interface ClaimFormScreenProps {
-  route: {
-    params: {
-      conversationId: string;
-      postId: string;
-      postTitle: string;
-      postOwnerId: string;
-    };
-  };
-}
+type ClaimFormScreenRouteProp = RouteProp<RootStackParamList, 'ClaimFormScreen'>;
 
 export default function ClaimFormScreen() {
   const navigation = useNavigation();
-  const route = useRoute<ClaimFormScreenProps['route']>();
+  const route = useRoute<ClaimFormScreenRouteProp>();
   const { user, userData } = useAuth();
   
   const { conversationId, postId, postTitle, postOwnerId } = route.params;
@@ -69,14 +61,25 @@ export default function ClaimFormScreen() {
       return;
     }
 
-    // Navigate to photo capture screen
-    navigation.navigate('PhotoCaptureScreen' as never, {
-      conversationId,
-      postId,
-      postTitle,
-      postOwnerId,
-      claimReason,
-    } as never);
+    setIsSubmitting(true);
+
+    try {
+      // Small delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Navigate to photo capture screen
+      navigation.navigate('PhotoCaptureScreen' as keyof RootStackParamList, {
+        conversationId,
+        postId,
+        postTitle,
+        postOwnerId,
+        claimReason,
+      });
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to proceed to photo verification');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBack = () => {
@@ -196,7 +199,7 @@ export default function ClaimFormScreen() {
             {isSubmitting ? (
               <View className="flex-row items-center">
                 <ActivityIndicator size="small" color="white" />
-                <Text className="text-white font-medium ml-2">Sending...</Text>
+                <Text className="text-white font-medium ml-2">Processing...</Text>
               </View>
             ) : (
               <Text className="text-white font-medium text-base">
