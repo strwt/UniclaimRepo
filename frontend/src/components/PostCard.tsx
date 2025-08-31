@@ -84,7 +84,7 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
       )}
 
       <div className="p-3">
-        <div className="flex items-center gap-2 text-[13px] lg:text-[10px] text-gray-500">
+        <div className="flex items-center gap-2 text-gray-500 text-[11px] mb-2.5">
           <span
             className={`capitalize px-2 py-1 rounded-[3px] font-medium ${
               categoryStyles[post.category] || "bg-gray-100 text-gray-700"
@@ -92,6 +92,7 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
           >
             {post.category}
           </span>
+
           <span
             className={`capitalize px-2 py-1 rounded-[3px] font-medium ${
               typeStyles[post.type] || "bg-gray-100 text-gray-700"
@@ -99,23 +100,20 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
           >
             {post.type}
           </span>
-          
-          {/* Found Action Badge - only show for found items with action */}
+        </div>
+
+        <div className="flex items-center gap-2 text-[11px]">
+          {/* Found Action Badge */}
           {post.type === "found" && post.foundAction && (
-            <span className="px-2 py-1 rounded-[3px] font-medium bg-blue-100 text-blue-700 text-[11px]">
-              {post.foundAction === "keep" ? "Keep" : 
-               post.foundAction === "turnover to OSA" ? "OSA" : 
-               "Campus Security"}
+            <span className="px-2 py-1 rounded-[3px] font-medium bg-blue-100 text-blue-700">
+              {post.foundAction === "keep"
+                ? "Keep"
+                : post.foundAction === "turnover to OSA"
+                ? "OSA"
+                : "Campus Security"}
             </span>
           )}
-          
-          {/* Status Badge */}
-          {post.status === 'resolved' && (
-            <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-green-100 text-green-700 text-[11px]">
-              ✅ RESOLVED
-            </span>
-          )}
-          
+
           {/* Expiry Countdown Badge */}
           {post.expiryDate && (
             <>
@@ -123,28 +121,27 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
                 try {
                   const now = new Date();
                   let expiry: Date;
-                  
-                  // Handle Firebase Timestamp
-                  if (post.expiryDate && typeof post.expiryDate === 'object' && 'seconds' in post.expiryDate) {
-                    // Firebase Timestamp
+
+                  if (
+                    post.expiryDate &&
+                    typeof post.expiryDate === "object" &&
+                    "seconds" in post.expiryDate
+                  ) {
                     expiry = new Date(post.expiryDate.seconds * 1000);
                   } else if (post.expiryDate instanceof Date) {
-                    // Regular Date object
                     expiry = post.expiryDate;
                   } else if (post.expiryDate) {
-                    // String or other format
                     expiry = new Date(post.expiryDate);
                   } else {
                     return null;
                   }
-                  
-                  // Check if date is valid
-                  if (isNaN(expiry.getTime())) {
-                    return null;
-                  }
-                  
-                  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                  
+
+                  if (isNaN(expiry.getTime())) return null;
+
+                  const daysLeft = Math.ceil(
+                    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+                  );
+
                   if (daysLeft <= 0) {
                     return (
                       <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-red-100 text-red-700">
@@ -154,28 +151,35 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
                   } else if (daysLeft <= 3) {
                     return (
                       <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-red-100 text-red-700">
-                        ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                        ⚠️ {daysLeft} day{daysLeft !== 1 ? "s" : ""} left
                       </span>
                     );
                   } else if (daysLeft <= 7) {
                     return (
                       <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-orange-100 text-orange-700">
-                        ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                        ⚠️ {daysLeft} day{daysLeft !== 1 ? "s" : ""} left
                       </span>
                     );
                   } else {
                     return (
                       <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-green-100 text-green-700">
-                        {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                        {daysLeft} day{daysLeft !== 1 ? "s" : ""} left
                       </span>
                     );
                   }
                 } catch (error) {
-                  console.error('Error calculating days left:', error);
+                  console.error("Error calculating days left:", error);
                   return null;
                 }
               })()}
             </>
+          )}
+
+          {/* Status Badge */}
+          {post.status === "resolved" && (
+            <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-green-100 text-green-700 text-[11px]">
+              ✅ RESOLVED
+            </span>
           )}
         </div>
 
@@ -192,11 +196,12 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
             priority={false} // Don't prioritize profile pictures
           />
           <p className="text-xs text-blue-800 font-medium">
-            Posted by {post.user?.firstName && post.user?.lastName 
-              ? `${post.user.firstName} ${post.user.lastName}` 
-              : post.user?.email 
-              ? post.user.email.split('@')[0] 
-              : 'Unknown User'}
+            Posted by{" "}
+            {post.user?.firstName && post.user?.lastName
+              ? `${post.user.firstName} ${post.user.lastName}`
+              : post.user?.email
+              ? post.user.email.split("@")[0]
+              : "Unknown User"}
           </p>
         </div>
 
@@ -273,57 +278,82 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
         )}
 
         {/* Handover Information - only show for resolved posts with handover details (if no claim details) */}
-        {post.status === 'resolved' && post.handoverDetails && post.handoverDetails.handoverRequestDetails && !post.claimDetails && (
-          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-            {/* Show handover request details summary if available */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-green-600 text-lg">💬</span>
-                <h4 className="text-sm font-semibold text-green-800">Handover Request Details</h4>
+        {post.status === "resolved" &&
+          post.handoverDetails &&
+          post.handoverDetails.handoverRequestDetails &&
+          !post.claimDetails && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+              {/* Show handover request details summary if available */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-green-600 text-lg">💬</span>
+                  <h4 className="text-sm font-semibold text-green-800">
+                    Handover Request Details
+                  </h4>
+                </div>
+
+                {/* Show handover reason if available */}
+                {post.handoverDetails.handoverRequestDetails.handoverReason && (
+                  <div className="text-green-700 mb-2">
+                    <span className="font-medium">Reason: </span>
+                    <span className="italic">
+                      "
+                      {
+                        post.handoverDetails.handoverRequestDetails
+                          .handoverReason
+                      }
+                      "
+                    </span>
+                  </div>
+                )}
+
+                {/* Show verification status */}
+                <div className="flex items-center gap-4 text-xs text-green-600">
+                  <span>
+                    ID Photo:{" "}
+                    {post.handoverDetails.handoverRequestDetails
+                      .idPhotoConfirmed
+                      ? "✅"
+                      : "⏳"}
+                  </span>
+                  {post.handoverDetails.handoverRequestDetails.itemPhotos && (
+                    <span>
+                      Item Photos:{" "}
+                      {post.handoverDetails.handoverRequestDetails
+                        .itemPhotosConfirmed
+                        ? "✅"
+                        : "⏳"}
+                    </span>
+                  )}
+                  {post.handoverDetails.handoverRequestDetails.ownerIdPhoto && (
+                    <span>
+                      Owner ID:{" "}
+                      {post.handoverDetails.handoverRequestDetails
+                        .ownerIdPhotoConfirmed
+                        ? "✅"
+                        : "⏳"}
+                    </span>
+                  )}
+                </div>
               </div>
-              
-              {/* Show handover reason if available */}
-              {post.handoverDetails.handoverRequestDetails.handoverReason && (
-                <div className="text-green-700 mb-2">
-                  <span className="font-medium">Reason: </span>
-                  <span className="italic">"{post.handoverDetails.handoverRequestDetails.handoverReason}"</span>
+
+              {/* Conversation Summary */}
+              {post.conversationData && (
+                <div className="mt-3 pt-2 border-t border-green-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-green-600">💬</span>
+                    <span className="text-xs font-medium text-green-700">
+                      Conversation Summary
+                    </span>
+                  </div>
+                  <div className="text-xs text-green-600">
+                    {post.conversationData.messages?.length || 0} messages
+                    exchanged
+                  </div>
                 </div>
               )}
-              
-              {/* Show verification status */}
-              <div className="flex items-center gap-4 text-xs text-green-600">
-                <span>
-                  ID Photo: {post.handoverDetails.handoverRequestDetails.idPhotoConfirmed ? '✅' : '⏳'}
-                </span>
-                {post.handoverDetails.handoverRequestDetails.itemPhotos && (
-                  <span>
-                    Item Photos: {post.handoverDetails.handoverRequestDetails.itemPhotosConfirmed ? '✅' : '⏳'}
-                  </span>
-                )}
-                {post.handoverDetails.handoverRequestDetails.ownerIdPhoto && (
-                  <span>
-                    Owner ID: {post.handoverDetails.handoverRequestDetails.ownerIdPhotoConfirmed ? '✅' : '⏳'}
-                  </span>
-                )}
-              </div>
             </div>
-            
-            {/* Conversation Summary */}
-            {post.conversationData && (
-              <div className="mt-3 pt-2 border-t border-green-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-green-600">💬</span>
-                  <span className="text-xs font-medium text-green-700">Conversation Summary</span>
-                </div>
-                <div className="text-xs text-green-600">
-                  {post.conversationData.messages?.length || 0} messages exchanged
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-
+          )}
       </div>
     </div>
   );

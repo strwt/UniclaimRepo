@@ -140,7 +140,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
   return (
     <div className="bg-gray-50 border-r border-gray-200 h-full flex flex-col">
       <div className="pl-7 pr-4 py-3 border-b border-gray-200 flex-shrink-0">
-        <h1 className="text-base font-semibold">Contacts</h1>
+        <h1 className="text-xl font-semibold">Contacts</h1>
         <p className="text-sm text-gray-500">
           {sortedConversations.length} conversation
           {sortedConversations.length !== 1 ? "s" : ""}

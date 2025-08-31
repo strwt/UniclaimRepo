@@ -60,7 +60,7 @@ export default function AdminSideNav({
         {/* ✅ Desktop Sidebar */}
         <aside
           className={`fixed top-0 left-0 hidden z-20 bg-white text-black pt-22 px-4.5 h-full ${
-            isOpen ? "w-57" : "w-21"
+            isOpen ? "w-60" : "w-21"
           } lg:block`}
         >
           <div className="flex flex-col gap-2">
