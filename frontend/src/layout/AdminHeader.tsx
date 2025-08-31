@@ -63,7 +63,7 @@ export default function AdminHeader({
               {sideBarOpen ? (
                 <HiOutlineMenuAlt2
                   onClick={sideNavClick}
-                  className="size-8 ml-2 lg:ml-17 text-white stroke-1 cursor-pointer hover:text-brand"
+                  className="size-8 ml-2 lg:ml-12 text-white stroke-1 cursor-pointer hover:text-brand"
                 />
               ) : (
                 <HiOutlineMenuAlt2

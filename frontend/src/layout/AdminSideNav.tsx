@@ -60,7 +60,7 @@ export default function AdminSideNav({
         {/* ✅ Desktop Sidebar */}
         <aside
           className={`fixed top-0 left-0 hidden z-20 bg-white text-black pt-22 px-4.5 h-full ${
-            isOpen ? "w-57" : "w-21"
+            isOpen ? "w-60" : "w-21"
           } lg:block`}
         >
           <div className="flex flex-col gap-2">
@@ -97,7 +97,7 @@ export default function AdminSideNav({
 
             <NavText
               icon={<HiOutlineCog className="size-6 stroke-[1.5px]" />}
-              label="Clean Up"
+              label="System Cleanup"
               to="/admin/cleanup"
               isOpen={isOpen}
               className="mt-2 hover:bg-gray-100"
