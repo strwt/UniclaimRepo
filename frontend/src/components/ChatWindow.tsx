@@ -9,13 +9,14 @@ import { messageService } from '../utils/firebase';
 import ClaimVerificationModal from './ClaimVerificationModal';
 import HandoverVerificationModal from './HandoverVerificationModal';
 import { cloudinaryService } from '../utils/cloudinary';
-import { useNavigate } from 'react-router-dom';
+
 
 interface ChatWindowProps {
   conversation: Conversation | null;
+  onClearConversation?: () => void; // New prop to clear selected conversation
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ conversation, onClearConversation }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +31,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { sendMessage, getConversationMessages, markConversationAsRead, sendClaimRequest, conversations } = useMessage();
   const { userData } = useAuth();
-  const navigate = useNavigate();
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -76,12 +76,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     // Immediate check using local conversations state
     const conversationStillExists = conversations.some(conv => conv.id === conversation.id);
     if (!conversationStillExists) {
-      console.log('🗑️ Conversation was deleted from local state, redirecting user...');
+      console.log('🗑️ Conversation was deleted from local state, clearing conversation...');
       setIsRedirecting(true);
-      navigate('/messages'); // Redirect to messages page
+      if (onClearConversation) {
+        onClearConversation();
+      }
       return;
     }
-  }, [conversation, conversations, navigate]);
+  }, [conversation, conversations, onClearConversation]);
 
   // Additional check for conversation existence in database (less frequent)
   useEffect(() => {
@@ -98,16 +100,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         
         // If conversation doesn't exist, it was deleted
         if (!conversationSnap.exists()) {
-          console.log('🗑️ Conversation was deleted from database, redirecting user...');
+          console.log('🗑️ Conversation was deleted from database, clearing conversation...');
           setIsRedirecting(true);
-          navigate('/messages'); // Redirect to messages page
+          if (onClearConversation) {
+            onClearConversation();
+          }
         }
       } catch (error: any) {
         // If we get a permission error, the conversation was likely deleted
         if (error.message?.includes('permission') || error.message?.includes('not-found')) {
-          console.log('🗑️ Conversation access denied (likely deleted), redirecting user...');
+          console.log('🗑️ Conversation access denied (likely deleted), clearing conversation...');
           setIsRedirecting(true);
-          navigate('/messages'); // Redirect to messages page
+          if (onClearConversation) {
+            onClearConversation();
+          }
         }
       }
     };
@@ -116,7 +122,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     const interval = setInterval(checkConversationExists, 10000);
     
     return () => clearInterval(interval);
-  }, [conversation, navigate]);
+  }, [conversation, onClearConversation]);
 
   // Update existing conversations with missing post data
   useEffect(() => {
@@ -170,6 +176,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
   const handleCloseHandoverModal = () => {
     setShowHandoverModal(false);
+  };
+
+  // Handle successful ID photo confirmation - return to conversation list state
+  const handleConfirmIdPhotoSuccess = () => {
+    // Clear the selected conversation to show the conversation list
+    if (onClearConversation) {
+      onClearConversation();
+    }
   };
 
   const handleSubmitHandover = async (handoverReason: string, idPhotoFile: File | null, itemPhotoFiles: File[]) => {
@@ -573,6 +587,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
                 postOwnerId={conversation.postCreatorId}
                 onHandoverResponse={handleHandoverResponse}
                 onClaimResponse={handleClaimResponse}
+                onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
               />
             ))}
             <div ref={messagesEndRef} />

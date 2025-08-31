@@ -4,6 +4,7 @@ import ProfilePicture from './ProfilePicture';
 import { useMessage } from '../context/MessageContext';
 import ImagePicker from './ImagePicker';
 import ImageModal from './ImageModal';
+import { useToast } from '../context/ToastContext';
 
 interface MessageBubbleProps {
   message: Message;
@@ -14,6 +15,7 @@ interface MessageBubbleProps {
   postOwnerId?: string; // Add post owner ID for handover confirmation logic
   onHandoverResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
   onClaimResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
+  onConfirmIdPhotoSuccess?: () => void; // New prop for handling successful confirmation
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -24,9 +26,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   currentUserId,
   postOwnerId,
   onHandoverResponse,
-  onClaimResponse
+  onClaimResponse,
+  onConfirmIdPhotoSuccess
 }) => {
   const { deleteMessage, updateHandoverResponse, confirmHandoverIdPhoto, confirmClaimIdPhoto, updateClaimResponse } = useMessage();
+  const { showToast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showIdPhotoModal, setShowIdPhotoModal] = useState(false);
@@ -119,21 +123,33 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       const result = await confirmHandoverIdPhoto(conversationId, message.id);
       
       if (result.success) {
-        if (result.conversationDeleted) {
-          // Handover confirmed and conversation deleted successfully
-          alert('✅ Handover confirmed successfully! The conversation has been archived and the post is now marked as completed.');
-        } else {
-          // Handover confirmed but conversation not deleted (fallback case)
-          alert('✅ Handover confirmed successfully! The post is now marked as completed.');
+        // Show success toast
+        showToast(
+          'success',
+          'ID Photo Confirmed',
+          'Handover request confirmed successfully!'
+        );
+        
+        // Call the success callback to handle redirect
+        if (onConfirmIdPhotoSuccess) {
+          onConfirmIdPhotoSuccess();
         }
       } else {
         // Handover failed
         const errorMessage = result.error || 'Unknown error occurred';
-        alert(`❌ Failed to confirm handover: ${errorMessage}`);
+        showToast(
+          'error',
+          'Confirmation Failed',
+          `Failed to confirm handover: ${errorMessage}`
+        );
       }
     } catch (error: any) {
       console.error('Failed to confirm ID photo:', error.message);
-      alert('Failed to confirm ID photo. Please try again.');
+      showToast(
+        'error',
+        'Error',
+        'Failed to confirm ID photo. Please try again.'
+      );
     }
   };
 

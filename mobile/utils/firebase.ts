@@ -2286,6 +2286,104 @@ export const postService = {
         }
     },
 
+    // Update post status
+    async updatePostStatus(postId: string, status: 'pending' | 'resolved' | 'rejected'): Promise<void> {
+        try {
+            await updateDoc(doc(db, 'posts', postId), {
+                status,
+                updatedAt: serverTimestamp()
+            });
+        } catch (error: any) {
+            console.error('Error updating post status:', error);
+            throw new Error(error.message || 'Failed to update post status');
+        }
+    },
+
+    // Clean up handover details and photos when reverting a completed report
+    async cleanupHandoverDetailsAndPhotos(postId: string): Promise<{ photosDeleted: number; errors: string[] }> {
+        try {
+            console.log(`🧹 Mobile: Starting cleanup of handover details and photos for post: ${postId}`);
+
+            // Get the post to extract handover details
+            const postDoc = await getDoc(doc(db, 'posts', postId));
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            const postData = postDoc.data();
+            const handoverDetails = postData.handoverDetails;
+
+            if (!handoverDetails) {
+                console.log('ℹ️ Mobile: No handover details found, nothing to clean up');
+                return { photosDeleted: 0, errors: [] };
+            }
+
+            // Collect all photo URLs that need to be deleted
+            const photoUrlsToDelete: string[] = [];
+            const errors: string[] = [];
+
+            // 1. Handover item photos
+            if (handoverDetails.handoverItemPhotos && Array.isArray(handoverDetails.handoverItemPhotos)) {
+                handoverDetails.handoverItemPhotos.forEach((photo: any) => {
+                    if (photo.url && typeof photo.url === 'string' && photo.url.includes('cloudinary.com')) {
+                        photoUrlsToDelete.push(photo.url);
+                        console.log(`🗑️ Mobile: Found handover item photo for deletion: ${photo.url.split('/').pop()}`);
+                    }
+                });
+            }
+
+            // 2. Handover ID photo
+            if (handoverDetails.handoverIdPhoto && typeof handoverDetails.handoverIdPhoto === 'string' && handoverDetails.handoverIdPhoto.includes('cloudinary.com')) {
+                photoUrlsToDelete.push(handoverDetails.handoverIdPhoto);
+                console.log(`🗑️ Mobile: Found handover ID photo for deletion: ${handoverDetails.handoverIdPhoto.split('/').pop()}`);
+            }
+
+            // 3. Owner ID photo
+            if (handoverDetails.ownerIdPhoto && typeof handoverDetails.ownerIdPhoto === 'string' && handoverDetails.ownerIdPhoto.includes('cloudinary.com')) {
+                photoUrlsToDelete.push(handoverDetails.ownerIdPhoto);
+                console.log(`🗑️ Mobile: Found owner ID photo for deletion: ${handoverDetails.ownerIdPhoto.split('/').pop()}`);
+            }
+
+            // Delete photos from Cloudinary if any exist
+            let photosDeleted = 0;
+            if (photoUrlsToDelete.length > 0) {
+                console.log(`🗑️ Mobile: Deleting ${photoUrlsToDelete.length} photos from Cloudinary...`);
+
+                try {
+                    const { deleteMessageImages } = await import('./cloudinary');
+                    const deletionResult = await deleteMessageImages(photoUrlsToDelete);
+                    photosDeleted = deletionResult.deleted.length;
+
+                    if (deletionResult.failed.length > 0) {
+                        deletionResult.failed.forEach(failedUrl => {
+                            errors.push(`Failed to delete photo: ${failedUrl.split('/').pop()}`);
+                        });
+                    }
+
+                    console.log(`✅ Mobile: Successfully deleted ${photosDeleted} photos from Cloudinary`);
+                } catch (cloudinaryError: any) {
+                    console.error('❌ Mobile: Cloudinary deletion failed:', cloudinaryError);
+                    errors.push(`Cloudinary deletion failed: ${cloudinaryError.message}`);
+                }
+            }
+
+            // Clear handover details from the post
+            await updateDoc(doc(db, 'posts', postId), {
+                handoverDetails: null,
+                conversationData: null, // Also clear conversation data
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`✅ Mobile: Handover details cleared from post: ${postId}`);
+
+            return { photosDeleted, errors };
+
+        } catch (error: any) {
+            console.error('❌ Mobile: Failed to cleanup handover details and photos:', error);
+            throw new Error(`Failed to cleanup handover details: ${error.message}`);
+        }
+    },
+
 
 };
 
