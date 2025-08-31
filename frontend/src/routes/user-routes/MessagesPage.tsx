@@ -68,7 +68,7 @@ const MessagesPage: React.FC = () => {
           />
 
           {/* Messages Layout */}
-          <div className="flex h-[calc(116vh-280px)] overflow-hidden lg:mt-30">
+          <div className="flex h-[calc(100vh-115px)] sm:h-[calc(100vh-135px)] md:h-[calc(100vh-145px)] lg:h-[calc(100vh-155px)] xl:h-[calc(100vh-158px)] overflow-hidden lg:mt-30">
             {/* Conversation List - Left Side */}
             <div className="w-full lg:max-w-sm border-r border-gray-200 flex flex-col">
               <ConversationList
