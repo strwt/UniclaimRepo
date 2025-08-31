@@ -27,7 +27,8 @@ import {
     getDocs,
     writeBatch,
     increment,
-    limit
+    limit,
+    startAfter
 } from 'firebase/firestore';
 // Firebase Storage removed - using Cloudinary instead
 // import {
@@ -1164,11 +1165,12 @@ export const messageService = {
         });
     },
 
-    // Get messages for a conversation
-    getConversationMessages(conversationId: string, callback: (messages: any[]) => void) {
+    // Get messages for a conversation with pagination
+    getConversationMessages(conversationId: string, callback: (messages: any[]) => void, messageLimit: number = 50) {
         const q = query(
             collection(db, 'conversations', conversationId, 'messages'),
-            orderBy('timestamp', 'asc')
+            orderBy('timestamp', 'asc'),
+            limit(messageLimit)
         );
 
         return onSnapshot(q, (snapshot) => {
@@ -1178,6 +1180,30 @@ export const messageService = {
             }));
             callback(messages);
         });
+    },
+
+    // Get older messages for pagination
+    async getOlderMessages(conversationId: string, lastMessageTimestamp: any, messageLimit: number = 20): Promise<any[]> {
+        try {
+            const q = query(
+                collection(db, 'conversations', conversationId, 'messages'),
+                orderBy('timestamp', 'desc'),
+                startAfter(lastMessageTimestamp),
+                limit(messageLimit)
+            );
+
+            const snapshot = await getDocs(q);
+            const messages = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            // Reverse to maintain ascending order
+            return messages.reverse();
+        } catch (error: any) {
+            console.error('Failed to get older messages:', error);
+            throw new Error(error.message || 'Failed to get older messages');
+        }
     },
 
     // Mark message as read

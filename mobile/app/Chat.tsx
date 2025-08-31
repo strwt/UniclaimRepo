@@ -862,7 +862,7 @@ export default function Chat() {
   const route = useRoute<ChatRouteProp>();
   const { conversationId: initialConversationId, postTitle, postId, postOwnerId, postOwnerUserData } = route.params;
   
-  const { sendMessage, createConversation, getConversationMessages, getConversation, sendClaimRequest, updateClaimResponse, markConversationAsRead, markMessageAsRead, getConversationUnreadCount } = useMessage();
+  const { sendMessage, createConversation, getConversationMessages, getOlderMessages, getConversation, sendClaimRequest, updateClaimResponse, markConversationAsRead, markMessageAsRead, getConversationUnreadCount } = useMessage();
   const { user, userData } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -871,6 +871,11 @@ export default function Chat() {
   const [conversationData, setConversationData] = useState<any>(null);
   const flatListRef = useRef<FlatList>(null);
   const [viewableMessages, setViewableMessages] = useState<Set<string>>(new Set());
+  
+  // Pagination state
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Check if handover button should be shown
   const shouldShowHandoverButton = () => {
@@ -926,11 +931,21 @@ export default function Chat() {
 
   useEffect(() => {
     if (conversationId) {
-      // Load messages for existing conversation
+      // Load initial messages with pagination (limit to 50 messages)
       const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
         setMessages(loadedMessages);
-        scrollToBottom();
-      });
+        setIsInitialLoad(false);
+        
+        // If we got fewer messages than the limit, there are no more messages
+        if (loadedMessages.length < 50) {
+          setHasMoreMessages(false);
+        }
+        
+        // Only scroll to bottom on initial load
+        if (isInitialLoad) {
+          scrollToBottom();
+        }
+      }, 50);
       
       // Fetch conversation data for handover button logic
       const fetchConversationData = async () => {
@@ -951,7 +966,7 @@ export default function Chat() {
       
       return () => unsubscribe();
     }
-  }, [conversationId, getConversationMessages, getConversation]);
+  }, [conversationId, getConversationMessages, getConversation, isInitialLoad]);
 
   // Mark conversation as read when new messages arrive while user is viewing
   useEffect(() => {
@@ -1003,6 +1018,44 @@ export default function Chat() {
     }, 100);
   };
 
+  const scrollToBottomOnNewMessage = () => {
+    // Only scroll to bottom if we're not loading older messages
+    if (!isLoadingOlderMessages) {
+      scrollToBottom();
+    }
+  };
+
+  const loadOlderMessages = async () => {
+    if (isLoadingOlderMessages || !hasMoreMessages || messages.length === 0) return;
+
+    try {
+      setIsLoadingOlderMessages(true);
+      
+      // Get the timestamp of the oldest message
+      const oldestMessage = messages[0];
+      if (!oldestMessage?.timestamp) return;
+
+      // Load older messages
+      const olderMessages = await getOlderMessages(conversationId, oldestMessage.timestamp, 20);
+      
+      if (olderMessages.length > 0) {
+        // Prepend older messages to the current messages
+        setMessages(prevMessages => [...olderMessages, ...prevMessages]);
+        
+        // If we got fewer messages than requested, there are no more
+        if (olderMessages.length < 20) {
+          setHasMoreMessages(false);
+        }
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch (error) {
+      console.error('Failed to load older messages:', error);
+    } finally {
+      setIsLoadingOlderMessages(false);
+    }
+  };
+
   const handleCreateConversation = async () => {
     if (!postId || !postOwnerId) {
       Alert.alert('Error', 'Missing post information');
@@ -1039,7 +1092,7 @@ export default function Chat() {
         userData.profilePicture
       );
       setNewMessage('');
-      scrollToBottom();
+      scrollToBottomOnNewMessage();
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
@@ -1213,12 +1266,31 @@ export default function Chat() {
             )}
             contentContainerStyle={{ padding: 16 }}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={scrollToBottom}
+            onContentSizeChange={scrollToBottomOnNewMessage}
             onViewableItemsChanged={onViewableItemsChanged}
             viewabilityConfig={{
               itemVisiblePercentThreshold: 50,
               minimumViewTime: 100,
             }}
+            // Pagination: Load older messages when scrolling to top
+            onEndReached={loadOlderMessages}
+            onEndReachedThreshold={0.1}
+            // Show loading indicator at top when loading older messages
+            ListHeaderComponent={
+              isLoadingOlderMessages ? (
+                <View className="py-4 items-center">
+                  <Text className="text-gray-500 text-sm">Loading older messages...</Text>
+                </View>
+              ) : null
+            }
+            // Show message when no more messages to load
+            ListFooterComponent={
+              !hasMoreMessages && messages.length > 0 ? (
+                <View className="py-4 items-center">
+                  <Text className="text-gray-400 text-xs">No more messages</Text>
+                </View>
+              ) : null
+            }
           />
         )}
 

@@ -8,7 +8,8 @@ interface MessageContextType {
   loading: boolean;
   sendMessage: (conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string) => Promise<void>;
   createConversation: (postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: any, postOwnerUserData?: any) => Promise<string>;
-  getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void) => () => void;
+  getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void, limit?: number) => () => void;
+  getOlderMessages: (conversationId: string, lastMessageTimestamp: any, limit?: number) => Promise<Message[]>;
   getConversation: (conversationId: string) => Promise<any>; // Add getConversation function
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>; // New: Delete message function
   markMessageAsRead: (conversationId: string, messageId: string) => Promise<void>; // New: Mark message as read
@@ -100,8 +101,16 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
   };
 
-  const getConversationMessages = (conversationId: string, callback: (messages: Message[]) => void) => {
-    return messageService.getConversationMessages(conversationId, callback);
+  const getConversationMessages = (conversationId: string, callback: (messages: Message[]) => void, limit?: number) => {
+    return messageService.getConversationMessages(conversationId, callback, limit);
+  };
+
+  const getOlderMessages = async (conversationId: string, lastMessageTimestamp: any, limit?: number) => {
+    try {
+      return await messageService.getOlderMessages(conversationId, lastMessageTimestamp, limit);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to get older messages');
+    }
   };
 
   const getConversation = async (conversationId: string) => {
@@ -293,6 +302,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         sendMessage,
         createConversation,
         getConversationMessages,
+        getOlderMessages,
         getConversation,
         deleteMessage,
         markMessageAsRead,

@@ -33,6 +33,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const navigate = useNavigate();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const {
     sendMessage,
     getConversationMessages,
@@ -43,9 +44,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   } = useMessage();
   const { userData } = useAuth();
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive (no animation)
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      // Direct scroll to bottom - most reliable method
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    } else if (messagesEndRef.current) {
+      // Fallback method
+      messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+    }
+  };
+
+  // Scroll to bottom with animation (for button click)
+  const scrollToBottomWithAnimation = () => {
+    if (messagesContainerRef.current) {
+      // For smooth animation, we need to use scrollIntoView
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    } else if (messagesEndRef.current) {
+      // Fallback method
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   // Handle scroll events to show/hide scroll to bottom button
@@ -56,8 +77,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setShowScrollToBottom(isScrolledUp);
   };
 
+  // Scroll to bottom when messages change (for new messages)
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
   }, [messages]);
 
 
@@ -80,6 +104,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         if (userData && conversation?.unreadCounts?.[userData.uid] > 0 && conversation?.id) {
           markConversationAsRead(conversation.id);
         }
+
+        // Scroll to bottom when conversation is opened and messages are loaded
+        // Use requestAnimationFrame to ensure DOM is fully rendered
+        requestAnimationFrame(() => {
+          scrollToBottom();
+        });
       }
     );
 
@@ -764,9 +794,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Messages Area */}
       <div
-        className="overflow-y-auto p-4 bg-white scroll-smooth hover:scrollbar-thin hover:scrollbar-thumb-gray-300 hover:scrollbar-track-gray-100 relative"
+        ref={messagesContainerRef}
+        className="overflow-y-auto p-4 bg-white hover:scrollbar-thin hover:scrollbar-thumb-gray-300 hover:scrollbar-track-gray-100 relative"
         style={{
-          scrollBehavior: "smooth",
+          scrollBehavior: "auto",
         }}
         onScroll={handleScroll}
       >
@@ -808,7 +839,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       <div className="p-4 border-t border-gray-200 bg-white mt-auto relative">
         {/* Scroll to Bottom Button - Above Input */}
         <button
-          onClick={scrollToBottom}
+          onClick={scrollToBottomWithAnimation}
           className={`absolute -top-15 left-1/2 transform -translate-x-1/2 p-2 border border-gray-300 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-300 bg-white z-10 ${
             showScrollToBottom ? 'animate-slide-up opacity-100' : 'animate-slide-down opacity-0'
           }`}
