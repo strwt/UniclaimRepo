@@ -38,7 +38,7 @@ const MessageBubble = ({
   onHandoverResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
   onClaimResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
 }) => {
-  const { deleteMessage, confirmHandoverIdPhoto, confirmClaimIdPhoto } = useMessage();
+  const { deleteMessage, confirmHandoverIdPhoto, confirmClaimIdPhoto, updateClaimResponse } = useMessage();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showIdPhotoModal, setShowIdPhotoModal] = useState(false);
   const [selectedIdPhoto, setSelectedIdPhoto] = useState<string | null>(null);
@@ -486,15 +486,173 @@ const MessageBubble = ({
           <Text className="font-bold">Claim Request:</Text> {claimData.postTitle}
         </Text>
 
-        {/* Show ID photo if uploaded */}
+        {/* Show claim reason if provided */}
+        {claimData.claimReason && (
+          <View className="mb-3 p-2 bg-white rounded border">
+            <Text className="text-xs text-gray-600 mb-1 font-medium">Claim Reason:</Text>
+            <Text className="text-sm text-gray-800">{claimData.claimReason}</Text>
+          </View>
+        )}
+
+        {/* Show claimer's ID photo if uploaded */}
         {claimData.idPhotoUrl && (
           <View className="mb-3 p-2 bg-white rounded border">
-            <Text className="text-xs text-gray-600 mb-1">ID Photo:</Text>
-            <Image
-              source={{ uri: claimData.idPhotoUrl }}
-              className="w-20 h-12 rounded"
-              resizeMode="cover"
-            />
+            <Text className="text-xs text-gray-600 mb-1">Claimer ID Photo:</Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (claimData.idPhotoUrl) {
+                  // For mobile, we'll use a simple alert with option to view
+                  Alert.alert(
+                    'View Claimer ID Photo',
+                    'Would you like to view the full-size claimer ID photo?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'View Full Size',
+                        onPress: () => {
+                          // Open in device's default image viewer
+                          if (claimData.idPhotoUrl) {
+                            Linking.openURL(claimData.idPhotoUrl);
+                          }
+                        }
+                      }
+                    ]
+                  );
+                }
+              }}
+            >
+              <Image
+                source={{ uri: claimData.idPhotoUrl }}
+                className="w-24 h-16 rounded"
+                resizeMode="cover"
+              />
+              <Text className="text-xs text-blue-500 text-center mt-1">
+                Tap to view full size
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Show owner's ID photo if uploaded */}
+        {claimData.ownerIdPhoto && (
+          <View className="mb-3 p-2 bg-white rounded border">
+            <Text className="text-xs text-gray-600 mb-1">Owner ID Photo:</Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (claimData.ownerIdPhoto) {
+                  // For mobile, we'll use a simple alert with option to view
+                  Alert.alert(
+                    'View Owner ID Photo',
+                    'Would you like to view the full-size owner ID photo?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'View Full Size',
+                        onPress: () => {
+                          // Open in device's default image viewer
+                          if (claimData.ownerIdPhoto) {
+                            Linking.openURL(claimData.ownerIdPhoto);
+                          }
+                        }
+                      }
+                    ]
+                  );
+                }
+              }}
+            >
+              <Image
+                source={{ uri: claimData.ownerIdPhoto }}
+                className="w-24 h-16 rounded"
+                resizeMode="cover"
+              />
+              <Text className="text-xs text-blue-500 text-center mt-1">
+                Tap to view full size
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Show evidence photos if uploaded */}
+        {claimData.evidencePhotos && claimData.evidencePhotos.length > 0 && (
+          <View className="mb-3 p-2 bg-white rounded border">
+            <Text className="text-xs text-gray-600 mb-1 font-medium">Evidence Photos:</Text>
+            <View className="gap-2">
+              {claimData.evidencePhotos.map((photo, index) => (
+                <View key={index}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Alert.alert(
+                        `View Evidence Photo ${index + 1}`,
+                        'Would you like to view the full-size evidence photo?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'View Full Size',
+                            onPress: () => {
+                              Linking.openURL(photo.url);
+                            }
+                          }
+                        ]
+                      );
+                    }}
+                  >
+                    <Image
+                      source={{ uri: photo.url }}
+                      className="w-full h-32 rounded"
+                      resizeMode="cover"
+                    />
+                    <Text className="text-xs text-gray-500 mt-1">
+                      Evidence photo {index + 1}
+                    </Text>
+                    <Text className="text-xs text-blue-500 text-center mt-1">
+                      Tap to view full size
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Show legacy verification photos if exists (for backward compatibility) */}
+        {claimData.verificationPhotos && claimData.verificationPhotos.length > 0 && !claimData.evidencePhotos && (
+          <View className="mb-3 p-2 bg-white rounded border">
+            <Text className="text-xs text-gray-600 mb-1 font-medium">Verification Photos:</Text>
+            <View className="gap-2">
+              {claimData.verificationPhotos.map((photo, index) => (
+                <View key={index}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Alert.alert(
+                        `View Verification Photo ${index + 1}`,
+                        'Would you like to view the full-size verification photo?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'View Full Size',
+                            onPress: () => {
+                              Linking.openURL(photo.url);
+                            }
+                          }
+                        ]
+                      );
+                    }}
+                  >
+                    <Image
+                      source={{ uri: photo.url }}
+                      className="w-full h-32 rounded"
+                      resizeMode="cover"
+                    />
+                    <Text className="text-xs text-gray-500 mt-1">
+                      Verification photo {index + 1}
+                    </Text>
+                    <Text className="text-xs text-blue-500 text-center mt-1">
+                      Tap to view full size
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
@@ -534,6 +692,21 @@ const MessageBubble = ({
             {claimData.status === 'accepted' && claimData.idPhotoConfirmed && (
               <Text className="ml-2 text-green-600">
                 ✓ ID Photo Confirmed
+              </Text>
+            )}
+            {claimData.status === 'accepted' && claimData.evidencePhotosConfirmed && (
+              <Text className="ml-2 text-green-600">
+                ✓ Evidence Photos Confirmed
+              </Text>
+            )}
+            {claimData.status === 'accepted' && claimData.idPhotoConfirmed && !claimData.evidencePhotosConfirmed && (
+              <Text className="ml-2 text-green-600">
+                ✓ ID Photo Confirmed
+              </Text>
+            )}
+            {claimData.status === 'accepted' && claimData.photosConfirmed && !claimData.evidencePhotosConfirmed && (
+              <Text className="ml-2 text-green-600">
+                ✓ Verification Photos Confirmed
               </Text>
             )}
           </Text>

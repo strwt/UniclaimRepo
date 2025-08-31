@@ -563,9 +563,9 @@ export const messageService = {
                 'claimData.responderId': responderId
             };
 
-            // If accepting with ID photo, add the photo URL and change status to pending confirmation
+            // If accepting with ID photo, add the owner photo URL and change status to pending confirmation
             if (status === 'accepted' && idPhotoUrl) {
-                updateData['claimData.idPhotoUrl'] = idPhotoUrl;
+                updateData['claimData.ownerIdPhoto'] = idPhotoUrl; // Store owner's photo with separate field name
                 updateData['claimData.status'] = 'pending_confirmation'; // New status for photo confirmation
             }
 
@@ -592,6 +592,11 @@ export const messageService = {
                                 // Clear ID photo URL
                                 if (messageData.claimData?.idPhotoUrl) {
                                     photoCleanupData['claimData.idPhotoUrl'] = null;
+                                }
+
+                                // Clear owner's ID photo URL
+                                if (messageData.claimData?.ownerIdPhoto) {
+                                    photoCleanupData['claimData.ownerIdPhoto'] = null;
                                 }
 
                                 // Clear evidence photos array
