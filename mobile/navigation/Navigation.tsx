@@ -18,6 +18,8 @@ import Profile from "../app/tabs/Profile";
 import Register from "../app/tabs/Register";
 import Report from "../app/tabs/Report";
 import USTPMapScreen from "../app/tabs/USTPMapScreen";
+import ClaimFormScreen from "../app/tabs/ClaimFormScreen";
+import PhotoCaptureScreen from "../app/tabs/PhotoCaptureScreen";
 
 // Components
 import CustomTabs from "../components/BottomTabs";
@@ -136,6 +138,8 @@ export default function Navigation({
         component={withScreenWrapper(PostDetails)}
       />
       <Stack.Screen name="Chat" component={withScreenWrapper(Chat)} />
+      <Stack.Screen name="ClaimFormScreen" component={withScreenWrapper(ClaimFormScreen)} />
+      <Stack.Screen name="PhotoCaptureScreen" component={withScreenWrapper(PhotoCaptureScreen)} />
 
       {/* ✅ FIXED: Pass props using render function */}
       <Stack.Screen name="ItemDetails">

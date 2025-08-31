@@ -1106,27 +1106,13 @@ export default function Chat() {
       return;
     }
 
-    // For now, mobile will send claim request without photos
-    // TODO: Implement photo upload for mobile
-    try {
-      console.log('Calling sendClaimRequest...');
-      await sendClaimRequest(
-        conversationId,
-        user!.uid,
-        `${userData.firstName} ${userData.lastName}`,
-        userData.profilePicture || '',
-        postId,
-        postTitle,
-        'Claiming this item as my own', // Default claim reason
-        '', // No ID photo for now
-        [] // No evidence photos for now
-      );
-      console.log('Claim request sent successfully!');
-      Alert.alert('Success', 'Claim request sent successfully!');
-    } catch (error: any) {
-      console.error('Failed to send claim request:', error);
-      Alert.alert('Error', error.message || 'Failed to send claim request. Please try again.');
-    }
+    // Navigate to claim form screen
+    navigation.navigate('ClaimFormScreen' as never, {
+      conversationId,
+      postId,
+      postTitle,
+      postOwnerId,
+    } as never);
   };
 
   return (

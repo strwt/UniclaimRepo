@@ -16,6 +16,8 @@ export type RootStackParamList = {
   ItemDetails: undefined;
   PostDetails: { post: Post }; // ✅ FIXED: added param to the screen
   USTPMapScreen: undefined;
+  ClaimFormScreen: { conversationId: string; postId: string; postTitle: string; postOwnerId: string };
+  PhotoCaptureScreen: { conversationId: string; postId: string; postTitle: string; postOwnerId: string; claimReason: string };
 };
 export interface Post {
   id: string;
