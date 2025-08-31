@@ -97,7 +97,7 @@ export default function AdminSideNav({
 
             <NavText
               icon={<HiOutlineCog className="size-6 stroke-[1.5px]" />}
-              label="System Cleanup"
+              label="Clean Up"
               to="/admin/cleanup"
               isOpen={isOpen}
               className="mt-2 hover:bg-gray-100"
