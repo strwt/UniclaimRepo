@@ -16,8 +16,17 @@ const ConversationItem = ({ conversation, onPress }: { conversation: Conversatio
   
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const date = timestamp instanceof Date ? timestamp : timestamp.toDate();
+    const now = new Date();
+    const diffInMinutes = (now.getTime() - date.getTime()) / (1000 * 60);
+    const diffInHours = diffInMinutes / 60;
+
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${Math.floor(diffInMinutes)}m`;
+    if (diffInHours < 24) return `${Math.floor(diffInHours)}h ago`;
+    if (diffInHours < 48) return 'Yesterday';
+    return date.toLocaleDateString();
   };
 
   // Get the other participant's name (exclude current user)
@@ -40,6 +49,29 @@ const ConversationItem = ({ conversation, onPress }: { conversation: Conversatio
       .find(([uid]) => uid !== userData.uid);
     
     return otherParticipant ? otherParticipant[1].profilePicture : null;
+  };
+
+  // Get the name of the user who sent the last message
+  const getLastMessageSenderName = () => {
+    if (!conversation.lastMessage?.senderId || !userData) return 'Unknown User';
+    
+    // If the sender is the current user
+    if (conversation.lastMessage.senderId === userData.uid) {
+      return 'You';
+    }
+    
+    // Find the sender in participants
+    const sender = Object.entries(conversation.participants || {}).find(
+      ([uid]) => uid === conversation.lastMessage.senderId
+    );
+    
+    if (sender) {
+      const firstName = sender[1].firstName || '';
+      const lastName = sender[1].lastName || '';
+      return `${firstName} ${lastName}`.trim() || 'Unknown User';
+    }
+    
+    return 'Unknown User';
   };
 
   return (
@@ -75,7 +107,14 @@ const ConversationItem = ({ conversation, onPress }: { conversation: Conversatio
                 {getOtherParticipantName()}
               </Text>
               <Text className={`text-sm mt-1 ${conversation.unreadCounts?.[userData?.uid || ''] > 0 ? 'font-bold text-gray-800' : 'text-gray-600'}`} numberOfLines={2}>
-                {conversation.lastMessage?.text || 'No messages yet'}
+                {conversation.lastMessage ? (
+                  <>
+                    <Text className="font-medium">{getLastMessageSenderName()}</Text>
+                    <Text>: {conversation.lastMessage.text}</Text>
+                  </>
+                ) : (
+                  'No messages yet'
+                )}
               </Text>
             </View>
             <View className="ml-2">
