@@ -1,6 +1,15 @@
 import PageLayout from "@/layout/PageLayout";
 import React, { useState } from "react";
-import { Text, TextInput, TouchableOpacity, View, ScrollView, ActivityIndicator, Image, Alert } from "react-native";
+import {
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Image,
+  Alert,
+} from "react-native";
 import { useAuth } from "@/context/AuthContext";
 import { useUserPostsWithSet } from "@/hooks/usePosts";
 import type { Post } from "@/types/type";
@@ -10,11 +19,15 @@ import EditTicketModal from "@/components/EditTicketModal";
 
 export default function Ticket() {
   const { userData, loading: authLoading } = useAuth();
-  const { posts, setPosts, loading: postsLoading } = useUserPostsWithSet(userData?.email || "");
+  const {
+    posts,
+    setPosts,
+    loading: postsLoading,
+  } = useUserPostsWithSet(userData?.email || "");
   const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
   const [searchText, setSearchText] = useState("");
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
-  
+
   // Edit modal state
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -22,9 +35,13 @@ export default function Ticket() {
 
   // Filter posts based on selected tab and search
   const filteredPosts = posts.filter((post) => {
-    const matchesTab = activeTab === "active" ? post.status === "pending" : post.status === "resolved";
-    const matchesSearch = post.title.toLowerCase().includes(searchText.toLowerCase()) ||
-                         post.description.toLowerCase().includes(searchText.toLowerCase());
+    const matchesTab =
+      activeTab === "active"
+        ? post.status === "pending"
+        : post.status === "resolved";
+    const matchesSearch =
+      post.title.toLowerCase().includes(searchText.toLowerCase()) ||
+      post.description.toLowerCase().includes(searchText.toLowerCase());
     return matchesTab && matchesSearch;
   });
 
@@ -40,7 +57,7 @@ export default function Ticket() {
       [
         {
           text: "Cancel",
-          style: "cancel"
+          style: "cancel",
         },
         {
           text: "Delete",
@@ -48,24 +65,29 @@ export default function Ticket() {
           onPress: async () => {
             try {
               setDeletingPostId(id); // Show loading state
-              
+
               // Call Firebase service to actually delete the post
               await postService.deletePost(id);
-              
+
               // Update local state after successful deletion
-              setPosts((prevPosts: Post[]) => prevPosts.filter((p: Post) => p.id !== id));
-              
+              setPosts((prevPosts: Post[]) =>
+                prevPosts.filter((p: Post) => p.id !== id)
+              );
+
               // Show success message
               Alert.alert("Success", "Ticket deleted successfully!");
             } catch (error) {
-              console.error('Error deleting post:', error);
+              console.error("Error deleting post:", error);
               // Show error message to user
-              Alert.alert("Error", "Failed to delete ticket. Please try again.");
+              Alert.alert(
+                "Error",
+                "Failed to delete ticket. Please try again."
+              );
             } finally {
               setDeletingPostId(null); // Hide loading state
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -79,23 +101,21 @@ export default function Ticket() {
   const handleUpdatePost = async (updatedPost: Post) => {
     try {
       setIsUpdatingPost(true);
-      
+
       // Call Firebase service to update the post
       await postService.updatePost(updatedPost.id, updatedPost);
-      
+
       // Update local state after successful update
-      setPosts((prevPosts: Post[]) => 
-        prevPosts.map((p: Post) => 
-          p.id === updatedPost.id ? updatedPost : p
-        )
+      setPosts((prevPosts: Post[]) =>
+        prevPosts.map((p: Post) => (p.id === updatedPost.id ? updatedPost : p))
       );
-      
+
       // Close modal and show success message
       setIsEditModalVisible(false);
       setEditingPost(null);
       Alert.alert("Success", "Ticket updated successfully!");
     } catch (error) {
-      console.error('Error updating post:', error);
+      console.error("Error updating post:", error);
       Alert.alert("Error", "Failed to update ticket. Please try again.");
     } finally {
       setIsUpdatingPost(false);
@@ -159,7 +179,7 @@ export default function Ticket() {
 
           {/* Clear Search Button */}
           {searchText.length > 0 && (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleClearSearch}
               className="bg-gray-200 rounded-md h-[2.5rem] px-4 justify-center items-center self-start"
             >
@@ -208,23 +228,24 @@ export default function Ticket() {
           {postsLoading ? (
             <View className="flex-1 justify-center items-center py-20">
               <ActivityIndicator size="large" color="#0f766e" />
-              <Text className="text-gray-500 mt-2 font-manrope">Loading tickets...</Text>
+              <Text className="text-gray-500 mt-2 font-manrope">
+                Loading tickets...
+              </Text>
             </View>
           ) : filteredPosts.length === 0 ? (
             <View className="flex-1 justify-center items-center py-20">
               <Text className="text-gray-500 text-center font-manrope-medium">
-                {searchText.length > 0 
-                  ? "No tickets found matching your search." 
-                  : `No ${activeTab} tickets found.`
-                }
+                {searchText.length > 0
+                  ? "No tickets found matching your search."
+                  : `No ${activeTab} tickets found.`}
               </Text>
             </View>
           ) : (
             <View className="space-y-4 pb-4">
               {filteredPosts.map((post) => (
-                <TicketCard 
-                  key={post.id} 
-                  post={post} 
+                <TicketCard
+                  key={post.id}
+                  post={post}
                   onDelete={handleDeletePost}
                   onEdit={handleEditPost}
                   isDeleting={deletingPostId === post.id}
@@ -250,13 +271,13 @@ export default function Ticket() {
 }
 
 // Ticket Card Component
-const TicketCard = ({ 
-  post, 
-  onDelete, 
+const TicketCard = ({
+  post,
+  onDelete,
   onEdit,
-  isDeleting 
-}: { 
-  post: Post; 
+  isDeleting,
+}: {
+  post: Post;
   onDelete: (id: string) => void;
   onEdit: (post: Post) => void;
   isDeleting: boolean;
@@ -286,7 +307,7 @@ const TicketCard = ({
   const formatDate = (date: any) => {
     if (!date) return "Unknown date";
     try {
-      const dateObj = typeof date === 'string' ? new Date(date) : date.toDate();
+      const dateObj = typeof date === "string" ? new Date(date) : date.toDate();
       return dateObj.toLocaleDateString();
     } catch {
       return "Unknown date";
@@ -296,13 +317,13 @@ const TicketCard = ({
   // Handle image source properly for React Native
   const getImageSource = (images: (string | File)[]) => {
     if (!images || images.length === 0) return null;
-    
+
     const firstImage = images[0];
-    if (typeof firstImage === 'string') {
+    if (typeof firstImage === "string") {
       // If it's already a URL (Cloudinary URL), use it directly
       return { uri: firstImage };
     }
-    
+
     // If it's a File object, this shouldn't happen in mobile but handle gracefully
     return null;
   };
@@ -319,7 +340,7 @@ const TicketCard = ({
             className="w-full h-full"
             resizeMode="cover"
             // Add error handling for failed image loads
-            onError={() => console.log('Failed to load image:', imageSource)}
+            onError={() => console.log("Failed to load image:", imageSource)}
           />
         </View>
       ) : (
@@ -337,8 +358,12 @@ const TicketCard = ({
           <Text className="flex-1 font-manrope-semibold text-lg text-gray-800 leading-tight">
             {post.title}
           </Text>
-          <View className={`px-2 py-1 rounded ${getStatusColor(post.status || "pending")}`}>
-            <Text className={`text-xs font-manrope-semibold capitalize ${getStatusTextColor(post.status || "pending")}`}>
+          <View
+            className={`px-2 py-1 rounded ${getStatusColor(post.status || "pending")}`}
+          >
+            <Text
+              className={`text-xs font-manrope-semibold capitalize ${getStatusTextColor(post.status || "pending")}`}
+            >
               {post.status || "pending"}
             </Text>
           </View>
@@ -355,7 +380,10 @@ const TicketCard = ({
         </View>
 
         {/* Description */}
-        <Text className="text-sm text-gray-600 font-manrope leading-tight" numberOfLines={3}>
+        <Text
+          className="text-sm text-gray-600 font-manrope leading-tight"
+          numberOfLines={3}
+        >
           {post.description}
         </Text>
 
@@ -366,12 +394,16 @@ const TicketCard = ({
               {post.category}
             </Text>
           </View>
-          <View className={`px-2 py-1 rounded ${
-            post.type === "found" ? "bg-blue-100" : "bg-orange-100"
-          }`}>
-            <Text className={`text-xs font-manrope-medium capitalize ${
-              post.type === "found" ? "text-blue-700" : "text-orange-700"
-            }`}>
+          <View
+            className={`px-2 py-1 rounded ${
+              post.type === "found" ? "bg-blue-100" : "bg-orange-100"
+            }`}
+          >
+            <Text
+              className={`text-xs font-manrope-medium capitalize ${
+                post.type === "found" ? "text-blue-700" : "text-orange-700"
+              }`}
+            >
               {post.type}
             </Text>
           </View>

@@ -13,10 +13,6 @@ interface FiltersProps {
   onSearchSubmit: () => void; // ✅ Add this
 }
 
-
-
-
-
 const Filters: React.FC<FiltersProps> = ({
   selectedCategory,
   setSelectedCategory,
@@ -68,7 +64,6 @@ const Filters: React.FC<FiltersProps> = ({
                   </option>
                 ))}
               </select>
-              {/* Custom Chevron */}
               <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
             </div>
           </div>
