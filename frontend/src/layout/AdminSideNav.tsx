@@ -8,6 +8,7 @@ import {
   HiOutlineCog,
 } from "react-icons/hi";
 import { HiOutlineEnvelope } from "react-icons/hi2";
+import { LuLayoutDashboard } from "react-icons/lu";
 import NavText from "./NavText";
 import Logo from "../assets/uniclaim_logo.png";
 import clsx from "clsx";
@@ -25,7 +26,6 @@ export default function AdminSideNav({
   isSideNavMobileOpen,
   onMobNavClose,
 }: AdminSideNavProps) {
-  
   // ✅ Hook to detect mobile screen width
   function useIsMobile() {
     const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -65,7 +65,7 @@ export default function AdminSideNav({
         >
           <div className="flex flex-col gap-2">
             <NavText
-              icon={<HiOutlineHome className="size-6 stroke-[1.5px]" />}
+              icon={<LuLayoutDashboard className="size-6 stroke-[1.5px]" />}
               label="Dashboard"
               to="/admin"
               isOpen={isOpen}
@@ -108,7 +108,6 @@ export default function AdminSideNav({
               hoverContainerBgClass="bg-gray-100"
             />
 
-
             <NavText
               icon={<HiOutlineChartBar className="size-6 stroke-[1.5px]" />}
               label="Analytics"
@@ -121,9 +120,7 @@ export default function AdminSideNav({
               tooltipTextClassName="text-navyblue text-base"
               hoverContainerBgClass="bg-gray-100"
             />
-
           </div>
-
         </aside>
 
         {/* ✅ Mobile Sidebar */}
@@ -170,7 +167,6 @@ export default function AdminSideNav({
                   textClassName="font-manrope"
                 />
 
-
                 <NavText
                   icon={<HiOutlineChartBar className="size-6 stroke-[1.5px]" />}
                   label="Analytics"
@@ -181,10 +177,7 @@ export default function AdminSideNav({
                   iconClassName="text-black"
                   textClassName="font-manrope"
                 />
-
               </div>
-
-
             </div>
           </aside>
         </div>

@@ -39,8 +39,6 @@ export default function AdminHeader({
     navigate("/");
   };
 
-
-
   return (
     <>
       <div className="">
@@ -56,13 +54,10 @@ export default function AdminHeader({
               />
               {sideBarOpen && (
                 <div className="hidden ml-1 md:block">
-                  <h1 className="font-albert-sans font-bold text-[23px] text-white transition-all duration-300">
+                  <h1 className="font-albert-sans font-bold flex items-center text-[23px] text-white transition-all duration-300">
                     <span className="text-brand">Uni</span>Claim
+                    <HiOutlineShieldCheck className="ml-2 w-5 h-6 stroke-[1.5px] text-amber-400" />
                   </h1>
-                  <div className="flex items-center gap-2 mt-1">
-                    <HiOutlineShieldCheck className="size-4 text-amber-400" />
-                    <span className="text-amber-400 text-sm font-medium">ADMIN DASHBOARD</span>
-                  </div>
                 </div>
               )}
               {sideBarOpen ? (
@@ -80,7 +75,6 @@ export default function AdminHeader({
 
             {/* admin-controls-container */}
             <div className="flex items-center gap-4 relative">
-
               {/* notification-bell */}
               <button onClick={toggleNotif} className="relative">
                 <HiOutlineBell className="size-8 text-white stroke-[1.3px] cursor-pointer hover:text-brand" />
@@ -99,14 +93,14 @@ export default function AdminHeader({
 
               {/* profile dropdown */}
               {showProfileMenu && (
-                <div className="absolute font-manrope right-0 top-16 p-2 w-48 bg-white shadow-lg rounded-lg z-50 border border-gray-200">
-                  <div className="px-3 py-2 border-b border-gray-100">
+                <div className="absolute font-manrope right-0 top-16 p-2 w-55 bg-white shadow-lg rounded-lg z-50 border border-gray-200">
+                  <div className="px-3 py-2 border-b flex items-center gap-1 border-gray-100">
                     <p className="text-sm font-medium text-gray-900">
                       {userData?.firstName} {userData?.lastName}
                     </p>
-                    <p className="text-xs text-amber-600 font-medium">Administrator</p>
+                    <HiOutlineShieldCheck className="ml-2 w-5 h-6 stroke-[1.5px] text-amber-400" />
                   </div>
-                  
+
                   <button
                     onClick={handleProfileClick}
                     className="flex items-center px-4 py-2 text-gray-800 hover:bg-gray-100 rounded w-full text-sm"
@@ -114,11 +108,9 @@ export default function AdminHeader({
                     <HiOutlineUser className="size-4 stroke-[1.5px] mr-3" />
                     Admin Profile
                   </button>
-                  
 
-                  
                   <div className="border-t border-gray-100 my-1"></div>
-                  
+
                   <button
                     onClick={handleUserView}
                     className="flex items-center px-4 py-2 text-blue-600 hover:bg-blue-50 rounded w-full text-sm"
@@ -126,7 +118,7 @@ export default function AdminHeader({
                     <HiOutlineUser className="size-4 stroke-[1.5px] mr-3" />
                     Switch to User View
                   </button>
-                  
+
                   <button
                     onClick={logout}
                     className="flex items-center px-4 py-2 text-red-500 hover:bg-red-50 rounded w-full text-sm"
@@ -136,8 +128,6 @@ export default function AdminHeader({
                   </button>
                 </div>
               )}
-
-
             </div>
           </div>
         </div>
@@ -170,8 +160,6 @@ export default function AdminHeader({
             onClick={toggleNotif}
           />
         )}
-
-
       </div>
     </>
   );

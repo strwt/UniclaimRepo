@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import type { Conversation } from "../types/Post";
 import LoadingSpinner from "./LoadingSpinner";
 import ProfilePicture from "./ProfilePicture";
-import NoMessage from "../assets/no_chat.png";
 
 interface ConversationListProps {
   onSelectConversation: (conversation: Conversation) => void;
