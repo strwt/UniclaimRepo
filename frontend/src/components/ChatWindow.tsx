@@ -94,13 +94,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       (conv) => conv.id === conversation.id
     );
     if (!conversationStillExists) {
-      console.log(
-        "🗑️ Conversation was deleted from local state, redirecting user..."
-      );
       navigate("/messages"); // Redirect to messages page
       return;
     }
-  }, [conversation, conversations, onClearConversation]);
+  }, [conversation, conversations, navigate]);
 
   // Additional check for conversation existence in database (less frequent)
   useEffect(() => {
@@ -117,9 +114,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         // If conversation doesn't exist, it was deleted
         if (!conversationSnap.exists()) {
-          console.log(
-            "🗑️ Conversation was deleted from database, redirecting user..."
-          );
           navigate("/messages"); // Redirect to messages page
         }
       } catch (error: any) {
@@ -128,9 +122,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           error.message?.includes("permission") ||
           error.message?.includes("not-found")
         ) {
-          console.log(
-            "🗑️ Conversation access denied (likely deleted), redirecting user..."
-          );
           navigate("/messages"); // Redirect to messages page
         }
       }
@@ -140,7 +131,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const interval = setInterval(checkConversationExists, 10000);
 
     return () => clearInterval(interval);
-  }, [conversation, onClearConversation]);
+  }, [conversation, navigate]);
 
   // Update existing conversations with missing post data
   useEffect(() => {
