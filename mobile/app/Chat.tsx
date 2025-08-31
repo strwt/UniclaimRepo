@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   SafeAreaView, 
   Text, 
@@ -30,7 +30,8 @@ const MessageBubble = ({
   currentUserId,
   onHandoverResponse,
   onClaimResponse,
-  onConfirmIdPhotoSuccess
+  onConfirmIdPhotoSuccess,
+  onMessageSeen
 }: {
   message: Message;
   isOwnMessage: boolean;
@@ -39,17 +40,22 @@ const MessageBubble = ({
   onHandoverResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
   onClaimResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
   onConfirmIdPhotoSuccess?: (messageId: string) => void;
+  onMessageSeen?: () => void;
 }) => {
   const { deleteMessage, confirmHandoverIdPhoto, confirmClaimIdPhoto, updateClaimResponse } = useMessage();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showIdPhotoModal, setShowIdPhotoModal] = useState(false);
   const [selectedIdPhoto, setSelectedIdPhoto] = useState<string | null>(null);
   const [isUploadingIdPhoto, setIsUploadingIdPhoto] = useState(false);
+  const [hasBeenSeen, setHasBeenSeen] = useState(false);
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  // For mobile, visibility detection is handled by FlatList's onViewableItemsChanged
+  // This component just provides the callback interface
 
   const handleHandoverResponse = async (status: 'accepted' | 'rejected') => {
     if (!onHandoverResponse) return;
@@ -809,9 +815,28 @@ const MessageBubble = ({
         {renderSystemMessage()}
       </View>
       <View className="flex-row items-center justify-between mt-1 mx-2">
-        <Text className="text-xs text-gray-500">
-          {formatTime(message.timestamp)}
-        </Text>
+        <View className="flex-row items-center gap-1">
+          <Text className="text-xs text-gray-500">
+            {formatTime(message.timestamp)}
+          </Text>
+          {isOwnMessage && (
+            <View>
+              {message.readBy && message.readBy.length > 1 ? (
+                <Ionicons 
+                  name="eye" 
+                  size={12} 
+                  color="#3b82f6" 
+                />
+              ) : (
+                <Ionicons 
+                  name="checkmark" 
+                  size={12} 
+                  color="#9ca3af" 
+                />
+              )}
+            </View>
+          )}
+        </View>
         
         {/* Delete button for own messages */}
         {isOwnMessage && (
@@ -837,7 +862,7 @@ export default function Chat() {
   const route = useRoute<ChatRouteProp>();
   const { conversationId: initialConversationId, postTitle, postId, postOwnerId, postOwnerUserData } = route.params;
   
-  const { sendMessage, createConversation, getConversationMessages, getConversation, sendClaimRequest, updateClaimResponse, markConversationAsRead, getConversationUnreadCount } = useMessage();
+  const { sendMessage, createConversation, getConversationMessages, getConversation, sendClaimRequest, updateClaimResponse, markConversationAsRead, markMessageAsRead, getConversationUnreadCount } = useMessage();
   const { user, userData } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -845,6 +870,7 @@ export default function Chat() {
   const [conversationId, setConversationId] = useState(initialConversationId || '');
   const [conversationData, setConversationData] = useState<any>(null);
   const flatListRef = useRef<FlatList>(null);
+  const [viewableMessages, setViewableMessages] = useState<Set<string>>(new Set());
   
   // Check if handover button should be shown
   const shouldShowHandoverButton = () => {
@@ -926,6 +952,42 @@ export default function Chat() {
       return () => unsubscribe();
     }
   }, [conversationId, getConversationMessages, getConversation]);
+
+  // Mark conversation as read when new messages arrive while user is viewing
+  useEffect(() => {
+    if (!conversationId || !userData?.uid || !messages.length) return;
+
+    // Mark conversation as read since user is actively viewing it
+    markConversationAsRead(conversationId, userData.uid);
+  }, [messages, conversationId, userData, markConversationAsRead]);
+
+  // Function to mark message as read when it comes into view
+  const handleMessageSeen = async (messageId: string) => {
+    if (!conversationId || !userData?.uid) return;
+    
+    try {
+      await markMessageAsRead(conversationId, messageId);
+    } catch (error) {
+      console.warn('Mobile: Failed to mark message as read:', error);
+    }
+  };
+
+  // Handle viewable items changed to mark messages as read
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: any[] }) => {
+    if (!conversationId || !userData?.uid) return;
+
+    const newViewableMessageIds = new Set(viewableItems.map(item => item.key));
+    
+    // Mark messages as read that are now viewable and not sent by current user
+    viewableItems.forEach(item => {
+      const message = item.item;
+      if (message && message.senderId !== userData.uid && !viewableMessages.has(message.id)) {
+        handleMessageSeen(message.id);
+      }
+    });
+    
+    setViewableMessages(newViewableMessageIds);
+  }, [conversationId, userData, viewableMessages, handleMessageSeen]);
 
   if (!user || !userData) {
     return (
@@ -1160,33 +1222,58 @@ export default function Chat() {
                 onHandoverResponse={handleHandoverResponse}
                 onClaimResponse={handleClaimResponse}
                 onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
+                onMessageSeen={() => handleMessageSeen(item.id)}
               />
             )}
             contentContainerStyle={{ padding: 16 }}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={scrollToBottom}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={{
+              itemVisiblePercentThreshold: 50,
+              minimumViewTime: 100,
+            }}
           />
         )}
 
         {/* Message Input */}
         <View className="border-t border-gray-200 bg-white p-4">
           <View className="flex-row items-center space-x-3">
-            <TextInput
-              value={newMessage}
-              onChangeText={setNewMessage}
-              placeholder={loading ? "Creating conversation..." : "Type a message..."}
-              className={`flex-1 border border-gray-300 rounded-full px-4 py-3 text-base ${
-                loading ? 'bg-gray-100' : 'bg-white'
-              }`}
-              multiline
-              maxLength={500}
-              editable={!loading}
-            />
+            <View className="flex-1 relative">
+              <TextInput
+                value={newMessage}
+                onChangeText={setNewMessage}
+                placeholder={loading ? "Creating conversation..." : "Type a message..."}
+                className={`border rounded-full px-4 py-3 text-base ${
+                  loading ? 'bg-gray-100' : 'bg-white'
+                } ${
+                  newMessage.length > 180 
+                    ? newMessage.length >= 200 
+                      ? 'border-red-300' 
+                      : 'border-yellow-300'
+                    : 'border-gray-300'
+                }`}
+                multiline
+                maxLength={200}
+                editable={!loading}
+              />
+              <View className="absolute bottom-1 right-3">
+                <Text className={`text-xs ${
+                  newMessage.length > 180 
+                    ? newMessage.length >= 200 
+                      ? 'text-red-500' 
+                      : 'text-yellow-500'
+                    : 'text-gray-400'
+                }`}>
+                  {newMessage.length}/200
+                </Text>
+              </View>
+            </View>
             <TouchableOpacity
               onPress={handleSendMessage}
-              disabled={!newMessage.trim() || loading}
+              disabled={!newMessage.trim() || loading || newMessage.length > 200}
               className={`w-12 h-12 rounded-full items-center justify-center ${
-                newMessage.trim() && !loading 
+                newMessage.trim() && !loading && newMessage.length <= 200
                   ? 'bg-blue-500' 
                   : 'bg-gray-300'
               }`}
@@ -1194,7 +1281,7 @@ export default function Chat() {
               <Ionicons 
                 name="send" 
                 size={20} 
-                color={newMessage.trim() && !loading ? 'white' : '#9CA3AF'} 
+                color={newMessage.trim() && !loading && newMessage.length <= 200 ? 'white' : '#9CA3AF'} 
               />
             </TouchableOpacity>
           </View>

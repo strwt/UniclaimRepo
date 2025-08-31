@@ -11,6 +11,7 @@ interface MessageContextType {
   getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void) => () => void;
   getConversation: (conversationId: string) => Promise<any>; // Add getConversation function
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>; // New: Delete message function
+  markMessageAsRead: (conversationId: string, messageId: string) => Promise<void>; // New: Mark message as read
   updateHandoverResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update handover response
   confirmHandoverIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm ID photo function
   sendClaimRequest: (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string) => Promise<void>; // New: Send claim request
@@ -116,6 +117,23 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
       await messageService.deleteMessage(conversationId, messageId, userId!);
     } catch (error: any) {
       throw new Error(error.message || 'Failed to delete message');
+    }
+  };
+
+  const markMessageAsRead = async (conversationId: string, messageId: string): Promise<void> => {
+    // Admin users don't need to mark messages as read
+    if (isAdmin) {
+      console.log('Admin user detected - skipping mark message as read');
+      return;
+    }
+
+    if (!userId) return;
+
+    try {
+      await messageService.markMessageAsRead(conversationId, messageId, userId);
+    } catch (error: any) {
+      console.error('Failed to mark message as read:', error);
+      // Don't throw error - just log it
     }
   };
 
@@ -277,6 +295,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         getConversationMessages,
         getConversation,
         deleteMessage,
+        markMessageAsRead,
         updateHandoverResponse,
         confirmHandoverIdPhoto,
         sendClaimRequest,

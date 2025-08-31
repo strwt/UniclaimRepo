@@ -37,6 +37,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     sendMessage,
     getConversationMessages,
     markConversationAsRead,
+    markMessageAsRead,
     sendClaimRequest,
     conversations,
   } = useMessage();
@@ -85,6 +86,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return () => unsubscribe();
   }, [conversation, getConversationMessages, markConversationAsRead, userData]);
 
+  // Mark conversation as read when new messages arrive while user is viewing
+  useEffect(() => {
+    if (!conversation?.id || !userData?.uid || !messages.length) return;
+
+    // Check if there are unread messages in this conversation
+    if (conversation?.unreadCounts?.[userData.uid] > 0) {
+      // Mark conversation as read since user is actively viewing it
+      markConversationAsRead(conversation.id);
+    }
+  }, [messages, conversation, userData, markConversationAsRead]);
+
   // Check if conversation still exists (wasn't deleted)
   useEffect(() => {
     if (!conversation) return;
@@ -98,6 +110,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return;
     }
   }, [conversation, conversations, navigate]);
+
+  // Function to mark message as read when it comes into view
+  const handleMessageSeen = async (messageId: string) => {
+    if (!conversation?.id || !userData?.uid) return;
+    
+    try {
+      // Mark the individual message as read
+      await markMessageAsRead(conversation.id, messageId);
+      
+      // Also mark the conversation as read if it has unread messages
+      if (conversation?.unreadCounts?.[userData.uid] > 0) {
+        await markConversationAsRead(conversation.id);
+      }
+    } catch (error) {
+      console.warn('Failed to mark message/conversation as read:', error);
+    }
+  };
 
   // Additional check for conversation existence in database (less frequent)
   useEffect(() => {
@@ -767,6 +796,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                  onClaimResponse={handleClaimResponse}
                  onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
                  onClearConversation={onClearConversation}
+                 onMessageSeen={() => handleMessageSeen(message.id)}
                />
             ))}
             <div ref={messagesEndRef} />
@@ -800,17 +830,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       {/* Message Input - Sticky at bottom */}
       <div className="p-4 border-t border-gray-200 bg-white mt-auto">
         <form onSubmit={handleSendMessage} className="flex gap-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-navyblue focus:border-transparent"
-            disabled={isSending}
-          />
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type your message..."
+              maxLength={200}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-navyblue focus:border-transparent ${
+                newMessage.length > 180 
+                  ? newMessage.length >= 200 
+                    ? 'border-red-300 focus:ring-red-500' 
+                    : 'border-yellow-300 focus:ring-yellow-500'
+                  : 'border-gray-300'
+              }`}
+              disabled={isSending}
+            />
+            <div className="absolute bottom-1 right-2 text-xs text-gray-400">
+              {newMessage.length}/200
+            </div>
+          </div>
           <button
             type="submit"
-            disabled={!newMessage.trim() || isSending}
+            disabled={!newMessage.trim() || isSending || newMessage.length > 200}
             className="px-4 py-2 bg-brand text-white rounded-lg hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSending ? (
