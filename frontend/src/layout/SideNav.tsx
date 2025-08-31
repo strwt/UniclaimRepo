@@ -27,7 +27,7 @@ export default function SideNav({
   onMobNavClose,
 }: SideNavProps) {
   const { totalUnreadCount } = useMessage();
-  
+
   // ✅ Hook to detect mobile screen width
   function useIsMobile() {
     const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -123,7 +123,7 @@ export default function SideNav({
               />
               {totalUnreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center z-10">
-                  {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                  {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
                 </span>
               )}
             </div>
@@ -150,7 +150,7 @@ export default function SideNav({
               <IoIosInformationCircleOutline className="size-6 stroke-[1px]" />
             }
             label="About UniClaim"
-            to="aboutuniclaim"
+            to="/aboutuniclaim"
             isOpen={isOpen}
             className="hover:bg-gray-100"
             iconClassName="text-black"
@@ -226,7 +226,7 @@ export default function SideNav({
                   />
                   {totalUnreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center z-10">
-                      {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                      {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
                     </span>
                   )}
                 </div>

@@ -270,7 +270,7 @@ export default function ReportPage() {
   }
 
   return (
-    <section>
+    <section className="mb-12">
       <MobileNavText
         title="Report an item"
         description="Report a lost or found item"

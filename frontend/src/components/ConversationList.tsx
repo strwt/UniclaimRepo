@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import type { Conversation } from "../types/Post";
 import LoadingSpinner from "./LoadingSpinner";
 import ProfilePicture from "./ProfilePicture";
+import NoMessage from "../assets/no_chat.png";
 
 interface ConversationListProps {
   onSelectConversation: (conversation: Conversation) => void;
@@ -31,11 +32,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
         onSelectConversation(conversationToSelect);
       }
     }
-  }, [
-    autoSelectConversationId,
-    conversations,
-    onSelectConversation,
-  ]);
+  }, [autoSelectConversationId, conversations, onSelectConversation]);
 
   // Sort conversations by most recent message timestamp, with fallback to createdAt (newest first)
   const sortedConversations = useMemo(() => {
@@ -98,12 +95,14 @@ const ConversationList: React.FC<ConversationListProps> = ({
 
   if (sortedConversations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <div className="text-6xl mb-4">💬</div>
-        <p className="text-lg font-medium">No conversations yet</p>
-        <p className="text-sm text-gray-400">
-          Start chatting about lost and found items!
-        </p>
+      <div className="flex items-center justify-center h-full">
+        <div className="flex flex-col items-center text-gray-500 text-center">
+          <div className="text-6xl mb-4">💬</div>
+          <p className="text-lg font-medium">No conversations yet</p>
+          <p className="text-sm text-gray-400">
+            Start chatting about lost and found items!
+          </p>
+        </div>
       </div>
     );
   }
@@ -154,8 +153,8 @@ const ConversationList: React.FC<ConversationListProps> = ({
   };
 
   return (
-    <div className="bg-white border-r border-gray-200 w-full h-full flex flex-col">
-      <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0">
+    <div className="bg-gray-50 border-r border-gray-200 h-full flex flex-col">
+      <div className="pl-7 pr-4 py-3 border-b border-gray-200 flex-shrink-0">
         <h1 className="text-base font-semibold">Contacts</h1>
         <p className="text-sm text-gray-500">
           {sortedConversations.length} conversation
@@ -174,11 +173,13 @@ const ConversationList: React.FC<ConversationListProps> = ({
             <div
               key={conversation.id}
               onClick={() => onSelectConversation(conversation)}
-              className={`p-4 border-b border-gray-100 cursor-pointer transition-colors hover:bg-gray-50 ${
-                isSelected ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
+              className={`p-4 border-b border-gray-100 cursor-pointer transition-colors hover:bg-zinc-100 ${
+                isSelected
+                  ? "bg-brand/10 border-l-3 border-l-brand"
+                  : "hover:bg-brand/10"
               }`}
             >
-              <div className="flex items-start justify-between mb-2">
+              <div className="flex items-start justify-between mb-2 pl-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="relative flex-shrink-0">
                     <ProfilePicture
@@ -224,7 +225,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
               </div>
 
               {conversation.lastMessage && (
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between pl-3">
                   <p
                     className={`text-sm truncate flex-1 mr-2 ${
                       hasUnread

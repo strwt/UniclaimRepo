@@ -10,7 +10,11 @@ import { useToast } from "../../context/ToastContext";
 
 export default function MyTicket() {
   const { userData, loading: authLoading } = useAuth();
-  const { posts, setPosts, loading: postsLoading } = useUserPostsWithSet(userData?.email || "");
+  const {
+    posts,
+    setPosts,
+    loading: postsLoading,
+  } = useUserPostsWithSet(userData?.email || "");
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<
     "all_tickets" | "active_tickets" | "completed_tickets"
@@ -46,41 +50,60 @@ export default function MyTicket() {
   const handleDeletePost = async (id: string) => {
     try {
       setDeletingPostId(id); // Show loading state
-      
+
       // Call Firebase service to actually delete the post
       await postService.deletePost(id);
-      
+
       // Update local state after successful deletion
-      setPosts((prevPosts: Post[]) => prevPosts.filter((p: Post) => p.id !== id));
+      setPosts((prevPosts: Post[]) =>
+        prevPosts.filter((p: Post) => p.id !== id)
+      );
       setSelectedPost(null); // close modal after delete
-      
+
       // Show success message
-      showToast("success", "Ticket Deleted", "Your ticket and all associated images have been successfully deleted.");
+      showToast(
+        "success",
+        "Ticket Deleted",
+        "Your ticket and all associated images have been successfully deleted."
+      );
     } catch (error: any) {
-      console.error('Error deleting post:', error);
-      
+      console.error("Error deleting post:", error);
+
       // Provide more specific error messages based on the error type
       let errorMessage = "Failed to delete ticket. Please try again.";
       let errorTitle = "Delete Failed";
-      
-      if (error.message?.includes('Cloudinary API credentials not configured')) {
+
+      if (
+        error.message?.includes("Cloudinary API credentials not configured")
+      ) {
         errorTitle = "Configuration Error";
-        errorMessage = "⚠️ Cloudinary API credentials are not configured. Images cannot be deleted from storage. Please contact your administrator.";
-      } else if (error.message?.includes('permissions insufficient') || error.message?.includes('401')) {
+        errorMessage =
+          "⚠️ Cloudinary API credentials are not configured. Images cannot be deleted from storage. Please contact your administrator.";
+      } else if (
+        error.message?.includes("permissions insufficient") ||
+        error.message?.includes("401")
+      ) {
         errorTitle = "Partial Delete Success";
-        errorMessage = "✅ Ticket deleted from database successfully! ⚠️ Images remain in Cloudinary storage due to account permission limitations. This won't affect your app functionality.";
-      } else if (error.message?.includes('Cloudinary')) {
+        errorMessage =
+          "✅ Ticket deleted from database successfully! ⚠️ Images remain in Cloudinary storage due to account permission limitations. This won't affect your app functionality.";
+      } else if (error.message?.includes("Cloudinary")) {
         errorTitle = "Image Deletion Failed";
-        errorMessage = "✅ Ticket deleted from database successfully! ⚠️ Some images may remain in Cloudinary storage. This won't affect your app functionality.";
+        errorMessage =
+          "✅ Ticket deleted from database successfully! ⚠️ Some images may remain in Cloudinary storage. This won't affect your app functionality.";
       }
-      
+
       // Show error message to user
       showToast("error", errorTitle, errorMessage);
-      
+
       // If the post was partially deleted (database but not images), we should still remove it from local state
       // since the user expects it to be gone
-      if (error.message?.includes('Ticket deleted') || error.message?.includes('permissions insufficient')) {
-        setPosts((prevPosts: Post[]) => prevPosts.filter((p: Post) => p.id !== id));
+      if (
+        error.message?.includes("Ticket deleted") ||
+        error.message?.includes("permissions insufficient")
+      ) {
+        setPosts((prevPosts: Post[]) =>
+          prevPosts.filter((p: Post) => p.id !== id)
+        );
         setSelectedPost(null);
       }
     } finally {
@@ -107,7 +130,7 @@ export default function MyTicket() {
   ] as const;
 
   return (
-    <div>
+    <div className="mb-13">
       <MobileNavText
         title="My Ticket"
         description="View and edit your posted ticket here"
@@ -197,9 +220,9 @@ export default function MyTicket() {
                   location: updatedPost.location,
                   status: updatedPost.status,
                   createdAt: updatedPost.createdAt,
-                  images: updatedPost.images
+                  images: updatedPost.images,
                 });
-                
+
                 // Update local state after successful Firebase update
                 setPosts((prevPosts: Post[]) =>
                   prevPosts.map((p: Post) =>
@@ -207,21 +230,26 @@ export default function MyTicket() {
                   )
                 );
                 setSelectedPost(updatedPost); // still important to update modal state
-                
+
                 // Show success message
-                showToast("success", "Ticket Updated", "Your ticket has been successfully updated!");
+                showToast(
+                  "success",
+                  "Ticket Updated",
+                  "Your ticket has been successfully updated!"
+                );
               } catch (error: any) {
-                console.error('Error updating post:', error);
-                
+                console.error("Error updating post:", error);
+
                 // Show error message to user
                 let errorMessage = "Failed to update ticket. Please try again.";
                 let errorTitle = "Update Failed";
-                
-                if (error.message?.includes('Cloudinary')) {
+
+                if (error.message?.includes("Cloudinary")) {
                   errorTitle = "Image Update Failed";
-                  errorMessage = "⚠️ Ticket updated but some images may not have been processed correctly. Please check your ticket.";
+                  errorMessage =
+                    "⚠️ Ticket updated but some images may not have been processed correctly. Please check your ticket.";
                 }
-                
+
                 showToast("error", errorTitle, errorMessage);
               }
             }}

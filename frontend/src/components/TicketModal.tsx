@@ -69,7 +69,7 @@ const TicketModal = ({
 
   // Prevent editing resolved posts
   const handleEditClick = () => {
-    if (post.status === 'resolved') {
+    if (post.status === "resolved") {
       return; // Do nothing for resolved posts
     }
     setIsEditing(true);
@@ -84,9 +84,9 @@ const TicketModal = ({
     );
     setEditedImages(post.images);
     setNewImageFiles([]);
-    
+
     // Prevent editing state for resolved posts
-    if (post.status === 'resolved') {
+    if (post.status === "resolved") {
       setIsEditing(false);
     }
   }, [post]);
@@ -141,7 +141,7 @@ const TicketModal = ({
     if (editedImages.length <= 1) {
       return; // Don't allow deletion of the last image
     }
-    
+
     const updated = [...editedImages];
     updated.splice(index, 1);
     setEditedImages(updated);
@@ -197,7 +197,7 @@ const TicketModal = ({
   // Status field removed - users cannot change ticket status
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
       <div className="bg-white rounded p-4 shadow w-[25rem] sm:w-[26rem] md:w-[32rem] lg:w-[42rem] xl:w-[60rem] max-w-full max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
         {/* Header */}
         <div className="flex justify-between items-center rounded mb-5">
@@ -221,7 +221,7 @@ const TicketModal = ({
             ) : (
               <>
                 {/* Prevent editing/deleting resolved posts */}
-                {post.status === 'resolved' ? (
+                {post.status === "resolved" ? (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded">
                       ✅ Handover completed - cannot edit or delete
@@ -239,7 +239,9 @@ const TicketModal = ({
                       onClick={() => onDelete(post.id)}
                       disabled={isDeleting}
                       className="bg-[#FD8E74] text-white text-xs px-3 p-2 rounded hover:bg-[#c07c6d] disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={`Delete ticket "${post.title}" and ${post.images.length} associated image${post.images.length !== 1 ? 's' : ''}`}
+                      title={`Delete ticket "${post.title}" and ${
+                        post.images.length
+                      } associated image${post.images.length !== 1 ? "s" : ""}`}
                     >
                       {isDeleting ? "Deleting..." : "Delete Ticket"}
                     </button>
@@ -276,13 +278,16 @@ const TicketModal = ({
                   alt={`Image ${currentImageIdx + 1}`}
                   title="Click to view next image"
                 />
-                {showOverlay && previewImages.length > 1 && !hasUserInteracted && !isEditing && (
-                  <div className="absolute inset-0 bg-black/45 flex items-center justify-center rounded animate-soft-blink">
-                    <p className="text-white text-sm px-3 py-1">
-                      Click to view more images
-                    </p>
-                  </div>
-                )}
+                {showOverlay &&
+                  previewImages.length > 1 &&
+                  !hasUserInteracted &&
+                  !isEditing && (
+                    <div className="absolute inset-0 bg-black/45 flex items-center justify-center rounded animate-soft-blink">
+                      <p className="text-white text-sm px-3 py-1">
+                        Click to view more images
+                      </p>
+                    </div>
+                  )}
                 {/* Image Counter - shows current position and total images */}
                 <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
                   {currentImageIdx + 1}/{previewImages.length}
@@ -304,9 +309,11 @@ const TicketModal = ({
         {post.type === "found" && post.foundAction && (
           <div className="mt-4 flex justify-center">
             <span className="px-3 py-2 rounded-md font-medium bg-blue-100 text-blue-700 text-sm">
-              {post.foundAction === "keep" ? "Keep" : 
-               post.foundAction === "turnover to OSA" ? "Turnover to OSA" : 
-               "Turnover to Campus Security"}
+              {post.foundAction === "keep"
+                ? "Keep"
+                : post.foundAction === "turnover to OSA"
+                ? "Turnover to OSA"
+                : "Turnover to Campus Security"}
             </span>
           </div>
         )}
@@ -374,19 +381,18 @@ const TicketModal = ({
                   <div className="bg-gray-100 p-2 lg:h-44 rounded border-gray-300">
                     <p className="text-[12px]">{post.description}</p>
                   </div>
-                  
+
                   {/* Found Action Information - only show for found items */}
                   {post.type === "found" && post.foundAction && (
                     <>
                       <h1 className="text-sm mt-3 mb-2">Found Item Action</h1>
                       <div className="bg-blue-100 p-2 rounded border-blue-300">
                         <p className="text-[12px] text-blue-700 font-medium">
-                          {post.foundAction === "keep" 
+                          {post.foundAction === "keep"
                             ? "The finder will keep this item and return it themselves"
                             : post.foundAction === "turnover to OSA"
                             ? "This item will be turned over to the OSA office"
-                            : "This item will be turned over to Campus Security"
-                          }
+                            : "This item will be turned over to Campus Security"}
                         </p>
                       </div>
                     </>
@@ -484,27 +490,32 @@ const TicketModal = ({
                   />
                   <button
                     className={`absolute top-1 right-1 p-1 rounded transition-all ${
-                      editedImages.length <= 1 
-                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                        : 'bg-red-600 text-white hover:bg-red-500 cursor-pointer'
+                      editedImages.length <= 1
+                        ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                        : "bg-red-600 text-white hover:bg-red-500 cursor-pointer"
                     }`}
                     onClick={() => handleDeleteImage(idx)}
                     disabled={editedImages.length <= 1}
-                    title={editedImages.length <= 1 ? "Posts must have at least one image" : "Delete image"}
+                    title={
+                      editedImages.length <= 1
+                        ? "Posts must have at least one image"
+                        : "Delete image"
+                    }
                   >
                     <FiX size={14} />
                   </button>
                 </div>
               ))}
             </div>
-            
+
             {/* Helpful message when only one image remains */}
             {editedImages.length <= 1 && (
               <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
                 <div className="flex items-center gap-2">
                   <span className="text-blue-600 text-sm">ℹ️</span>
                   <span className="text-blue-700 text-sm font-medium">
-                    Posts must have at least one image. To replace this image, upload a new one first.
+                    Posts must have at least one image. To replace this image,
+                    upload a new one first.
                   </span>
                 </div>
               </div>

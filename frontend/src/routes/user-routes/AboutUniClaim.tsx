@@ -20,21 +20,16 @@ import Amolato from "../../assets/amolato.png";
 const AboutUniClaim = () => {
   return (
     <>
-      <div className="font-albert-sans font-bold text-xl text-blue-950">
+      <div className="mb-13">
         <MobileNavText
-          title={
-            <span className="font-albert-sans font-bold text-xl text-blue-950">
-              About <span className="text-brand">Uni</span>Claim
-            </span>
-          }
+          title="About UniClaim"
           description="Get to know us more"
         />
 
         <div className="mx-4 lg:mx-6 hidden lg:flex items-center justify-between pt-4">
-          
-        <h1 className="font-albert-sans font-bold text-xl text-blue-950">
-                  About <span className="text-brand">Uni</span>Claim
-                </h1>
+          <h1 className="font-albert-sans font-medium text-base text-blue-950">
+            About UniClaim
+          </h1>
           <p className="text-sm text-gray-500">Get to know us more</p>
         </div>
 
@@ -80,7 +75,7 @@ const AboutUniClaim = () => {
                 About UniClaim
               </h1>
               <div className="space-y-3 mb-8">
-                <p className="text-sm font-manrope leading-5.5 lg:text-base lg:leading-7">
+                <p className="text-sm font-inter leading-5.5 lg:text-base lg:leading-7">
                   UniClaim is a cross-platform lost and found system in USTP-CDO
                   campus designed to help students and staff report, track, and
                   retrieve lost and found items on campus. Our system allows
@@ -90,7 +85,7 @@ const AboutUniClaim = () => {
                   quickly alerted whenever a match for their lost or found item
                   is made.
                 </p>
-                <p className="text-sm font-manrope leading-5.5 lg:text-base lg:leading-7">
+                <p className="text-sm font-inter leading-5.5 lg:text-base lg:leading-7">
                   Administrators can efficiently manage reports, ensuring that
                   all cases are handled smoothly. Our goal is to create a
                   seamless and convenient experience for the campus community,

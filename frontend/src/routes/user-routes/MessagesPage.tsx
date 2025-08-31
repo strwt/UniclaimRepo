@@ -47,12 +47,14 @@ const MessagesPage: React.FC = () => {
 
   return (
     <PageWrapper title="Messages">
-      <div className="max-h-40 bg-gray-50">
-        <div className="max-w-8xl mx-auto">
+      <div className="">
+        <div className="w-full mx-auto">
           {/* Page Header */}
-          <div className="hidden bg-white border-gray-200 lg:block">
-            <div className="px-4 py-3 sm:px-6 lg:px-8">
-              <h1 className="text-base font-bold text-gray-900">Messages</h1>
+          <div className="hidden px-4 py-3 sm:px-6 lg:px-8 lg:flex items-center justify-between fixed left-20 top-18 right-0 z-10 bg-gray-50 border-b border-zinc-200">
+            <div className="">
+              <h1 className="text-base font-medium text-gray-900">Messages</h1>
+            </div>
+            <div className="">
               <p className="mt-1 text-xs text-gray-500">
                 Chat with other users about lost and found items
               </p>
@@ -66,9 +68,9 @@ const MessagesPage: React.FC = () => {
           />
 
           {/* Messages Layout */}
-          <div className="flex h-[calc(111.5vh-280px)] bg-white rounded-lg overflow-hidden mt-1">
+          <div className="flex h-[calc(116vh-280px)] overflow-hidden lg:mt-30">
             {/* Conversation List - Left Side */}
-            <div className="w-full sm:w-72 md:w-80 lg:w-96 border-r border-gray-200 flex flex-col">
+            <div className="w-full lg:max-w-sm border-r border-gray-200 flex flex-col">
               <ConversationList
                 onSelectConversation={handleSelectConversation}
                 selectedConversationId={selectedConversation?.id}
@@ -77,13 +79,13 @@ const MessagesPage: React.FC = () => {
             </div>
 
             {/* Chat Window - Right Side - Visible on sm and up, hidden only on xs */}
-            <div className="flex-1 hidden sm:flex flex-col h-full min-w-0">
+            <div className="flex-1 hidden lg:flex flex-col">
               <ChatWindow conversation={selectedConversation} />
             </div>
 
             {/* Mobile Chat Overlay - Only on very small screens (xs) */}
             {selectedConversation && (
-              <div className="sm:hidden fixed inset-0 z-50 bg-white flex flex-col">
+              <div className="lg:hidden fixed inset-0 z-50 bg-white flex flex-col">
                 {/* Mobile Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white flex-shrink-0">
                   <button

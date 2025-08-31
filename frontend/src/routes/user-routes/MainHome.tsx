@@ -45,7 +45,7 @@ export default function MainHome() {
           sideBarOpen={isSideBarOpen}
           sideNavClick={() => setIsSideBarOpen(!isSideBarOpen)}
         />
-        <main className="mt-18 mb-13">
+        <main className="mt-18 mb-0">
           <Outlet />
         </main>
         <div
