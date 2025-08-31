@@ -74,13 +74,18 @@ const MessagesPage: React.FC = () => {
               <ConversationList
                 onSelectConversation={handleSelectConversation}
                 selectedConversationId={selectedConversation?.id}
-                autoSelectConversationId={searchParams.get("conversation")}
               />
             </div>
 
             {/* Chat Window - Right Side - Visible on sm and up, hidden only on xs */}
             <div className="flex-1 hidden lg:flex flex-col">
-              <ChatWindow conversation={selectedConversation} />
+              <ChatWindow 
+                conversation={selectedConversation} 
+                onClearConversation={() => {
+                  setSelectedConversation(null);
+                  setSearchParams({});
+                }}
+              />
             </div>
 
             {/* Mobile Chat Overlay - Only on very small screens (xs) */}
@@ -116,7 +121,10 @@ const MessagesPage: React.FC = () => {
                 <div className="flex-1 overflow-hidden">
                   <ChatWindow
                     conversation={selectedConversation}
-                    onClearConversation={() => setSelectedConversation(null)}
+                    onClearConversation={() => {
+                      setSelectedConversation(null);
+                      setSearchParams({});
+                    }}
                   />
                 </div>
               </div>

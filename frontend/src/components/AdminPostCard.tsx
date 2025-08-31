@@ -197,20 +197,21 @@ function AdminPostCard({
           </div>
         </div>
 
-        {/* Status Management */}
-        <div className="mb-3">
-          <label className="text-xs text-gray-600 block mb-1">Status:</label>
-          <select
-            value={post.status || 'pending'}
-            onChange={handleStatusChange}
-            className="text-xs p-1 border rounded bg-white"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <option value="pending">Pending</option>
-            <option value="resolved">Resolved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </div>
+        {/* Status Management - Hide dropdown for completed reports since there's a revert button */}
+        {post.status !== 'resolved' && (
+          <div className="mb-3">
+            <label className="text-xs text-gray-600 block mb-1">Status:</label>
+            <select
+              value={post.status || 'pending'}
+              onChange={handleStatusChange}
+              className="text-xs p-1 border rounded bg-white"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <option value="pending">Pending</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </div>
+        )}
 
         {/* Activate Ticket Button - Only show for unclaimed items */}
         {post.movedToUnclaimed && onActivateTicket && (

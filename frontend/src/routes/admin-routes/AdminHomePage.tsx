@@ -190,7 +190,7 @@ export default function AdminHomePage() {
     try {
       // Import and use the postService to update the status
       const { postService } = await import('../../utils/firebase');
-      await postService.updatePostStatus(post.id, status as 'pending' | 'resolved' | 'rejected');
+      await postService.updatePostStatus(post.id, status as 'pending' | 'resolved');
       
       showToast("success", "Status Updated", `Post status changed to ${status}`);
     } catch (error: any) {
@@ -222,25 +222,36 @@ export default function AdminHomePage() {
       try {
         const { postService } = await import('../../utils/firebase');
         
-        // First, clean up handover details and photos
+        let totalPhotosDeleted = 0;
+        let allErrors: string[] = [];
+        
+        // Clean up handover details and photos
         console.log('🧹 Starting cleanup of handover details and photos...');
-        const cleanupResult = await postService.cleanupHandoverDetailsAndPhotos(post.id);
+        const handoverCleanupResult = await postService.cleanupHandoverDetailsAndPhotos(post.id);
+        totalPhotosDeleted += handoverCleanupResult.photosDeleted;
+        allErrors.push(...handoverCleanupResult.errors);
+        
+        // Clean up claim details and photos
+        console.log('🧹 Starting cleanup of claim details and photos...');
+        const claimCleanupResult = await postService.cleanupClaimDetailsAndPhotos(post.id);
+        totalPhotosDeleted += claimCleanupResult.photosDeleted;
+        allErrors.push(...claimCleanupResult.errors);
         
         // Then update the post status to pending
         await postService.updatePostStatus(post.id, 'pending');
         
         // Show success message with cleanup details
         let successMessage = `"${post.title}" has been reverted back to pending status.`;
-        if (cleanupResult.photosDeleted > 0) {
-          successMessage += ` ${cleanupResult.photosDeleted} photos were deleted from storage.`;
+        if (totalPhotosDeleted > 0) {
+          successMessage += ` ${totalPhotosDeleted} photos were deleted from storage.`;
         }
-        if (cleanupResult.errors.length > 0) {
-          console.warn('⚠️ Some cleanup errors occurred:', cleanupResult.errors);
+        if (allErrors.length > 0) {
+          console.warn('⚠️ Some cleanup errors occurred:', allErrors);
           successMessage += ` Note: Some cleanup operations had issues.`;
         }
         
         showToast("success", "Resolution Reverted", successMessage);
-        console.log('Post resolution reverted successfully:', post.title, 'Cleanup result:', cleanupResult);
+        console.log('Post resolution reverted successfully:', post.title, 'Total photos deleted:', totalPhotosDeleted);
         
       } catch (error: any) {
         console.error('Failed to revert post resolution:', error);

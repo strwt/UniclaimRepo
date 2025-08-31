@@ -8,30 +8,16 @@ import ProfilePicture from "./ProfilePicture";
 interface ConversationListProps {
   onSelectConversation: (conversation: Conversation) => void;
   selectedConversationId?: string;
-  autoSelectConversationId?: string | null;
 }
 
 const ConversationList: React.FC<ConversationListProps> = ({
   onSelectConversation,
   selectedConversationId,
-  autoSelectConversationId,
 }) => {
   const { conversations, loading } = useMessage();
   const { userData } = useAuth();
 
-  // Auto-select conversation when component mounts or conversations change
-  useEffect(() => {
-    if (autoSelectConversationId && conversations.length > 0) {
-      // Always try to find and select the conversation from URL parameter
-      // Remove the !selectedConversationId condition to allow re-selection
-      const conversationToSelect = conversations.find(
-        (conv) => conv.id === autoSelectConversationId
-      );
-      if (conversationToSelect) {
-        onSelectConversation(conversationToSelect);
-      }
-    }
-  }, [autoSelectConversationId, conversations, onSelectConversation]);
+
 
   // Sort conversations by most recent message timestamp, with fallback to createdAt (newest first)
   const sortedConversations = useMemo(() => {

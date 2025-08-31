@@ -21,6 +21,7 @@ interface MessageBubbleProps {
     status: "accepted" | "rejected"
   ) => void;
   onConfirmIdPhotoSuccess?: (_messageId: string) => void;
+  onClearConversation?: () => void;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -32,6 +33,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   postOwnerId,
   onHandoverResponse,
   onClaimResponse,
+  onClearConversation,
 }) => {
   const {
     deleteMessage,
@@ -147,11 +149,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           alert(
             "✅ Handover confirmed successfully! The conversation has been archived and the post is now marked as completed."
           );
+          // Clear conversation to show "Select a conversation" screen
+          onClearConversation?.();
         } else {
           // Handover confirmed but conversation not deleted (fallback case)
           alert(
             "✅ Handover confirmed successfully! The post is now marked as completed."
           );
+          // Clear conversation to show "Select a conversation" screen
+          onClearConversation?.();
         }
       } else {
         // Handover failed
@@ -252,6 +258,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       await confirmClaimIdPhoto(conversationId, message.id);
       // Call the callback to update UI
       onClaimResponse?.(message.id, "accepted");
+      
+      // Show success message
+      alert("✅ Claim ID photo confirmed successfully!");
+      
+      // Clear conversation to show "Select a conversation" screen
+      onClearConversation?.();
     } catch (error: any) {
       console.error("Failed to confirm claim ID photo:", error);
       alert("Failed to confirm ID photo. Please try again.");

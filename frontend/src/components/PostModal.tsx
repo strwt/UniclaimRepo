@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useMessage } from "@/context/MessageContext";
 import ProfilePicture from "./ProfilePicture";
 import HandoverDetailsDisplay from "./HandoverDetailsDisplay";
+import ClaimDetailsDisplay from "./ClaimDetailsDisplay";
 
 interface PostModalProps {
   post: Post;
@@ -374,8 +375,16 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
           </div>
         </div>
 
-        {/* Show handover details if post is resolved */}
-        {post.status === 'resolved' && post.handoverDetails && (
+        {/* Show claim details if post is resolved and has claim details */}
+        {post.status === 'resolved' && post.claimDetails && (
+          <ClaimDetailsDisplay 
+            claimDetails={post.claimDetails} 
+            conversationData={post.conversationData}
+          />
+        )}
+
+        {/* Show handover details if post is resolved and no claim details */}
+        {post.status === 'resolved' && post.handoverDetails && !post.claimDetails && (
           <HandoverDetailsDisplay 
             handoverDetails={post.handoverDetails} 
             conversationData={post.conversationData}

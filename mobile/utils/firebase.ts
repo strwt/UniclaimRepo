@@ -646,7 +646,7 @@ export const messageService = {
         try {
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
 
-            // Update the claim message to confirm the ID photo
+            // STEP 1: Update the claim message to confirm the ID photo
             await updateDoc(messageRef, {
                 'claimData.idPhotoConfirmed': true,
                 'claimData.idPhotoConfirmedAt': serverTimestamp(),
@@ -656,8 +656,7 @@ export const messageService = {
 
             console.log('✅ Mobile: Claim ID photo confirmed successfully');
 
-            // STEP 2: Auto-resolve the post after ID confirmation
-            // Get conversation data to retrieve postId
+            // STEP 2: Get conversation data to retrieve postId and prepare claim details
             const conversationRef = doc(db, 'conversations', conversationId);
             const conversationSnap = await getDoc(conversationRef);
 
@@ -666,12 +665,141 @@ export const messageService = {
                 const postId = conversationData.postId;
 
                 if (postId) {
-                    // Update post status to resolved
-                    await updateDoc(doc(db, 'posts', postId), {
-                        status: 'resolved',
-                        updatedAt: serverTimestamp()
-                    });
-                    console.log('✅ Mobile: Post auto-resolved after ID photo confirmation:', postId);
+                    // STEP 3: Get the claim message data to extract claim details
+                    const messageSnap = await getDoc(messageRef);
+                    if (messageSnap.exists()) {
+                        const messageData = messageSnap.data();
+                        const claimData = messageData.claimData;
+
+                        if (claimData) {
+                            // STEP 4: Get claimer user data
+                            const claimerId = messageData.senderId;
+                            const claimerDoc = await getDoc(doc(db, 'users', claimerId));
+                            const claimerData = claimerDoc.exists() ? claimerDoc.data() : null;
+
+                            // STEP 5: Get owner user data
+                            const ownerDoc = await getDoc(doc(db, 'users', confirmBy));
+                            const ownerData = ownerDoc.exists() ? ownerDoc.data() : null;
+                            const ownerName = ownerData ? `${ownerData.firstName || ''} ${ownerData.lastName || ''}`.trim() : 'Unknown';
+
+                            // STEP 6: Prepare claim request details for the post
+                            const claimRequestDetails = {
+                                // Original message details
+                                messageId: messageId,
+                                messageText: messageData.text || '',
+                                messageTimestamp: messageData.timestamp,
+                                senderId: messageData.senderId,
+                                senderName: messageData.senderName || '',
+                                senderProfilePicture: messageData.senderProfilePicture || '',
+
+                                // Claim data from the message
+                                claimReason: claimData.claimReason || '',
+                                claimRequestedAt: claimData.requestedAt || null,
+                                claimRespondedAt: claimData.respondedAt || null,
+                                claimResponseMessage: claimData.responseMessage || '',
+
+                                // ID photo verification details
+                                idPhotoUrl: claimData.idPhotoUrl || '',
+                                idPhotoConfirmed: true,
+                                idPhotoConfirmedAt: serverTimestamp(),
+                                idPhotoConfirmedBy: confirmBy,
+
+                                // Evidence photos
+                                evidencePhotos: claimData.evidencePhotos || [],
+                                evidencePhotosConfirmed: claimData.evidencePhotosConfirmed || false,
+                                evidencePhotosConfirmedAt: claimData.evidencePhotosConfirmedAt || null,
+                                evidencePhotosConfirmedBy: claimData.evidencePhotosConfirmedBy || '',
+
+                                // Owner verification details
+                                ownerIdPhoto: claimData.ownerIdPhoto || '',
+                                ownerIdPhotoConfirmed: claimData.ownerIdPhotoConfirmed || false,
+                                ownerIdPhotoConfirmedAt: claimData.ownerIdPhotoConfirmedAt || null,
+                                ownerIdPhotoConfirmedBy: claimData.ownerIdPhotoConfirmedBy || ''
+                            };
+
+                            // STEP 7: Prepare claim details for the post
+                            const claimDetails = {
+                                claimerName: claimerData ? `${claimerData.firstName || ''} ${claimerData.lastName || ''}`.trim() : 'Unknown',
+                                claimerContact: claimerData?.contactNum || '',
+                                claimerStudentId: claimerData?.studentId || '',
+                                claimerEmail: claimerData?.email || '',
+                                evidencePhotos: claimData.evidencePhotos || [],
+                                claimerIdPhoto: claimData.idPhotoUrl || '',
+                                ownerIdPhoto: claimData.ownerIdPhoto || '',
+                                claimConfirmedAt: serverTimestamp(),
+                                claimConfirmedBy: confirmBy,
+                                ownerName: ownerName,
+                                // Store the complete claim request chat bubble details
+                                claimRequestDetails: claimRequestDetails
+                            };
+
+                            // STEP 8: Get all messages from the conversation to preserve the chat history
+                            const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+                            const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
+                            const messagesSnap = await getDocs(messagesQuery);
+
+                            const conversationMessages = messagesSnap.docs.map(doc => ({
+                                id: doc.id,
+                                ...doc.data()
+                            }));
+
+                            // STEP 9: Update post with claim details, status, and conversation data
+                            await updateDoc(doc(db, 'posts', postId), {
+                                status: 'resolved',
+                                claimDetails: claimDetails,
+                                conversationData: {
+                                    conversationId: conversationId,
+                                    messages: conversationMessages,
+                                    participants: conversationData.participants,
+                                    createdAt: conversationData.createdAt,
+                                    lastMessage: conversationData.lastMessage
+                                },
+                                updatedAt: serverTimestamp()
+                            });
+
+                            console.log('✅ Mobile: Post updated with complete claim details and conversation data:', postId);
+                            console.log('✅ Mobile: Claim request chat bubble details preserved in post');
+
+                            // STEP 10: Delete the conversation after successful data preservation
+                            try {
+                                console.log('🗑️ Mobile: Starting conversation deletion after successful claim confirmation...');
+
+                                // Delete all messages in the conversation first
+                                const messagesToDelete = messagesSnap.docs.map(doc => doc.ref);
+                                if (messagesToDelete.length > 0) {
+                                    const deleteBatch = writeBatch(db);
+                                    messagesToDelete.forEach(messageRef => {
+                                        deleteBatch.delete(messageRef);
+                                    });
+                                    await deleteBatch.commit();
+                                    console.log(`✅ Mobile: Deleted ${messagesToDelete.length} messages from conversation`);
+                                }
+
+                                // Delete the conversation document
+                                await deleteDoc(conversationRef);
+                                console.log('✅ Mobile: Conversation deleted successfully');
+
+                            } catch (deleteError: any) {
+                                console.error('❌ Mobile: Failed to delete conversation after claim confirmation:', deleteError);
+                                // Don't throw error here as the main operation (claim confirmation) was successful
+                            }
+
+                        } else {
+                            console.warn('⚠️ Mobile: No claim data found in message, cannot store claim details');
+                            // Fallback: just update post status
+                            await updateDoc(doc(db, 'posts', postId), {
+                                status: 'resolved',
+                                updatedAt: serverTimestamp()
+                            });
+                        }
+                    } else {
+                        console.warn('⚠️ Mobile: Message not found, cannot store claim details');
+                        // Fallback: just update post status
+                        await updateDoc(doc(db, 'posts', postId), {
+                            status: 'resolved',
+                            updatedAt: serverTimestamp()
+                        });
+                    }
                 } else {
                     console.warn('⚠️ Mobile: No postId found in conversation, cannot auto-resolve');
                 }
@@ -2292,7 +2420,7 @@ export const postService = {
     },
 
     // Update post status
-    async updatePostStatus(postId: string, status: 'pending' | 'resolved' | 'rejected'): Promise<void> {
+    async updatePostStatus(postId: string, status: 'pending' | 'resolved'): Promise<void> {
         try {
             await updateDoc(doc(db, 'posts', postId), {
                 status,
@@ -2386,6 +2514,91 @@ export const postService = {
         } catch (error: any) {
             console.error('❌ Mobile: Failed to cleanup handover details and photos:', error);
             throw new Error(`Failed to cleanup handover details: ${error.message}`);
+        }
+    },
+
+    // Clean up claim details and photos when reverting a completed report
+    async cleanupClaimDetailsAndPhotos(postId: string): Promise<{ photosDeleted: number; errors: string[] }> {
+        try {
+            console.log(`🧹 Mobile: Starting cleanup of claim details and photos for post: ${postId}`);
+
+            // Get the post to extract claim details
+            const postDoc = await getDoc(doc(db, 'posts', postId));
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            const postData = postDoc.data();
+            const claimDetails = postData.claimDetails;
+
+            if (!claimDetails) {
+                console.log('ℹ️ Mobile: No claim details found, nothing to clean up');
+                return { photosDeleted: 0, errors: [] };
+            }
+
+            // Collect all photo URLs that need to be deleted
+            const photoUrlsToDelete: string[] = [];
+            const errors: string[] = [];
+
+            // 1. Evidence photos
+            if (claimDetails.evidencePhotos && Array.isArray(claimDetails.evidencePhotos)) {
+                claimDetails.evidencePhotos.forEach((photo: any) => {
+                    if (photo.url && typeof photo.url === 'string' && photo.url.includes('cloudinary.com')) {
+                        photoUrlsToDelete.push(photo.url);
+                        console.log(`🗑️ Mobile: Found evidence photo for deletion: ${photo.url.split('/').pop()}`);
+                    }
+                });
+            }
+
+            // 2. Claimer ID photo
+            if (claimDetails.claimerIdPhoto && typeof claimDetails.claimerIdPhoto === 'string' && claimDetails.claimerIdPhoto.includes('cloudinary.com')) {
+                photoUrlsToDelete.push(claimDetails.claimerIdPhoto);
+                console.log(`🗑️ Mobile: Found claimer ID photo for deletion: ${claimDetails.claimerIdPhoto.split('/').pop()}`);
+            }
+
+            // 3. Owner ID photo
+            if (claimDetails.ownerIdPhoto && typeof claimDetails.ownerIdPhoto === 'string' && claimDetails.ownerIdPhoto.includes('cloudinary.com')) {
+                photoUrlsToDelete.push(claimDetails.ownerIdPhoto);
+                console.log(`🗑️ Mobile: Found owner ID photo for deletion: ${claimDetails.ownerIdPhoto.split('/').pop()}`);
+            }
+
+            // Delete photos from Cloudinary if any exist
+            let photosDeleted = 0;
+            if (photoUrlsToDelete.length > 0) {
+                console.log(`🗑️ Mobile: Deleting ${photoUrlsToDelete.length} photos from Cloudinary...`);
+
+                try {
+                    const { deleteMessageImages } = await import('./cloudinary');
+                    const deletionResult = await deleteMessageImages(photoUrlsToDelete);
+                    photosDeleted = deletionResult.deleted.length;
+
+                    if (deletionResult.failed.length > 0) {
+                        deletionResult.failed.forEach(failedUrl => {
+                            errors.push(`Failed to delete photo: ${failedUrl.split('/').pop()}`);
+                        });
+                    }
+
+                    console.log(`✅ Mobile: Successfully deleted ${photosDeleted} photos from Cloudinary`);
+                } catch (cloudinaryError: any) {
+                    console.error('❌ Mobile: Cloudinary deletion failed:', cloudinaryError);
+                    errors.push(`Cloudinary deletion failed: ${cloudinaryError.message}`);
+                }
+            }
+
+            // Clear claim details from the post
+            await updateDoc(doc(db, 'posts', postId), {
+                claimDetails: null,
+                conversationData: null, // Also clear conversation data
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`✅ Mobile: Claim details cleared from post: ${postId}`);
+
+            return { photosDeleted, errors };
+
+        } catch (error: any) {
+            console.error('❌ Mobile: Failed to cleanup claim details and photos:', error);
+            throw new Error(`Failed to cleanup claim details: ${error.message}`);
         }
     },
 

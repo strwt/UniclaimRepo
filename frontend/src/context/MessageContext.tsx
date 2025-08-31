@@ -83,6 +83,12 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
   };
 
   const markConversationAsRead = async (conversationId: string): Promise<void> => {
+    // Guard clause: don't proceed if conversationId is null, undefined, or empty
+    if (!conversationId || conversationId.trim() === '') {
+      console.log('🛡️ markConversationAsRead: Skipping - conversationId is empty or null');
+      return;
+    }
+
     try {
       await messageService.markConversationAsRead(conversationId, userId!);
     } catch (error: any) {
@@ -91,6 +97,12 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
   };
 
   const markMessageAsRead = async (conversationId: string, messageId: string): Promise<void> => {
+    // Guard clause: don't proceed if conversationId or messageId is null, undefined, or empty
+    if (!conversationId || conversationId.trim() === '' || !messageId || messageId.trim() === '') {
+      console.log('🛡️ markMessageAsRead: Skipping - conversationId or messageId is empty or null');
+      return;
+    }
+
     try {
       await messageService.markMessageAsRead(conversationId, messageId, userId!);
     } catch (error: any) {

@@ -29,7 +29,8 @@ const MessageBubble = ({
   conversationId,
   currentUserId,
   onHandoverResponse,
-  onClaimResponse
+  onClaimResponse,
+  onConfirmIdPhotoSuccess
 }: {
   message: Message;
   isOwnMessage: boolean;
@@ -37,6 +38,7 @@ const MessageBubble = ({
   currentUserId: string;
   onHandoverResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
   onClaimResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
+  onConfirmIdPhotoSuccess?: (messageId: string) => void;
 }) => {
   const { deleteMessage, confirmHandoverIdPhoto, confirmClaimIdPhoto, updateClaimResponse } = useMessage();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -218,6 +220,9 @@ const MessageBubble = ({
       await confirmClaimIdPhoto(conversationId, message.id);
       // Call the callback to update UI
       onClaimResponse?.(message.id, 'accepted');
+      
+      // Call the success callback for navigation
+      onConfirmIdPhotoSuccess?.(message.id);
     } catch (error: any) {
       console.error('Failed to confirm claim ID photo:', error);
       Alert.alert('Error', 'Failed to confirm ID photo. Please try again.');
@@ -990,6 +995,23 @@ export default function Chat() {
     console.log(`Claim response: ${status} for message ${messageId}`);
   };
 
+  const handleConfirmIdPhotoSuccess = (messageId: string) => {
+    // Show success message and redirect to conversation list
+    Alert.alert(
+      'Success',
+      '✅ ID photo confirmed successfully!',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Navigate back to Message screen (conversation list)
+            navigation.navigate('Message');
+          }
+        }
+      ]
+    );
+  };
+
   const handleHandoverRequest = async () => {
     if (!conversationId || !user || !userData) return;
 
@@ -1137,6 +1159,7 @@ export default function Chat() {
                 currentUserId={user?.uid || ''}
                 onHandoverResponse={handleHandoverResponse}
                 onClaimResponse={handleClaimResponse}
+                onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
               />
             )}
             contentContainerStyle={{ padding: 16 }}

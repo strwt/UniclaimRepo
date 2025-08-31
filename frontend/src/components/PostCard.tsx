@@ -221,8 +221,59 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
           }}
         />
 
-        {/* Handover Information - only show for resolved posts with handover details */}
-        {post.status === 'resolved' && post.handoverDetails && post.handoverDetails.handoverRequestDetails && (
+        {/* Claim Information - only show for resolved posts with claim details */}
+        {post.status === 'resolved' && post.claimDetails && post.claimDetails.claimRequestDetails && (
+          <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            {/* Show claim request details summary if available */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-purple-600 text-lg">💬</span>
+                <h4 className="text-sm font-semibold text-purple-800">Claim Request Details</h4>
+              </div>
+              
+              {/* Show claim reason if available */}
+              {post.claimDetails.claimRequestDetails.claimReason && (
+                <div className="text-purple-700 mb-2">
+                  <span className="font-medium">Reason: </span>
+                  <span className="italic">"{post.claimDetails.claimRequestDetails.claimReason}"</span>
+                </div>
+              )}
+              
+              {/* Show verification status */}
+              <div className="flex items-center gap-4 text-xs text-purple-600">
+                <span>
+                  Claimer ID: {post.claimDetails.claimRequestDetails.idPhotoConfirmed ? '✅' : '⏳'}
+                </span>
+                {post.claimDetails.claimRequestDetails.evidencePhotos && (
+                  <span>
+                    Evidence Photos: {post.claimDetails.claimRequestDetails.evidencePhotosConfirmed ? '✅' : '⏳'}
+                  </span>
+                )}
+                {post.claimDetails.claimRequestDetails.ownerIdPhoto && (
+                  <span>
+                    Owner ID: {post.claimDetails.claimRequestDetails.ownerIdPhotoConfirmed ? '✅' : '⏳'}
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            {/* Conversation Summary */}
+            {post.conversationData && (
+              <div className="mt-3 pt-2 border-t border-purple-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-purple-600">💬</span>
+                  <span className="text-xs font-medium text-purple-700">Conversation Summary</span>
+                </div>
+                <div className="text-xs text-purple-600">
+                  {post.conversationData.messages?.length || 0} messages exchanged
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Handover Information - only show for resolved posts with handover details (if no claim details) */}
+        {post.status === 'resolved' && post.handoverDetails && post.handoverDetails.handoverRequestDetails && !post.claimDetails && (
           <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
             {/* Show handover request details summary if available */}
             <div>

@@ -30,8 +30,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isClaimSubmitting, setIsClaimSubmitting] = useState(false);
   const [showHandoverModal, setShowHandoverModal] = useState(false);
   const [isHandoverSubmitting, setIsHandoverSubmitting] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
-
   const navigate = useNavigate();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -61,6 +59,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     scrollToBottom();
   }, [messages]);
 
+
+
   // Load messages when conversation changes
   useEffect(() => {
     if (!conversation) {
@@ -76,7 +76,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setIsLoading(false);
 
         // Mark conversation as read when messages are loaded
-        if (userData && conversation.unreadCounts?.[userData.uid] > 0) {
+        if (userData && conversation?.unreadCounts?.[userData.uid] > 0 && conversation?.id) {
           markConversationAsRead(conversation.id);
         }
       }
@@ -97,8 +97,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       console.log(
         "🗑️ Conversation was deleted from local state, redirecting user..."
       );
-      setIsRedirecting(true);
-      navigate("/messages"); // Redirect to messages page b1eb10c578051989894bb0b7fcc26ca096ed5fa6
+      navigate("/messages"); // Redirect to messages page
       return;
     }
   }, [conversation, conversations, onClearConversation]);
@@ -121,7 +120,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           console.log(
             "🗑️ Conversation was deleted from database, redirecting user..."
           );
-          setIsRedirecting(true);
           navigate("/messages"); // Redirect to messages page
         }
       } catch (error: any) {
@@ -133,8 +131,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           console.log(
             "🗑️ Conversation access denied (likely deleted), redirecting user..."
           );
-          setIsRedirecting(true);
-          navigate("/messages"); // Redirect to messages page b1eb10c578051989894bb0b7fcc26ca096ed5fa6
+          navigate("/messages"); // Redirect to messages page
         }
       }
     };
@@ -669,27 +666,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return true;
   };
 
-  // Show redirecting state if conversation is being deleted
-  if (isRedirecting) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
-        <div className="text-center p-8 bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="w-16 h-16 mx-auto mb-4">
-            <LoadingSpinner />
-          </div>
-          <p className="text-xl font-semibold text-gray-800 mb-2">
-            Handover Completed! 🎉
-          </p>
-          <p className="text-gray-600 mb-4">
-            The conversation has been successfully completed and archived.
-          </p>
-          <p className="text-sm text-gray-500">
-            Redirecting you to the conversation list...
-          </p>
-        </div>
-      </div>
-    );
-  }
+
 
   if (!conversation) {
     return (
@@ -705,9 +682,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   }
 
-  function handleConfirmIdPhotoSuccess(_messageId: string): void {
-    throw new Error("Function not implemented.");
-  }
+  const handleConfirmIdPhotoSuccess = (messageId: string): void => {
+    // The onClearConversation is already being called in MessageBubble
+    // This function is just for any additional cleanup if needed
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-white h-full">
@@ -784,20 +762,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         ) : (
           <div className="space-y-3">
             {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                isOwnMessage={message.senderId === userData?.uid}
-                showSenderName={
-                  Object.keys(conversation.participants).length > 2
-                }
-                conversationId={conversation.id}
-                currentUserId={userData?.uid || ""}
-                postOwnerId={conversation.postCreatorId}
-                onHandoverResponse={handleHandoverResponse}
-                onClaimResponse={handleClaimResponse}
-                onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
-              />
+                             <MessageBubble
+                 key={message.id}
+                 message={message}
+                 isOwnMessage={message.senderId === userData?.uid}
+                 showSenderName={
+                   Object.keys(conversation.participants).length > 2
+                 }
+                 conversationId={conversation.id}
+                 currentUserId={userData?.uid || ""}
+                 postOwnerId={conversation.postCreatorId}
+                 onHandoverResponse={handleHandoverResponse}
+                 onClaimResponse={handleClaimResponse}
+                 onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
+                 onClearConversation={onClearConversation}
+               />
             ))}
             <div ref={messagesEndRef} />
           </div>
