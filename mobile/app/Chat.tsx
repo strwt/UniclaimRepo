@@ -680,6 +680,12 @@ const MessageBubble = ({
             >
               <Text className="text-white text-xs">Confirm ID Photo</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleClaimResponse('rejected')}
+              className="px-3 py-1 bg-red-500 rounded-md"
+            >
+              <Text className="text-white text-xs">Reject Claim</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <Text className="text-xs text-purple-600">

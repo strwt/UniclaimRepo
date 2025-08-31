@@ -682,6 +682,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             >
               Confirm ID Photo
             </button>
+            <button
+              onClick={() => handleClaimResponse("rejected")}
+              className="px-3 py-1 bg-red-500 text-white text-xs rounded-md hover:bg-red-600 transition-colors"
+            >
+              Reject Claim
+            </button>
           </div>
         ) : (
           <div className="text-xs text-purple-600">

@@ -608,6 +608,17 @@ export const extractMessageImages = (message: any): string[] => {
             }
         }
 
+        // Check for owner's ID photo in claim requests
+        if (message.claimData && message.claimData.ownerIdPhoto) {
+            const ownerIdPhotoUrl = message.claimData.ownerIdPhoto;
+
+            // Only include Cloudinary URLs
+            if (ownerIdPhotoUrl && typeof ownerIdPhotoUrl === 'string' && ownerIdPhotoUrl.includes('cloudinary.com')) {
+                logMessage('log', '🗑️ Found owner ID photo for deletion:', ownerIdPhotoUrl.split('/').pop());
+                imageUrls.push(ownerIdPhotoUrl);
+            }
+        }
+
         // NEW: Check for evidence photos in claim requests (up to 3 photos)
         if (message.claimData && message.claimData.evidencePhotos && Array.isArray(message.claimData.evidencePhotos)) {
             message.claimData.evidencePhotos.forEach((photo: any, index: number) => {
