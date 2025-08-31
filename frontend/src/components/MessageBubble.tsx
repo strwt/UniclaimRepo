@@ -510,6 +510,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     const claimData = message.claimData;
     if (!claimData) return null;
 
+
+
     // Show different UI based on status and user role
     const canRespond = claimData.status === "pending" && !isOwnMessage;
     const canConfirm =
@@ -533,20 +535,40 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         )}
 
-        {/* Show ID photo if uploaded */}
+        {/* Show claimer's ID photo if uploaded */}
         {claimData.idPhotoUrl && (
           <div className="mb-3 p-2 bg-white rounded border">
-            <div className="text-xs text-gray-600 mb-1 font-medium">
-              ID Photo:
-            </div>
+            <div className="text-xs text-gray-600 mb-1 font-medium">Claimer ID Photo:</div>
             <div className="relative">
               <img
                 src={claimData.idPhotoUrl}
-                alt="ID Photo"
+                alt="Claimer ID Photo"
                 className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
-                onClick={() =>
-                  handleImageClick(claimData.idPhotoUrl!, "ID Photo")
-                }
+                onClick={() => handleImageClick(claimData.idPhotoUrl!, 'Claimer ID Photo')}
+                title="Click to view full size"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
+                <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">
+                  Click to expand
+                </span>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Click the photo to view full size
+            </div>
+          </div>
+        )}
+
+        {/* Show owner's ID photo if uploaded */}
+        {claimData.ownerIdPhoto && (
+          <div className="mb-3 p-2 bg-white rounded border">
+            <div className="text-xs text-gray-600 mb-1 font-medium">Owner ID Photo:</div>
+            <div className="relative">
+              <img
+                src={claimData.ownerIdPhoto}
+                alt="Owner ID Photo"
+                className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
+                onClick={() => handleImageClick(claimData.ownerIdPhoto!, 'Owner ID Photo')}
                 title="Click to view full size"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">

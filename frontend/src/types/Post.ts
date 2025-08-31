@@ -147,6 +147,8 @@ export interface Message {
     idPhotoConfirmed?: boolean; // Whether the item owner confirmed the ID photo
     idPhotoConfirmedAt?: any; // When the ID photo was confirmed
     idPhotoConfirmedBy?: string; // User ID who confirmed the ID photo
+    // New field for owner ID photo during claim verification
+    ownerIdPhoto?: string; // ID photo of the item owner for verification
     // Evidence photos for ownership proof (REQUIRED - up to 3)
     evidencePhotos?: {
       url: string;

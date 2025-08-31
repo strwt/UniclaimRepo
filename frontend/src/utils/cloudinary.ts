@@ -517,8 +517,6 @@ export const extractMessageImages = (message: any): string[] => {
         const imageUrls: string[] = [];
 
         // Check if message has handover data
-        logMessage('log', '🔍 Checking message for handover data...');
-        logMessage('log', '🔍 message.handoverData exists:', !!message.handoverData);
 
         // Check if message has handover data with ID photo
         if (message.handoverData && message.handoverData.idPhotoUrl) {

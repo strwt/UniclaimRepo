@@ -743,9 +743,9 @@ export const messageService = {
                 'claimData.responderId': responderId
             };
 
-            // If accepting with ID photo, add the photo URL and change status to pending confirmation
+            // If accepting with ID photo, add the owner photo URL and change status to pending confirmation
             if (status === 'accepted' && idPhotoUrl) {
-                updateData['claimData.idPhotoUrl'] = idPhotoUrl;
+                updateData['claimData.ownerIdPhoto'] = idPhotoUrl; // Store owner's photo with separate field name
                 updateData['claimData.status'] = 'pending_confirmation'; // New status for photo confirmation
             }
 
@@ -775,6 +775,11 @@ export const messageService = {
                                 // Clear ID photo URL
                                 if (messageData.claimData?.idPhotoUrl) {
                                     photoCleanupData['claimData.idPhotoUrl'] = null;
+                                }
+
+                                // Clear owner's ID photo URL
+                                if (messageData.claimData?.ownerIdPhoto) {
+                                    photoCleanupData['claimData.ownerIdPhoto'] = null;
                                 }
 
                                 // Clear evidence photos array
@@ -1457,11 +1462,6 @@ export const messageService = {
             const isProduction = process.env.NODE_ENV === 'production';
             const logLevel = isProduction ? console.warn : console.log;
 
-            logLevel('🔍 Validating retrieved message data for deletion...');
-            logLevel('🔍 Message type:', messageData.messageType);
-            logLevel('🔍 Has handoverData:', !!messageData.handoverData);
-            logLevel('🔍 Has claimData:', !!messageData.claimData);
-
             // Additional validation for handover messages
             if (messageData.messageType === 'handover_request' && messageData.handoverData) {
                 logLevel('🔍 Validating handover message data...');
@@ -1539,11 +1539,8 @@ export const messageService = {
                 }
             }
 
-            logLevel('✅ Message data validation completed, proceeding with deletion...');
-
             // NEW: Extract and delete images from Cloudinary before deleting the message
             try {
-                logLevel('🗑️ Starting image cleanup for message type:', messageData.messageType);
                 const { extractMessageImages, deleteMessageImages } = await import('./cloudinary');
                 const imageUrls = extractMessageImages(messageData);
 
