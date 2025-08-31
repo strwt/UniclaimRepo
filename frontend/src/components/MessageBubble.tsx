@@ -20,6 +20,7 @@ interface MessageBubbleProps {
     messageId: string,
     status: "accepted" | "rejected"
   ) => void;
+  onConfirmIdPhotoSuccess?: (_messageId: string) => void;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
