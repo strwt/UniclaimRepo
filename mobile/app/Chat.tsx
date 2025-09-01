@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   SafeAreaView,
   Text,
@@ -873,15 +873,17 @@ export default function Chat() {
     // Validate Firebase document ID format
     isValidFirebaseId: (id: string): boolean => {
       if (!id || typeof id !== 'string') return false;
-      // Firebase IDs are 20 characters long and contain alphanumeric characters
-      return /^[a-zA-Z0-9]{20}$/.test(id);
+      // Firebase IDs can be 1-1500 characters and contain alphanumeric, hyphens, underscores
+      // Real Firebase IDs often include timestamps and descriptive prefixes
+      return /^[a-zA-Z0-9_-]{1,1500}$/.test(id);
     },
 
     // Validate user ID format
     isValidUserId: (id: string): boolean => {
       if (!id || typeof id !== 'string') return false;
-      // Firebase Auth UIDs are 28 characters long
-      return /^[a-zA-Z0-9]{28}$/.test(id);
+      // Firebase Auth UIDs can vary in length, typically 20-28 characters
+      // Allow alphanumeric characters with reasonable length constraints
+      return /^[a-zA-Z0-9]{20,30}$/.test(id);
     },
 
     // Sanitize text input
@@ -938,9 +940,8 @@ export default function Chat() {
         errors.push('Invalid current user ID format');
       }
       
-      if (params.postOwnerId === params.currentUserId) {
-        errors.push('Cannot start conversation with yourself');
-      }
+      // Note: Self-conversation check is now handled at the component level
+      // to provide better user experience and prevent this validation error
       
       return {
         isValid: errors.length === 0,
@@ -987,93 +988,139 @@ export default function Chat() {
       return { isValid: true };
     }
   };
+  
+  // Enhanced parameter debugging with actual values (after validationUtils is declared)
+  console.log('🔍 Parameter Debug Details:', {
+    postTitle: {
+      value: postTitle,
+      type: typeof postTitle,
+      length: postTitle?.length || 0,
+      trimmed: postTitle?.trim().length || 0
+    },
+    postId: {
+      value: postId,
+      type: typeof postId,
+      length: postId?.length || 0,
+      isValidFormat: postId ? validationUtils.isValidFirebaseId(postId) : false
+    },
+    postOwnerId: {
+      value: postOwnerId,
+      type: typeof postOwnerId,
+      length: postOwnerId?.length || 0,
+      isValidFormat: postOwnerId ? validationUtils.isValidUserId(postOwnerId) : false
+    },
+    currentUserId: {
+      value: user?.uid,
+      type: typeof user?.uid,
+      length: user?.uid?.length || 0,
+      isValidFormat: user?.uid ? validationUtils.isValidUserId(user.uid) : false
+    }
+  });
 
-  // Enhanced navigation parameter validation
+  // Note: React Native Reanimated warnings about reading 'value' during render
+  // are likely coming from navigation dependencies or other components.
+  // These performance optimizations should help reduce render issues.
+
+  // Enhanced navigation parameter validation with detailed logging
   const validateNavigationParams = () => {
+    console.log('🔍 Starting parameter validation...');
+    console.log('📋 Parameters to validate:', {
+      postTitle: postTitle || 'MISSING',
+      postId: postId || 'MISSING', 
+      postOwnerId: postOwnerId || 'MISSING',
+      currentUserId: user?.uid || 'MISSING'
+    });
+    
+    // Check for missing parameters
     const missingParams = [];
     if (!postTitle) missingParams.push('postTitle');
     if (!postId) missingParams.push('postId');
     if (!postOwnerId) missingParams.push('postOwnerId');
     
     if (missingParams.length > 0) {
+      console.log('❌ Missing parameters:', missingParams);
       logError('validation', new Error(`Missing required navigation parameters: ${missingParams.join(', ')}`), userData);
       return false;
     }
+    console.log('✅ All required parameters present');
     
-    // Validate parameter formats
-    const validation = validationUtils.validateConversationParams({
-      postId: postId!,
-      postTitle: postTitle!,
-      postOwnerId: postOwnerId!,
-      currentUserId: user?.uid || ''
-    });
-    
-    if (!validation.isValid) {
-      logError('validation', new Error(`Invalid parameter format: ${validation.errors.join(', ')}`), userData);
-      return false;
-    }
-    
-    return true;
+            // Validate parameter formats with detailed feedback
+        console.log('🔧 Validating parameter formats...');
+        
+        // Check individual parameters
+        const postIdValid = validationUtils.isValidFirebaseId(postId!);
+        const postTitleValid = postTitle!.trim().length > 0;
+        const postOwnerIdValid = validationUtils.isValidUserId(postOwnerId!);
+        const currentUserIdValid = validationUtils.isValidUserId(user?.uid || '');
+        
+        console.log('🔍 Individual parameter checks:');
+        console.log('  - postId:', postIdValid ? '✅ Valid' : '❌ Invalid');
+        console.log('  - postTitle:', postTitleValid ? '✅ Valid' : '❌ Invalid');
+        console.log('  - postOwnerId:', postOwnerIdValid ? '✅ Valid' : '❌ Invalid');
+        console.log('  - currentUserId:', currentUserIdValid ? '✅ Valid' : '❌ Invalid');
+        
+        if (!postIdValid || !postTitleValid || !postOwnerIdValid || !currentUserIdValid) {
+          const errors = [];
+          if (!postIdValid) errors.push('Invalid post ID format');
+          if (!postTitleValid) errors.push('Post title is required');
+          if (!postOwnerIdValid) errors.push('Invalid post owner ID format');
+          if (!currentUserIdValid) errors.push('Invalid current user ID format');
+          
+          logError('validation', new Error(`Invalid parameter format: ${errors.join(', ')}`), userData);
+          return false;
+        }
+        
+        console.log('✅ All parameter formats are valid');
+        
+        // Final check: prevent self-conversation
+        if (postOwnerId === user?.uid) {
+          console.log('❌ Self-conversation detected in validation');
+          logError('validation', new Error('Cannot start conversation with yourself'), userData);
+          return false;
+        }
+        
+        return true;
   };
 
   // Simplified state management - consolidated conversation state
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   
-  // Unified conversation state
-  const [conversation, setConversation] = useState<{
-    id: string;
-    data: any;
-    status: 'idle' | 'creating' | 'ready' | 'error';
-    creationAttempts: number;
-    error: string | null;
-  }>({
-    id: initialConversationId || "",
-    data: null,
-    status: initialConversationId ? 'ready' : 'idle',
-    creationAttempts: 0,
-    error: null
-  });
-
-  // Derived state for easier access
-  const conversationId = conversation.id;
-  const conversationData = conversation.data;
-  const loading = conversation.status === 'creating';
-  const conversationCreationAttempts = conversation.creationAttempts;
-  const conversationCreationFailed = conversation.status === 'error';
-
-  // Helper functions to update conversation state
-  const updateConversationState = (updates: Partial<typeof conversation>) => {
-    setConversation((prev: typeof conversation) => {
-      const newState = { ...prev, ...updates };
-      
-      // Validate state consistency
-      if (newState.id && newState.status === 'idle') {
-        newState.status = 'ready';
-      }
-      if (!newState.id && newState.status === 'ready') {
-        newState.status = 'idle';
-      }
-      
-      console.log('Chat - Conversation state updated:', newState);
-      return newState;
-    });
-  };
-
-  const setConversationId = (id: string) => updateConversationState({ id, status: 'ready' });
-  const setConversationData = (data: any) => updateConversationState({ data });
-  const setLoading = (isLoading: boolean) => updateConversationState({ 
-    status: isLoading ? 'creating' : conversation.status === 'creating' ? 'ready' : conversation.status 
-  });
-  const setConversationCreationAttempts = (attempts: number) => updateConversationState({ creationAttempts: attempts });
-  const setConversationCreationFailed = (failed: boolean) => updateConversationState({ 
-    status: failed ? 'error' : 'idle',
-    error: failed ? 'Conversation creation failed' : null
-  });
+  // Simplified conversation state - easier to manage and debug
+  const [conversationId, setConversationId] = useState<string>(initialConversationId || "");
+  const [conversationData, setConversationData] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [conversationError, setConversationError] = useState<string | null>(null);
+  
+  // Conversation creation tracking (simplified)
+  const [conversationCreationAttempts, setConversationCreationAttempts] = useState<number>(0);
+  const [conversationCreationFailed, setConversationCreationFailed] = useState<boolean>(false);
+  
+  // Simple helper to check if conversation is ready
+  const isConversationReady = useMemo(() => 
+    !!conversationId && !loading && !conversationError, 
+    [conversationId, loading, conversationError]
+  );
 
   // Validate navigation parameters on mount
   useEffect(() => {
+    // Skip validation if we already have a conversation ID (existing conversation)
+    if (initialConversationId) {
+      console.log('✅ Existing conversation detected, skipping validation');
+      return;
+    }
+    
     if (!validateNavigationParams()) {
+      // Check if it's a self-conversation attempt
+      if (postOwnerId === user?.uid) {
+        Alert.alert(
+          'Cannot Start Chat',
+          'You cannot start a conversation with yourself. This post belongs to you.',
+          [{ text: 'Go Back', onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
+      
       Alert.alert(
         'Navigation Error',
         'Missing required information to start chat. Please go back and try again.',
@@ -1081,17 +1128,94 @@ export default function Chat() {
       );
       return;
     }
-  }, []);
+  }, [initialConversationId, postOwnerId, user?.uid, navigation]);
 
-  // State machine for conversation lifecycle
+  // Simple message loading when conversation changes (like web version)
+  useEffect(() => {
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+
+    console.log('📱 Loading messages for conversation:', conversationId);
+    setIsInitialLoad(true);
+    
+    const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
+      console.log('📨 Messages loaded:', {
+        count: loadedMessages.length,
+        conversationId
+      });
+      
+      // Validate and sanitize loaded messages
+      const validatedMessages = loadedMessages
+        .map(message => {
+          const validation = validationUtils.validateMessage(message);
+          if (!validation.isValid) {
+            console.log('⚠️ Invalid message found:', message.id, validation.error);
+            return null;
+          }
+          return {
+            ...message,
+            text: validationUtils.sanitizeText(message.text)
+          };
+        })
+        .filter((message): message is Message => message !== null);
+      
+      setMessages(validatedMessages);
+      setIsInitialLoad(false);
+      
+      // Check if we have more messages to load (web version uses 50-message limit)
+      if (validatedMessages.length < 50) {
+        setHasMoreMessages(false);
+      } else {
+        setHasMoreMessages(true);
+      }
+      
+      // Scroll to bottom on initial load
+      if (isInitialLoad) {
+        scrollToBottom();
+      }
+    }, 50); // Use 50-message limit like web version
+
+    return () => unsubscribe();
+  }, [conversationId, getConversationMessages]);
+
+  // Load conversation data when conversation changes
+  useEffect(() => {
+    if (!conversationId) return;
+
+    console.log('🔄 Getting conversation data...');
+    getConversation(conversationId).then((data) => {
+      console.log('✅ Conversation data loaded:', data);
+      setConversationData(data);
+    }).catch((error) => {
+      console.log('❌ Failed to get conversation data:', error);
+      logError('conversation', error, userData);
+    });
+  }, [conversationId, getConversation, userData]);
+
+  // Mark conversation as read when messages are loaded
+  useEffect(() => {
+    if (!conversationId || !userData?.uid || messages.length === 0) return;
+
+    try {
+      console.log('🔄 Marking conversation as read...');
+      markConversationAsRead(conversationId, userData.uid);
+      console.log('✅ Marked conversation as read');
+    } catch (error) {
+      console.log('❌ Failed to mark conversation as read:', error);
+    }
+  }, [conversationId, userData, messages.length, markConversationAsRead]);
+
+  // Simple conversation state logging
   useEffect(() => {
     console.log('Chat - Conversation state changed:', {
-      id: conversation.id,
-      status: conversation.status,
-      attempts: conversation.creationAttempts,
-      error: conversation.error
+      id: conversationId,
+      loading,
+      error: conversationError,
+      data: conversationData
     });
-  }, [conversation]);
+  }, [conversationId, loading, conversationError, conversationData]);
 
   // Simple message state management - no complex tracking needed
   const flatListRef = useRef<FlatList>(null);
@@ -1099,11 +1223,11 @@ export default function Chat() {
 
 
   // Handle scroll events to show/hide scroll to bottom button
-  const handleScroll = (event: any) => {
+  const handleScroll = useCallback((event: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     const isScrolledUp = contentOffset.y < contentSize.height - layoutMeasurement.height - 100;
     setShowScrollToBottom(isScrolledUp);
-  };
+  }, []);
 
   // Pagination state
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
@@ -1125,11 +1249,16 @@ export default function Chat() {
     altText: string;
   } | null>(null);
   
-  // Toast notification state (like web version)
+  // Enhanced toast notification state with better user feedback
   const [toast, setToast] = useState<{
     message: string;
-    type: 'success' | 'error' | 'info';
+    type: 'success' | 'error' | 'info' | 'warning';
     visible: boolean;
+    duration?: number;
+    action?: {
+      label: string;
+      onPress: () => void;
+    };
   } | null>(null);
   
   // Error handling state
@@ -1163,7 +1292,7 @@ export default function Chat() {
     }
   };
 
-  // Error recovery functions
+  // Enhanced error recovery functions with better user feedback
   const clearError = (context: keyof typeof errors) => {
     setErrors(prev => ({ ...prev, [context]: null }));
     logDebug(`Error cleared for context: ${context}`);
@@ -1174,11 +1303,34 @@ export default function Chat() {
       logDebug(`Retrying operation: ${context}`);
       clearError(context as keyof typeof errors);
       await operation();
+      showToast(`Operation retried successfully!`, 'success', 3000);
     } catch (error: any) {
       logError(context, error, userData);
-      showToast(`Retry failed: ${error?.message || 'Unknown error'}`, 'error');
+      showToast(`Retry failed: ${error?.message || 'Unknown error'}`, 'error', 5000, {
+        label: 'Try Again',
+        onPress: () => retryOperation(operation, context)
+      });
     }
   };
+
+  // Enhanced toast functions with better user experience
+  const showToast = (
+    message: string, 
+    type: 'success' | 'error' | 'info' | 'warning' = 'info',
+    duration: number = 4000,
+    action?: { label: string; onPress: () => void }
+  ) => {
+    setToast({ message, type, visible: true, duration, action });
+    
+    // Auto-hide toast after duration
+    if (duration > 0) {
+      setTimeout(() => {
+        setToast(prev => prev?.message === message ? null : prev);
+      }, duration);
+    }
+  };
+
+  const hideToast = () => setToast(null);
 
   const resetAllErrors = () => {
     setErrors({
@@ -1216,16 +1368,7 @@ export default function Chat() {
     }));
   };
 
-  // Toast notification helper (like web version)
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    setToast({ message, type, visible: true });
-    setTimeout(() => setToast(null), 3000);
-    
-    // Log toast messages in debug mode
-    if (debugMode) {
-      logDebug(`Toast: ${type.toUpperCase()} - ${message}`);
-    }
-  };
+  // Toast notification helper - now using enhanced showToast function defined above
   
   // Simplified conversation setup - no complex guards needed
   
@@ -1248,82 +1391,67 @@ export default function Chat() {
     return true;
   };
 
-  // Unified conversation lifecycle management - prevents race conditions
+  // Simple conversation creation for new conversations (like web version)
   useEffect(() => {
-    let isActive = true; // Track if component is still mounted
-    let messageUnsubscribe: (() => void) | null = null;
+    // Only create conversation if we don't have one and have all required parameters
+    if (conversationId || !postId || !postTitle || !postOwnerId || !user?.uid || !userData?.uid) {
+      return;
+    }
 
-    const manageConversationLifecycle = async () => {
-      console.log('=== CONVERSATION LIFECYCLE START ===');
-      console.log('Current state:', {
-        conversationId,
-        conversationStatus: conversation.status,
-        postId,
-        postTitle,
-        postOwnerId,
-        hasUser: !!user?.uid,
-        hasUserData: !!userData?.uid,
-        loading,
-        conversationCreationFailed,
-        conversationCreationAttempts
+    // Check for self-conversation
+    if (postOwnerId === user.uid) {
+      console.log('❌ Self-conversation attempt detected');
+      showToast('Cannot start conversation with yourself', 'warning', 5000, {
+        label: 'Go Back',
+        onPress: () => navigation.goBack()
       });
+      return;
+    }
 
+    console.log('🚀 Creating new conversation...');
+    setLoading(true);
+
+    const createNewConversation = async () => {
       try {
-        // Step 1: Validate parameters
-        console.log('Step 1: Validating parameters...');
-        if (!validateNavigationParams()) {
-          console.log('❌ Parameter validation failed');
-          logDebug('Parameter validation failed, cannot proceed');
+        // Sanitize user data before creation
+        const sanitizedUserData = validationUtils.sanitizeUserData(userData);
+        const sanitizedPostOwnerData = validationUtils.sanitizeUserData(postOwnerUserData);
+        
+        if (!sanitizedUserData) {
+          throw new Error('Invalid user data');
+        }
+
+        const newConversationId = await createConversation(
+          postId,
+          validationUtils.sanitizeText(postTitle),
+          postOwnerId,
+          user.uid,
+          sanitizedUserData,
+          sanitizedPostOwnerData
+        );
+        
+        console.log('✅ Conversation created successfully:', newConversationId);
+        setConversationId(newConversationId);
+        showToast('Conversation started successfully!', 'success', 3000);
+        
+      } catch (error: any) {
+        console.log('❌ Conversation creation failed:', error);
+        handleConversationCreationError(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    createNewConversation();
+  }, [conversationId, postId, postTitle, postOwnerId, user?.uid, userData, postOwnerUserData, createConversation, navigation]);
+        
+        console.log('Conversation validation result:', conversationValidation);
+        
+        if (!conversationValidation.isValid) {
+          console.log('❌ Conversation validation failed:', conversationValidation.errors);
+          logError('validation', new Error(`Invalid conversation parameters: ${conversationValidation.errors.join(', ')}`), userData);
           return;
         }
-        console.log('✅ Parameter validation passed');
-
-        // Step 2: Check if we need to create a conversation
-        console.log('Step 2: Checking conversation creation need...');
-        const shouldCreateConversation = !conversationId && 
-            postId && 
-            postTitle && 
-            postOwnerId && 
-            user?.uid && 
-            userData?.uid && 
-            !loading &&
-            !conversationCreationFailed &&
-            conversationCreationAttempts < 3;
-        
-        console.log('Should create conversation:', shouldCreateConversation);
-        console.log('Conditions check:', {
-          hasConversationId: !!conversationId,
-          hasPostId: !!postId,
-          hasPostTitle: !!postTitle,
-          hasPostOwnerId: !!postOwnerId,
-          hasUserUid: !!user?.uid,
-          hasUserDataUid: !!userData?.uid,
-          isLoading: loading,
-          isCreationFailed: conversationCreationFailed,
-          attempts: conversationCreationAttempts
-        });
-
-        if (shouldCreateConversation) {
-          console.log('🚀 Starting conversation creation sequence');
-          logDebug('Starting conversation creation sequence');
-          setConversationCreationAttempts(conversationCreationAttempts + 1);
-          
-          // Validate conversation creation parameters
-          console.log('Validating conversation creation parameters...');
-          const conversationValidation = validationUtils.validateConversationParams({
-            postId: postId!,
-            postTitle: postTitle!,
-            postOwnerId: postOwnerId!,
-            currentUserId: user.uid
-          });
-          
-          console.log('Conversation validation result:', conversationValidation);
-          
-          if (!conversationValidation.isValid) {
-            console.log('❌ Conversation validation failed:', conversationValidation.errors);
-            logError('validation', new Error(`Invalid conversation parameters: ${conversationValidation.errors.join(', ')}`), userData);
-            return;
-          }
           
           // Sanitize user data before creation
           console.log('Sanitizing user data...');
@@ -1377,7 +1505,7 @@ export default function Chat() {
 
         // Step 3: Set up message listener for existing conversation
         console.log('Step 3: Setting up message listener...');
-        if (conversationId && conversation.status === 'ready' && isActive) {
+        if (conversationId && isConversationReady && isActive) {
           console.log('✅ Setting up message listener for conversation:', conversationId);
           logDebug('Setting up message listener for conversation', { conversationId });
           
@@ -1460,7 +1588,7 @@ export default function Chat() {
         } else {
           console.log('⚠️ Cannot set up message listener:', {
             hasConversationId: !!conversationId,
-            conversationStatus: conversation.status,
+            conversationStatus: isConversationReady ? 'ready' : loading ? 'creating' : 'idle',
             isActive
           });
         }
@@ -1512,7 +1640,7 @@ export default function Chat() {
     user?.uid, 
     userData?.uid, 
     conversationId, 
-    conversation.status,
+    isConversationReady,
     conversationCreationAttempts,
     conversationCreationFailed,
     messages.length,
@@ -1550,6 +1678,12 @@ export default function Chat() {
     },
     [conversationId, userData, handleMessageSeen]
   );
+
+  // Memoize the viewability config to prevent unnecessary re-renders
+  const viewabilityConfig = useMemo(() => ({
+    itemVisiblePercentThreshold: 50,
+    minimumViewTime: 100,
+  }), []);
 
   if (!user || !userData) {
     return (
@@ -1610,36 +1744,45 @@ export default function Chat() {
     }
   };
 
-  // Enhanced error handling for conversation creation failures
+  // Enhanced error handling for conversation creation failures with better user feedback
   const handleConversationCreationError = (error: any) => {
     logError('conversation', error, userData);
     
-    // Provide user-friendly error messages
+    // Provide user-friendly error messages with specific error types
     let errorMessage = 'Failed to start conversation. Please try again.';
+    let errorType: 'error' | 'warning' | 'info' = 'error';
     
-    if (error.message?.includes('permission')) {
+    if (error.code === 'permission-denied' || error.message?.includes('permission')) {
       errorMessage = 'Permission denied. Please check your account status.';
-    } else if (error.message?.includes('network')) {
+      errorType = 'warning';
+    } else if (error.code === 'unavailable' || error.message?.includes('network')) {
       errorMessage = 'Network error. Please check your connection and try again.';
-    } else if (error.message?.includes('quota')) {
+      errorType = 'warning';
+    } else if (error.code === 'quota-exceeded' || error.message?.includes('quota')) {
       errorMessage = 'Service temporarily unavailable. Please try again later.';
+      errorType = 'warning';
+    } else if (error.code === 'already-exists') {
+      errorMessage = 'Conversation already exists.';
+      errorType = 'info';
     }
+    
+    // Show toast notification with retry option
+    showToast(errorMessage, errorType, 6000, {
+      label: 'Retry',
+      onPress: () => {
+        setConversationCreationFailed(false);
+        setConversationCreationAttempts(0);
+        showToast('Retrying conversation creation...', 'info', 2000);
+      }
+    });
     
     // Set failure state if we've reached max attempts
     if (conversationCreationAttempts >= 3) {
       setConversationCreationFailed(true);
-      Alert.alert("Conversation Error", "Failed to start conversation after multiple attempts. Please check your connection and try again later.", [
-        { text: "OK", onPress: () => navigation.goBack() }
-      ]);
-    } else {
-      Alert.alert("Conversation Error", errorMessage, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Retry", onPress: () => {
-          // Reset error state and let the lifecycle management retry
-          setConversationCreationFailed(false);
-          setConversationCreationAttempts(0);
-        }}
-      ]);
+      showToast('Maximum retry attempts reached. Please try again later.', 'error', 8000, {
+        label: 'Go Back',
+        onPress: () => navigation.goBack()
+      });
     }
   };
 
@@ -1962,12 +2105,34 @@ export default function Chat() {
           </View>
         ) : messages.length === 0 ? (
           <View className="flex-1 items-center justify-center p-6">
-            <Ionicons name="chatbubbles-outline" size={64} color="#9CA3AF" />
-            <Text className="text-gray-500 text-center mt-4">
-              {loading
-                ? "Setting up your conversation..."
-                : `Start the conversation about "${postTitle}"`}
-            </Text>
+            {postOwnerId === user?.uid ? (
+              // Self-conversation message
+              <>
+                <Ionicons name="person-circle-outline" size={64} color="#F59E0B" />
+                <Text className="text-gray-700 text-center mt-4 mb-2 text-lg font-semibold">
+                  This is your post
+                </Text>
+                <Text className="text-gray-500 text-center mt-2 mb-6 leading-6">
+                  You cannot start a conversation with yourself about "{postTitle}"
+                </Text>
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
+                  className="bg-blue-500 px-6 py-3 rounded-full"
+                >
+                  <Text className="text-white font-semibold">Go Back</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              // Normal conversation start message
+              <>
+                <Ionicons name="chatbubbles-outline" size={64} color="#9CA3AF" />
+                <Text className="text-gray-500 text-center mt-4">
+                  {loading
+                    ? "Setting up your conversation..."
+                    : `Start the conversation about "${postTitle}"`}
+                </Text>
+              </>
+            )}
           </View>
         ) : (
           <FlatList
@@ -1994,10 +2159,7 @@ export default function Chat() {
             onViewableItemsChanged={onViewableItemsChanged}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            viewabilityConfig={{
-              itemVisiblePercentThreshold: 50,
-              minimumViewTime: 100,
-            }}
+            viewabilityConfig={viewabilityConfig}
             // Pagination: Load older messages when scrolling to top
             onEndReached={loadOlderMessages}
             onEndReachedThreshold={0.1}
@@ -2219,7 +2381,7 @@ export default function Chat() {
           </View>
         )}
 
-        {/* Toast Notification - Like Web Version */}
+        {/* Enhanced Toast Notification with Action Support */}
         {toast && (
           <View style={{
             position: 'absolute',
@@ -2227,12 +2389,10 @@ export default function Chat() {
             left: 20,
             right: 20,
             backgroundColor: toast.type === 'success' ? '#10b981' : 
-                           toast.type === 'error' ? '#ef4444' : '#3b82f6',
+                           toast.type === 'error' ? '#ef4444' : 
+                           toast.type === 'warning' ? '#f59e0b' : '#3b82f6',
             borderRadius: 8,
             padding: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
             zIndex: 4000,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
@@ -2240,17 +2400,45 @@ export default function Chat() {
             shadowRadius: 3.84,
             elevation: 5,
           }}>
-            <Text style={{
-              color: 'white',
-              fontSize: 14,
-              fontWeight: '500',
-              flex: 1,
-            }}>
-              {toast.message}
-            </Text>
-            <TouchableOpacity onPress={() => setToast(null)}>
-              <Ionicons name="close" size={20} color="white" />
-            </TouchableOpacity>
+            {/* Toast Message */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: toast.action ? 8 : 0 }}>
+              <Text style={{
+                color: 'white',
+                fontSize: 14,
+                fontWeight: '500',
+                flex: 1,
+              }}>
+                {toast.message}
+              </Text>
+              <TouchableOpacity onPress={hideToast}>
+                <Ionicons name="close" size={20} color="white" />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Action Button */}
+            {toast.action && (
+              <TouchableOpacity 
+                onPress={() => {
+                  toast.action?.onPress();
+                  hideToast();
+                }}
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  borderRadius: 6,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  alignSelf: 'flex-start',
+                }}
+              >
+                <Text style={{
+                  color: 'white',
+                  fontSize: 12,
+                  fontWeight: '600',
+                }}>
+                  {toast.action.label}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -2334,7 +2522,7 @@ export default function Chat() {
             {debugMode && (
               <View className="mt-2 pt-2 border-t border-blue-200">
                 <Text className="text-blue-600 text-xs text-center">
-                  Status: {conversation.status} | ID: {conversation.id || 'None'} | Attempts: {conversation.creationAttempts}
+                  Status: {isConversationReady ? 'ready' : loading ? 'creating' : 'idle'} | ID: {conversationId || 'None'} | Attempts: {conversationCreationAttempts}
                 </Text>
               </View>
             )}

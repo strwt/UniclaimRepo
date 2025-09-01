@@ -72,25 +72,29 @@ export default function Navigation({
     }
   }, [user, isBanned]);
 
-  // Prevent banned users from accessing main app
+  // Prevent banned users from accessing main app - redirect to index screen
   if (user && isBanned) {
     return (
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName="Index"
         screenOptions={{ headerShown: false, animation: "fade" }}
       >
+        <Stack.Screen name="Index" component={withScreenWrapper(Index)} />
         <Stack.Screen name="Login" component={withScreenWrapper(Login)} />
+        <Stack.Screen name="Register" component={withScreenWrapper(Register)} />
+        <Stack.Screen name="ForgotPassword" component={withScreenWrapper(ForgotPassword)} />
       </Stack.Navigator>
     );
   }
 
-  // If user is not authenticated, show login
+  // If user is not authenticated, show index screen (welcome screen with login/register options)
   if (!isAuthenticated && !user) {
     return (
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName="Index"
         screenOptions={{ headerShown: false, animation: "fade" }}
       >
+        <Stack.Screen name="Index" component={withScreenWrapper(Index)} />
         <Stack.Screen name="Login" component={withScreenWrapper(Login)} />
         <Stack.Screen name="Register" component={withScreenWrapper(Register)} />
         <Stack.Screen name="ForgotPassword" component={withScreenWrapper(ForgotPassword)} />

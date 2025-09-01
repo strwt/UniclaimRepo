@@ -3,6 +3,7 @@ import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, authService, UserData, db } from '../utils/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -242,6 +243,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('Immediately cleaning up ban listener during logout');
         banListenerRef.current();
         banListenerRef.current = null;
+      }
+      
+      // Clear stored user preferences and data
+      try {
+        await AsyncStorage.multiRemove([
+          'user_preferences',
+          'search_history',
+          'recent_items',
+          'filter_preferences',
+          'sort_preferences',
+          'cached_posts',
+          'user_profile_cache',
+          'message_cache',
+          'coordinates_cache'
+        ]);
+        console.log('User preferences and data cleared successfully');
+      } catch (storageError) {
+        console.log('Error clearing some stored data:', storageError);
+        // Continue with logout even if clearing storage fails
       }
       
       await authService.logout();
