@@ -296,6 +296,48 @@ class ListenerManager {
         }
         console.log('📊 [QUOTA] ================================');
     }
+
+    /**
+     * 🔍 NEW: Get suspended listener for smart listener management
+     */
+    getSuspendedListener(key: string): (() => void) | null {
+        const listener = this.messageListeners.get(key);
+        if (!listener) return null;
+
+        // Return a function that can resume the listener
+        return () => {
+            // Re-activate the listener
+            listener.lastActivity = Date.now();
+            console.log(`📊 [QUOTA] Resumed suspended listener: ${key}`);
+        };
+    }
+
+    /**
+     * 🔍 NEW: Resume a suspended listener
+     */
+    resumeListener(key: string, resumeFunction: () => void): void {
+        const listener = this.messageListeners.get(key);
+        if (!listener) return;
+
+        // Execute the resume function
+        resumeFunction();
+
+        // Update listener status
+        listener.lastActivity = Date.now();
+        console.log(`📊 [QUOTA] Listener resumed: ${key}`);
+    }
+
+    /**
+     * 🔍 NEW: Suspend a listener (pause its activity)
+     */
+    suspendListener(key: string): void {
+        const listener = this.messageListeners.get(key);
+        if (!listener) return;
+
+        // Mark listener as suspended
+        listener.lastActivity = 0; // 0 indicates suspended state
+        console.log(`📊 [QUOTA] Listener suspended: ${key}`);
+    }
 }
 
 export const listenerManager = ListenerManager.getInstance();

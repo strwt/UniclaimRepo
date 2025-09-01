@@ -190,7 +190,7 @@ export default function AdminHomePage() {
     try {
       // Import and use the postService to update the status
       const { postService } = await import('../../utils/firebase');
-      await postService.updatePostStatus(post.id, status as 'pending' | 'resolved');
+      await postService.updatePostStatus(post.id, status as 'pending' | 'resolved' | 'unclaimed');
       
       showToast("success", "Status Updated", `Post status changed to ${status}`);
     } catch (error: any) {
@@ -303,9 +303,10 @@ export default function AdminHomePage() {
     let shouldShow = false;
 
     if (viewType === "all") {
-      shouldShow = true;
+      // Show all posts EXCEPT unclaimed ones in "All Item Reports"
+      shouldShow = post.status !== 'unclaimed';
     } else if (viewType === "unclaimed") {
-      shouldShow = post.movedToUnclaimed === true;
+      shouldShow = post.status === 'unclaimed';
     } else if (viewType === "completed") {
       shouldShow = true; // resolvedPosts already filtered
     } else {
@@ -392,7 +393,7 @@ export default function AdminHomePage() {
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-orange-600">
-              {posts?.filter(p => p.movedToUnclaimed === true).length || 0}
+              {posts?.filter(p => p.status === 'unclaimed').length || 0}
             </div>
             <div className="text-sm text-gray-600">Unclaimed</div>
           </div>

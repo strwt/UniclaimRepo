@@ -20,6 +20,7 @@ import { useMessage } from "@/context/MessageContext";
 import { useAuth } from "@/context/AuthContext";
 import type { Message, RootStackParamList } from "@/types/type";
 import ImagePicker from "@/components/ImagePicker";
+import { smartListenerManager } from "@/utils/smartListenerManager";
 
 type ChatRouteProp = RouteProp<RootStackParamList, "Chat">;
 type ChatNavigationProp = NativeStackNavigationProp<RootStackParamList, "Chat">;
@@ -995,6 +996,30 @@ export default function Chat() {
     initialConversationId || ""
   );
   const [conversationData, setConversationData] = useState<any>(null);
+
+  // 🔍 SMART LISTENER: Track conversation activity for Firebase optimization
+  useEffect(() => {
+    if (conversationId) {
+      // Mark conversation as active when component mounts
+      smartListenerManager.markConversationActive(conversationId);
+      
+      // Update activity when messages change
+      if (messages.length > 0) {
+        const lastMessageTime = messages[messages.length - 1]?.timestamp?.toDate?.()?.getTime() || Date.now();
+        smartListenerManager.updateConversationActivity(conversationId, messages.length, lastMessageTime);
+      }
+
+      console.log(`📱 [SMART] Chat component mounted for conversation: ${conversationId}`);
+    }
+
+    // Cleanup: Mark conversation as inactive when component unmounts
+    return () => {
+      if (conversationId) {
+        smartListenerManager.markConversationInactive(conversationId);
+        console.log(`📱 [SMART] Chat component unmounting for conversation: ${conversationId}`);
+      }
+    };
+  }, [conversationId, messages.length]);
   
   // Debug: Log messages state changes (only when messages actually change, not on every keystroke)
   const prevMessagesRef = useRef<Message[]>([]);
@@ -1762,13 +1787,28 @@ export default function Chat() {
             />
           </View>
           
-          {/* Status Message */}
-          {messages.length >= 45 && (
-            <Text className="text-xs text-red-500 mt-1 text-center">
-              ⚠️ Oldest messages will be automatically removed when limit is reached
+                  {/* Status Message */}
+        {messages.length >= 45 && (
+          <Text className="text-xs text-red-500 mt-1 text-center">
+            ⚠️ Oldest messages will be automatically removed when limit is reached
+          </Text>
+        )}
+
+        {/* 🔍 SMART LISTENER DEBUG: Show listener status */}
+        <View className="mt-2 pt-2 border-t border-gray-300">
+          <TouchableOpacity
+            onPress={() => {
+              smartListenerManager.debugStatus();
+              console.log('📱 [SMART] Debug button pressed - check console for status');
+            }}
+            className="bg-blue-100 px-3 py-1 rounded-full self-center"
+          >
+            <Text className="text-xs text-blue-600 font-medium">
+              🔍 Smart Listener Status
             </Text>
-          )}
+          </TouchableOpacity>
         </View>
+      </View>
 
         {/* Message Input */}
         <View className="border-t border-gray-200 bg-white p-4">

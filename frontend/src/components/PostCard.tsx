@@ -181,6 +181,11 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
               ✅ RESOLVED
             </span>
           )}
+          {post.status === "unclaimed" && (
+            <span className="capitalize px-2 py-1 rounded-[3px] font-medium bg-orange-100 text-orange-700 text-[11px]">
+              ⏰ UNCLAIMED
+            </span>
+          )}
         </div>
 
         <h1 className="text-lg font-semibold my-2 truncate max-w-[12rem]">

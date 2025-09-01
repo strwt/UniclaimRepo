@@ -291,10 +291,15 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
               </span>
             )}
             
-            {/* Status Badge - show when post is resolved */}
+            {/* Status Badge - show when post is resolved or unclaimed */}
             {post.status === 'resolved' && (
               <span className="px-2 py-1 rounded-[3px] font-medium bg-green-100 text-green-700">
                 ✅ RESOLVED
+              </span>
+            )}
+            {post.status === 'unclaimed' && (
+              <span className="px-2 py-1 rounded-[3px] font-medium bg-orange-100 text-orange-700">
+                ⏰ UNCLAIMED
               </span>
             )}
           </div>

@@ -1579,7 +1579,7 @@ export const messageService = {
     },
 
     // Update post status
-    async updatePostStatus(postId: string, status: 'pending' | 'resolved'): Promise<void> {
+    async updatePostStatus(postId: string, status: 'pending' | 'resolved' | 'unclaimed'): Promise<void> {
         try {
             const postRef = doc(db, 'posts', postId);
 
@@ -2389,7 +2389,7 @@ export const postService = {
     },
 
     // Update post status
-    async updatePostStatus(postId: string, status: 'pending' | 'resolved'): Promise<void> {
+    async updatePostStatus(postId: string, status: 'pending' | 'resolved' | 'unclaimed'): Promise<void> {
         try {
             await updateDoc(doc(db, 'posts', postId), {
                 status,

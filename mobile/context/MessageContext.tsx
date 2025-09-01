@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { messageService } from "../utils/firebase";
+import { batchMessageService } from "../utils/batchMessageService";
 import { useAuth } from "./AuthContext";
 import { listenerManager } from "../utils/ListenerManager";
 import type { Conversation, Message } from "../types/type";
@@ -54,30 +55,23 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     setLoading(true);
 
     // Simple listener that automatically handles conversation updates
-    const unsubscribe = listenerManager.startListener(`user-conversations-${userId}`, () => {
-      return messageService.getUserConversations(userId, (loadedConversations) => {
-        setConversations(loadedConversations);
-        setLoading(false);
-      }, (error) => {
-        console.error('Mobile MessageContext: Listener error:', error);
-        setLoading(false);
-
-        // Only try to refresh for permission errors (not for admin users)
-        if (error?.code === 'permission-denied' || error?.code === 'not-found') {
-          console.log('Permission error detected, attempting refresh...');
-          refreshConversations().catch(refreshError => {
-            console.error('Refresh also failed:', refreshError);
-            // If refresh fails, just set empty conversations
-            setConversations([]);
-          });
-        }
-      });
+    const unsubscribe = messageService.getUserConversations(userId, (loadedConversations) => {
+      setConversations(loadedConversations);
+      setLoading(false);
     });
 
     return () => {
       unsubscribe();
     };
   }, [userId, isAdmin]);
+
+  // ✅ NEW: Cleanup batch service when component unmounts
+  useEffect(() => {
+    return () => {
+      // Cleanup batch service to process any pending operations
+      batchMessageService.destroy();
+    };
+  }, []);
 
   const sendMessage = async (conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string): Promise<void> => {
     // Admin users shouldn't send messages through the mobile app
@@ -143,18 +137,22 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     if (!userId) return;
 
     try {
-      await messageService.markMessageAsRead(conversationId, messageId, userId);
+      // Use batching service instead of individual Firebase calls
+      await batchMessageService.markMessageAsRead(conversationId, messageId);
+      console.log(`📊 [BATCH] Message ${messageId} queued for batch read receipt in ${conversationId}`);
     } catch (error: any) {
-      console.error('Failed to mark message as read:', error);
+      console.error('Failed to queue message for batch read receipt:', error);
       // Don't throw error - just log it
     }
   };
 
   const markAllUnreadMessagesAsRead = async (conversationId: string, userId: string): Promise<void> => {
     try {
-      await messageService.markAllUnreadMessagesAsRead(conversationId, userId);
+      // Use batching service for bulk read receipt operations
+      await batchMessageService.markAllUnreadMessagesAsRead(conversationId, userId);
+      console.log(`📊 [BATCH] All unread messages queued for batch processing in ${conversationId}`);
     } catch (error: any) {
-      console.error('Failed to mark all unread messages as read:', error);
+      console.error('Failed to queue all unread messages for batch processing:', error);
       // Don't throw error - just log it
     }
   };

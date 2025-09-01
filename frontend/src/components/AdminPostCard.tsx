@@ -127,43 +127,55 @@ function AdminPostCard({
             </span>
           </div>
           
-          {/* Admin Controls */}
-          <div className="flex gap-2">
-            {post.status === 'resolved' && onRevertResolution && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRevertResolution(post);
-                }}
-                className="px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition"
-                title="Revert Resolution - Change back to pending"
-              >
-                Revert
-              </button>
-            )}
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className={`px-2 py-1 text-xs rounded transition ${
-                isDeleting 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-red-500 hover:bg-red-600 text-white'
-              }`}
-              title={isDeleting ? "Deleting..." : "Delete Post"}
-            >
-              {isDeleting ? (
-                <span className="flex items-center gap-1">
-                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                  </svg>
-                  Deleting...
-                </span>
-              ) : (
-                'Delete'
+                     {/* Admin Controls */}
+           <div className="flex gap-2">
+             {post.status === 'resolved' && onRevertResolution && (
+               <button
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   onRevertResolution(post);
+                 }}
+                 className="px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition"
+                 title="Revert Resolution - Change back to pending"
+               >
+                 Revert
+               </button>
+             )}
+                           {post.status === 'unclaimed' && onActivateTicket && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onActivateTicket(post);
+                  }}
+                  className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition"
+                  title="Activate - Move back to active status"
+                >
+                  Activate
+                </button>
               )}
-            </button>
-          </div>
+             <button
+               onClick={handleDelete}
+               disabled={isDeleting}
+               className={`px-2 py-1 text-xs rounded transition ${
+                 isDeleting 
+                   ? 'bg-gray-400 cursor-not-allowed' 
+                   : 'bg-red-500 hover:bg-red-600 text-white'
+               }`}
+               title={isDeleting ? "Deleting..." : "Delete Post"}
+             >
+               {isDeleting ? (
+                 <span className="flex items-center gap-1">
+                   <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                   </svg>
+                   Deleting...
+                 </span>
+               ) : (
+                 'Delete'
+               )}
+             </button>
+           </div>
         </div>
 
         <h1 className="text-lg font-semibold my-2 truncate max-w-[12rem]" onClick={onClick}>
@@ -197,8 +209,8 @@ function AdminPostCard({
           </div>
         </div>
 
-        {/* Status Management - Hide dropdown for completed reports since there's a revert button */}
-        {post.status !== 'resolved' && (
+        {/* Status Management - Show dropdown only for pending posts, hide for unclaimed and resolved */}
+        {post.status === 'pending' && (
           <div className="mb-3">
             <label className="text-xs text-gray-600 block mb-1">Status:</label>
             <select
@@ -208,26 +220,13 @@ function AdminPostCard({
               onClick={(e) => e.stopPropagation()}
             >
               <option value="pending">Pending</option>
+              <option value="unclaimed">Unclaimed</option>
               <option value="resolved">Resolved</option>
             </select>
           </div>
         )}
 
-        {/* Activate Ticket Button - Only show for unclaimed items */}
-        {post.movedToUnclaimed && onActivateTicket && (
-          <div className="mb-3">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onActivateTicket(post);
-              }}
-              className="w-full px-3 py-2 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition font-medium"
-              title="Activate Ticket - Move back to active status"
-            >
-              🎫 Activate Ticket
-            </button>
-          </div>
-        )}
+
 
         <div className="text-sm lg:text-xs flex gap-2">
           {post.location && (

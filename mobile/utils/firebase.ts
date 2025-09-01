@@ -3226,7 +3226,7 @@ export const postService = {
     },
 
     // Update post status
-    async updatePostStatus(postId: string, status: 'pending' | 'resolved'): Promise<void> {
+    async updatePostStatus(postId: string, status: 'pending' | 'resolved' | 'unclaimed'): Promise<void> {
         try {
             // 🔍 Track write operation for quota monitoring
             quotaMonitor.trackWrite('posts', 'updatePostStatus');

@@ -36,10 +36,15 @@ export default function Home() {
 
   // Determine which posts to display based on activeButton
   const getPostsToDisplay = () => {
+    let basePosts;
     if (activeButton === "completed") {
-      return resolvedPosts || [];
+      basePosts = resolvedPosts || [];
+    } else {
+      basePosts = posts || [];
     }
-    return posts || [];
+    
+    // Filter out unclaimed posts from all views
+    return basePosts.filter((post) => !post.movedToUnclaimed);
   };
 
   const postsToDisplay = getPostsToDisplay();
@@ -72,9 +77,9 @@ export default function Home() {
 
     // Handle different activeButton states
     const typeMatch = 
-      activeButton === "all" ? post.status !== "resolved" : // Show all ACTIVE posts (exclude completed)
+      activeButton === "all" ? post.status !== "resolved" && !post.movedToUnclaimed : // Show all ACTIVE posts (exclude completed and unclaimed)
       activeButton === "completed" ? true : // Show all resolved posts (already filtered by data source)
-      post.type === activeButton && post.status !== "resolved"; // Show posts matching specific type AND are active (not completed)
+      post.type === activeButton && post.status !== "resolved" && !post.movedToUnclaimed; // Show posts matching specific type AND are active (not completed and not unclaimed)
 
     return (
       typeMatch &&

@@ -75,9 +75,12 @@ export default function HomePage() {
   const getPostsToDisplay = () => {
     const basePosts = rawResults ?? (viewType === "completed" ? resolvedPosts : posts) ?? [];
 
-    if (viewType === "all") return basePosts;
-    if (viewType === "completed") return basePosts; // resolvedPosts already filtered
-    return basePosts.filter((post) => post.type.toLowerCase() === viewType);
+    // Filter out unclaimed posts from all views
+    const filteredPosts = basePosts.filter((post) => post.status !== 'unclaimed');
+
+    if (viewType === "all") return filteredPosts;
+    if (viewType === "completed") return filteredPosts; // resolvedPosts already filtered
+    return filteredPosts.filter((post) => post.type.toLowerCase() === viewType);
   };
 
   const postsToDisplay = getPostsToDisplay();
