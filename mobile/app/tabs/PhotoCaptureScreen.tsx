@@ -233,6 +233,7 @@ export default function PhotoCaptureScreen() {
                 postId,
                 postTitle,
                 postOwnerId,
+                postOwnerUserData: {}, // Will be fetched in Chat component if needed
               } as never);
             },
           },

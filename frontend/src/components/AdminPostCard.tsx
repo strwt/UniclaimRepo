@@ -141,7 +141,8 @@ function AdminPostCard({
                  Revert
                </button>
              )}
-                           {post.status === 'unclaimed' && onActivateTicket && (
+                           {/* Show activate button for any post that can be reactivated */}
+             {((post.status === 'unclaimed' || post.movedToUnclaimed) && onActivateTicket) && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -223,6 +224,21 @@ function AdminPostCard({
               <option value="unclaimed">Unclaimed</option>
               <option value="resolved">Resolved</option>
             </select>
+          </div>
+        )}
+
+        {/* Show activation status for posts that can be activated */}
+        {(post.status === 'unclaimed' || post.movedToUnclaimed) && (
+          <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded">
+            <div className="text-xs text-orange-800 font-medium mb-1">
+              {post.movedToUnclaimed ? 'Expired & Unclaimed' : 'Marked as Unclaimed'}
+            </div>
+            <div className="text-xs text-orange-600">
+              {post.movedToUnclaimed 
+                ? 'This post expired and was automatically moved to unclaimed. Click Activate to restore it.'
+                : 'This post was manually marked as unclaimed. Click Activate to restore it.'
+              }
+            </div>
           </div>
         )}
 

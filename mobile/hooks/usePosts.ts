@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { postService } from '../utils/firebase';
-import { listenerManager } from '../utils/ListenerManager';
 import type { Post } from '../types/type';
 import { useAuth } from '../context/AuthContext';
 
@@ -56,18 +55,16 @@ export const usePosts = () => {
             setLoading(true);
         }
 
-        // Subscribe to real-time updates using ListenerManager to prevent duplicates
-        const unsubscribe = listenerManager.startListener('all-posts', () => {
-            return postService.getAllPosts((fetchedPosts) => {
-                setPosts(fetchedPosts);
-                setLoading(false);
-                setIsInitialLoad(false);
+        // Subscribe to real-time updates directly (like web version)
+        const unsubscribe = postService.getAllPosts((fetchedPosts) => {
+            setPosts(fetchedPosts);
+            setLoading(false);
+            setIsInitialLoad(false);
 
-                // Cache the data
-                globalPostCache.set(cacheKey, {
-                    posts: fetchedPosts,
-                    timestamp: Date.now()
-                });
+            // Cache the data
+            globalPostCache.set(cacheKey, {
+                posts: fetchedPosts,
+                timestamp: Date.now()
             });
         });
 
@@ -136,16 +133,14 @@ export const usePostsByType = (type: 'lost' | 'found') => {
             setLoading(true);
         }
 
-        const unsubscribe = listenerManager.startListener(`posts-${type}`, () => {
-            return postService.getPostsByType(type, (fetchedPosts) => {
-                setPosts(fetchedPosts);
-                setLoading(false);
-                setIsInitialLoad(false);
+        const unsubscribe = postService.getPostsByType(type, (fetchedPosts) => {
+            setPosts(fetchedPosts);
+            setLoading(false);
+            setIsInitialLoad(false);
 
-                globalPostCache.set(cacheKey, {
-                    posts: fetchedPosts,
-                    timestamp: Date.now()
-                });
+            globalPostCache.set(cacheKey, {
+                posts: fetchedPosts,
+                timestamp: Date.now()
             });
         });
 
@@ -202,11 +197,12 @@ export const usePostsByCategory = (category: string) => {
 
         setLoading(true);
 
-        const unsubscribe = listenerManager.startListener(`posts-category-${category}`, () => {
-            return postService.getPostsByCategory(category, (fetchedPosts) => {
-                setPosts(fetchedPosts);
-                setLoading(false);
-            });
+        // Note: getPostsByCategory doesn't exist in postService, using getAllPosts instead
+        const unsubscribe = postService.getAllPosts((fetchedPosts) => {
+            // Filter by category locally
+            const filteredPosts = fetchedPosts.filter(post => post.category === category);
+            setPosts(filteredPosts);
+            setLoading(false);
         });
 
         // Store unsubscribe function for cleanup
@@ -258,11 +254,9 @@ export const useUserPosts = (userEmail: string) => {
 
         setLoading(true);
 
-        const unsubscribe = listenerManager.startListener(`user-posts-${userEmail}`, () => {
-            return postService.getUserPosts(userEmail, (fetchedPosts) => {
-                setPosts(fetchedPosts);
-                setLoading(false);
-            });
+        const unsubscribe = postService.getUserPosts(userEmail, (fetchedPosts) => {
+            setPosts(fetchedPosts);
+            setLoading(false);
         });
 
         // Store unsubscribe function for cleanup
@@ -282,12 +276,16 @@ export const useUserPosts = (userEmail: string) => {
 
 // Custom hook for user's posts with setPosts functionality
 export const useUserPostsWithSet = (userEmail: string) => {
+    console.log('🔍 [DEBUG] useUserPostsWithSet: Hook created with email:', userEmail);
     const { isAuthenticated } = useAuth();
+    console.log('🔍 [DEBUG] useUserPostsWithSet: Auth context values:', { isAuthenticated, userEmail });
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const unsubscribeRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
+        console.log('🔍 [DEBUG] useUserPostsWithSet: useEffect EXECUTED with:', { isAuthenticated, userEmail });
+
         // If user is not authenticated, clear posts and don't set up listeners
         if (!isAuthenticated) {
             console.log('User not authenticated - clearing user posts (with set) and listeners');
@@ -307,18 +305,19 @@ export const useUserPostsWithSet = (userEmail: string) => {
 
         // User is authenticated
         if (!userEmail) {
+            console.log('🔍 [DEBUG] useUserPostsWithSet: User authenticated but no email provided');
             setPosts([]);
             setLoading(false);
             return;
         }
 
+        console.log('🔍 [DEBUG] useUserPostsWithSet: Setting up listener for user:', userEmail);
         setLoading(true);
 
-        const unsubscribe = listenerManager.startListener(`user-posts-with-set-${userEmail}`, () => {
-            return postService.getUserPosts(userEmail, (fetchedPosts) => {
-                setPosts(fetchedPosts);
-                setLoading(false);
-            });
+        const unsubscribe = postService.getUserPosts(userEmail, (fetchedPosts) => {
+            console.log('🔍 [DEBUG] useUserPostsWithSet: Received posts from service:', fetchedPosts.length);
+            setPosts(fetchedPosts);
+            setLoading(false);
         });
 
         // Store unsubscribe function for cleanup
@@ -369,16 +368,14 @@ export const useResolvedPosts = () => {
         setLoading(true);
         setError(null);
 
-        // Subscribe to resolved posts using the dedicated method
-        const unsubscribe = listenerManager.startListener('resolved-posts', () => {
-            return postService.getResolvedPosts((fetchedPosts: Post[]) => {
-                console.log('🔍 [DEBUG] useResolvedPosts: Fetched resolved posts count:', fetchedPosts.length);
-                console.log('🔍 [DEBUG] useResolvedPosts: Sample resolved posts:', fetchedPosts.slice(0, 3).map(p => ({ id: p.id, status: p.status, title: p.title })));
+        // Subscribe to resolved posts directly (like web version)
+        const unsubscribe = postService.getResolvedPosts((fetchedPosts: Post[]) => {
+            console.log('🔍 [DEBUG] useResolvedPosts: Fetched resolved posts count:', fetchedPosts.length);
+            console.log('🔍 [DEBUG] useResolvedPosts: Sample resolved posts:', fetchedPosts.slice(0, 3).map(p => ({ id: p.id, status: p.status, title: p.title })));
 
-                setPosts(fetchedPosts);
-                setLoading(false);
-                setError(null);
-            });
+            setPosts(fetchedPosts);
+            setLoading(false);
+            setError(null);
         });
 
         // Store unsubscribe function for cleanup

@@ -8,15 +8,14 @@ import type { Post } from "../../types/type";
 
 // hooks
 import { usePosts, useResolvedPosts } from "../../hooks/usePosts";
-import { useScrollPreservation } from "../../hooks/useScrollPreservation";
 
 export default function Home() {
   // ✅ Use the custom hook for real-time posts with smart loading
   const { posts, loading, error, isInitialLoad } = usePosts();
   const { posts: resolvedPosts, loading: resolvedLoading, error: resolvedError } = useResolvedPosts();
   
-  // ✅ Use scroll preservation hook
-  const { flatListRef, handleScroll, restoreScrollPosition } = useScrollPreservation('home');
+  // Simple scroll handling (like web version)
+  const flatListRef = React.useRef<FlatList>(null);
   
   const [activeButton, setActiveButton] = useState<"all" | "lost" | "found" | "completed">("all");
   const [query, setQuery] = useState("");
@@ -24,15 +23,7 @@ export default function Home() {
   const [locationSearch, setLocationSearch] = useState("");
   const [descriptionSearch, setDescriptionSearch] = useState("");
 
-  // Restore scroll position when component becomes visible
-  useEffect(() => {
-    // Small delay to ensure the component is fully rendered
-    const timer = setTimeout(() => {
-      restoreScrollPosition();
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, [restoreScrollPosition]);
+  // Simple scroll handling - no complex preservation needed
 
   // Determine which posts to display based on activeButton
   const getPostsToDisplay = () => {
@@ -192,7 +183,6 @@ export default function Home() {
             renderItem={({ item }) => (
               <PostCard post={item} descriptionSearch={descriptionSearch} />
             )}
-            onScroll={handleScroll}
             scrollEventThrottle={16} // Optimize scroll performance
             ListEmptyComponent={
               <View className="items-center justify-center mt-10">

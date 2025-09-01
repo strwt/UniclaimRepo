@@ -11,7 +11,7 @@ import {
   Alert,
   Image,
   Linking,
-  AppState
+  ScrollView
 } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -20,7 +20,6 @@ import { useMessage } from "@/context/MessageContext";
 import { useAuth } from "@/context/AuthContext";
 import type { Message, RootStackParamList } from "@/types/type";
 import ImagePicker from "@/components/ImagePicker";
-import { smartListenerManager } from "@/utils/smartListenerManager";
 
 type ChatRouteProp = RouteProp<RootStackParamList, "Chat">;
 type ChatNavigationProp = NativeStackNavigationProp<RootStackParamList, "Chat">;
@@ -35,6 +34,7 @@ const MessageBubble = ({
   onClaimResponse,
   onConfirmIdPhotoSuccess,
   onMessageSeen,
+  onImageClick,
 }: {
   message: Message;
   isOwnMessage: boolean;
@@ -51,6 +51,7 @@ const MessageBubble = ({
   ) => void;
   onConfirmIdPhotoSuccess?: (messageId: string) => void;
   onMessageSeen?: () => void;
+  onImageClick?: (imageUrl: string, altText: string) => void;
 }) => {
   const {
     deleteMessage,
@@ -60,28 +61,7 @@ const MessageBubble = ({
   } = useMessage();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showIdPhotoModal, setShowIdPhotoModal] = useState(false);
-  const [selectedIdPhoto, setSelectedIdPhoto] = useState<string | null>(null);
   const [isUploadingIdPhoto, setIsUploadingIdPhoto] = useState(false);
-  const [hasBeenSeen, setHasBeenSeen] = useState(false);
-  
-  // Debug: Log read receipt changes only when they actually change
-  const prevReadByRef = useRef<string[]>([]);
-  useEffect(() => {
-    if (message.readBy && message.readBy.length > 1) {
-      const currentReadBy = JSON.stringify(message.readBy.sort());
-      const prevReadBy = JSON.stringify(prevReadByRef.current.sort());
-      
-      if (currentReadBy !== prevReadBy) {
-        console.log('🔍 [ReadReceipt] Message read status changed:', {
-          messageId: message.id,
-          readBy: message.readBy,
-          readByLength: message.readBy.length,
-          previousReadBy: prevReadByRef.current
-        });
-        prevReadByRef.current = [...message.readBy];
-      }
-    }
-  }, [message.readBy, message.id]);
   
   const formatTime = (timestamp: any) => {
     if (!timestamp) return "";
@@ -95,14 +75,12 @@ const MessageBubble = ({
   const handleHandoverResponse = async (status: "accepted" | "rejected") => {
     if (!onHandoverResponse) return;
 
-    try {
-      // If accepting, show ID photo modal
-      if (status === "accepted") {
-        setShowIdPhotoModal(true);
-        return;
-      }
+    if (status === "accepted") {
+      setShowIdPhotoModal(true);
+      return;
+    }
 
-      // For rejection, proceed as normal
+    try {
       const { messageService } = await import("@/utils/firebase");
       await messageService.updateHandoverResponse(
         conversationId,
@@ -110,8 +88,6 @@ const MessageBubble = ({
         status,
         currentUserId
       );
-
-      // Call the callback to update UI
       onHandoverResponse(message.id, status);
     } catch (error) {
       console.error("Failed to update handover response:", error);
@@ -122,16 +98,12 @@ const MessageBubble = ({
     try {
       setIsUploadingIdPhoto(true);
 
-      console.log("📸 Starting ID photo upload...", photoUri);
-
       // Upload ID photo to Cloudinary
       const { cloudinaryService } = await import("@/utils/cloudinary");
       const uploadedUrl = await cloudinaryService.uploadImage(
         photoUri,
         "id_photos"
       );
-
-      console.log("✅ ID photo uploaded successfully:", uploadedUrl);
 
       // Update handover response with ID photo
       const { messageService } = await import("@/utils/firebase");
@@ -143,37 +115,16 @@ const MessageBubble = ({
         uploadedUrl
       );
 
-      console.log("✅ Handover response updated with ID photo");
-
-      // Call the callback to update UI
       onHandoverResponse?.(message.id, "accepted");
-
-      // Close modal and reset state
       setShowIdPhotoModal(false);
-      setSelectedIdPhoto(null);
 
-      // Show success message
       Alert.alert(
         "Success",
         "ID photo uploaded successfully! The item owner will now review and confirm."
       );
     } catch (error: any) {
-      console.error("❌ Failed to upload ID photo:", error);
-
-      let errorMessage = "Failed to upload ID photo. Please try again.";
-
-      if (error.message?.includes("Network request failed")) {
-        errorMessage =
-          "Network error. Please check your internet connection and try again.";
-      } else if (
-        error.message?.includes("Cloudinary cloud name not configured")
-      ) {
-        errorMessage = "Cloudinary not configured. Please contact support.";
-      } else if (error.message?.includes("Upload preset not configured")) {
-        errorMessage = "Upload configuration error. Please contact support.";
-      }
-
-      Alert.alert("Upload Error", errorMessage);
+      console.error("Failed to upload ID photo:", error);
+      Alert.alert("Upload Error", "Failed to upload ID photo. Please try again.");
     } finally {
       setIsUploadingIdPhoto(false);
     }
@@ -191,24 +142,17 @@ const MessageBubble = ({
   const handleClaimResponse = async (status: "accepted" | "rejected") => {
     if (!onClaimResponse) return;
 
+    if (status === "accepted") {
+      setShowIdPhotoModal(true);
+      return;
+    }
+
     try {
-      // If accepting, show ID photo modal for verification
-      if (status === "accepted") {
-        setShowIdPhotoModal(true);
-        return;
-      }
-
-      // For rejection, proceed as normal
       await updateClaimResponse(conversationId, message.id, status);
-
-      // Call the callback to update UI
       onClaimResponse(message.id, status);
     } catch (error) {
       console.error("Failed to update claim response:", error);
-      Alert.alert(
-        "Error",
-        "Failed to update claim response. Please try again."
-      );
+      Alert.alert("Error", "Failed to update claim response. Please try again.");
     }
   };
 
@@ -216,18 +160,12 @@ const MessageBubble = ({
     try {
       setIsUploadingIdPhoto(true);
 
-      console.log("📸 Starting claim ID photo upload...", photoUri);
-      console.log("📸 Message type:", message.messageType);
-      console.log("📸 Conversation ID:", conversationId);
-
       // Upload ID photo to Cloudinary
       const { cloudinaryService } = await import("@/utils/cloudinary");
       const uploadedUrl = await cloudinaryService.uploadImage(
         photoUri,
         "id_photos"
       );
-
-      console.log("✅ Claim ID photo uploaded successfully:", uploadedUrl);
 
       // Update claim response with ID photo
       const { messageService } = await import("@/utils/firebase");
@@ -239,37 +177,16 @@ const MessageBubble = ({
         uploadedUrl
       );
 
-      console.log("✅ Claim response updated with ID photo");
-
-      // Call the callback to update UI
       onClaimResponse?.(message.id, "accepted");
-
-      // Close modal and reset state
       setShowIdPhotoModal(false);
-      setSelectedIdPhoto(null);
 
-      // Show success message
       Alert.alert(
         "Success",
         "ID photo uploaded successfully! The post owner will now review and confirm your claim."
       );
     } catch (error: any) {
-      console.error("❌ Failed to upload claim ID photo:", error);
-
-      let errorMessage = "Failed to upload ID photo. Please try again.";
-
-      if (error.message?.includes("Network request failed")) {
-        errorMessage =
-          "Network error. Please check your internet connection and try again.";
-      } else if (
-        error.message?.includes("Cloudinary cloud name not configured")
-      ) {
-        errorMessage = "Cloudinary not configured. Please contact support.";
-      } else if (error.message?.includes("Upload preset not configured")) {
-        errorMessage = "Upload configuration error. Please contact support.";
-      }
-
-      Alert.alert("Upload Error", errorMessage);
+      console.error("Failed to upload claim ID photo:", error);
+      Alert.alert("Upload Error", "Failed to upload ID photo. Please try again.");
     } finally {
       setIsUploadingIdPhoto(false);
     }
@@ -327,7 +244,6 @@ const MessageBubble = ({
     const handoverData = message.handoverData;
     if (!handoverData) return null;
 
-    // Show different UI based on status and user role
     const canRespond = handoverData.status === "pending" && !isOwnMessage;
     const canConfirm = handoverData.status === "pending_confirmation" && !!isCurrentUserPostOwner;
     const isCompleted = handoverData.status === "accepted" || handoverData.status === "rejected";
@@ -345,24 +261,9 @@ const MessageBubble = ({
             <Text className="text-xs text-gray-600 mb-1">Finder ID Photo:</Text>
             <TouchableOpacity
               onPress={() => {
-                if (handoverData.idPhotoUrl) {
-                  // For mobile, we'll use a simple alert with option to view
-                  Alert.alert(
-                    "View Finder ID Photo",
-                    "Would you like to view the full-size finder ID photo?",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "View Full Size",
-                        onPress: () => {
-                          // Open in device's default image viewer
-                          if (handoverData.idPhotoUrl) {
-                            Linking.openURL(handoverData.idPhotoUrl);
-                          }
-                        },
-                      },
-                    ]
-                  );
+                if (handoverData.idPhotoUrl && onImageClick) {
+                  // Use image modal like web version
+                  onImageClick(handoverData.idPhotoUrl, "Finder ID Photo");
                 }
               }}
             >
@@ -384,24 +285,9 @@ const MessageBubble = ({
             <Text className="text-xs text-gray-600 mb-1">Owner ID Photo:</Text>
             <TouchableOpacity
               onPress={() => {
-                if (handoverData.ownerIdPhoto) {
-                  // For mobile, we'll use a simple alert with option to view
-                  Alert.alert(
-                    "View Owner ID Photo",
-                    "Would you like to view the full-size owner ID photo?",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "View Full Size",
-                        onPress: () => {
-                          // Open in device's default image viewer
-                          if (handoverData.ownerIdPhoto) {
-                            Linking.openURL(handoverData.ownerIdPhoto);
-                          }
-                        },
-                      },
-                    ]
-                  );
+                if (handoverData.ownerIdPhoto && onImageClick) {
+                  // Use image modal like web version
+                  onImageClick(handoverData.ownerIdPhoto, "Owner ID Photo");
                 }
               }}
             >
@@ -428,19 +314,10 @@ const MessageBubble = ({
                 <View key={index}>
                   <TouchableOpacity
                     onPress={() => {
-                      Alert.alert(
-                        `View Item Photo ${index + 1}`,
-                        "Would you like to view the full-size item photo?",
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "View Full Size",
-                            onPress: () => {
-                              Linking.openURL(photo.url);
-                            },
-                          },
-                        ]
-                      );
+                      if (onImageClick) {
+                        // Use image modal like web version
+                        onImageClick(photo.url, `Item Photo ${index + 1}`);
+                      }
                     }}
                   >
                     <Image
@@ -554,12 +431,9 @@ const MessageBubble = ({
     const claimData = message.claimData;
     if (!claimData) return null;
 
-    // Show different UI based on status and user role
     const canRespond = claimData.status === "pending" && !isOwnMessage;
-    const canConfirm =
-      claimData.status === "pending_confirmation" && !isOwnMessage;
-    const isCompleted =
-      claimData.status === "accepted" || claimData.status === "rejected";
+    const canConfirm = claimData.status === "pending_confirmation" && !!isCurrentUserPostOwner;
+    const isCompleted = claimData.status === "accepted" || claimData.status === "rejected";
 
     return (
       <View className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
@@ -862,22 +736,10 @@ const MessageBubble = ({
   const renderIdPhotoModal = () => {
     if (!showIdPhotoModal) return null;
 
-    // Use the correct upload handler based on message type
     const uploadHandler =
       message.messageType === "claim_request"
         ? handleClaimIdPhotoUpload
         : handleIdPhotoUpload;
-
-    console.log(
-      "📷 Mobile opening photo modal for message type:",
-      message.messageType
-    );
-    console.log(
-      "📷 Mobile using upload handler:",
-      message.messageType === "claim_request"
-        ? "handleClaimIdPhotoUpload"
-        : "handleIdPhotoUpload"
-    );
 
     return (
       <ImagePicker
@@ -920,27 +782,11 @@ const MessageBubble = ({
           </Text>
           {isOwnMessage && (
             <View>
-              {(() => {
-                // Check if message has been read by the other person (not just the sender)
-                // If current user is post owner, check if requester has read it
-                // If current user is requester, check if post owner has read it
-                const hasBeenReadByOther = message.readBy && 
-                  message.readBy.length > 1; // More than just the sender
-                
-                return hasBeenReadByOther ? (
-                  <Ionicons 
-                    name="eye" 
-                    size={12} 
-                    color="#3b82f6" 
-                  />
-                ) : (
-                  <Ionicons 
-                    name="checkmark" 
-                    size={12} 
-                    color="#9ca3af" 
-                  />
-                );
-              })()}
+              {message.readBy && message.readBy.length > 1 ? (
+                <Ionicons name="eye" size={12} color="#3b82f6" />
+              ) : (
+                <Ionicons name="checkmark" size={12} color="#9ca3af" />
+              )}
             </View>
           )}
         </View>
@@ -981,369 +827,702 @@ export default function Chat() {
     getConversationMessages,
     getOlderMessages,
     getConversation,
-    sendClaimRequest,
-    updateClaimResponse,
     markConversationAsRead,
     markMessageAsRead,
     markAllUnreadMessagesAsRead,
     getConversationUnreadCount,
   } = useMessage();
   const { user, userData } = useAuth();
+
+  // ENHANCED DEBUGGING - Step 1: Add comprehensive logging
+  console.log('=== CHAT DEBUG START ===');
+  console.log('Route params:', {
+    initialConversationId,
+    postTitle,
+    postId,
+    postOwnerId,
+    hasPostOwnerUserData: !!postOwnerUserData,
+    postOwnerUserDataKeys: postOwnerUserData ? Object.keys(postOwnerUserData) : []
+  });
+  console.log('User state:', {
+    hasUser: !!user,
+    hasUserData: !!userData,
+    userId: user?.uid,
+    userDataKeys: userData ? Object.keys(userData) : []
+  });
+  console.log('Message context functions:', {
+    hasCreateConversation: !!createConversation,
+    hasGetConversationMessages: !!getConversationMessages,
+    hasGetConversation: !!getConversation
+  });
+  console.log('=== CHAT DEBUG END ===');
+
+  // Debug logging for navigation parameters
+  console.log('Chat - Navigation Parameters:', {
+    initialConversationId,
+    postTitle,
+    postId,
+    postOwnerId,
+    postOwnerUserData: postOwnerUserData ? 'Present' : 'Missing',
+    hasUser: !!user,
+    hasUserData: !!userData,
+  });
+
+  // Comprehensive data validation and sanitization utilities
+  const validationUtils = {
+    // Validate Firebase document ID format
+    isValidFirebaseId: (id: string): boolean => {
+      if (!id || typeof id !== 'string') return false;
+      // Firebase IDs are 20 characters long and contain alphanumeric characters
+      return /^[a-zA-Z0-9]{20}$/.test(id);
+    },
+
+    // Validate user ID format
+    isValidUserId: (id: string): boolean => {
+      if (!id || typeof id !== 'string') return false;
+      // Firebase Auth UIDs are 28 characters long
+      return /^[a-zA-Z0-9]{28}$/.test(id);
+    },
+
+    // Sanitize text input
+    sanitizeText: (text: string): string => {
+      if (!text || typeof text !== 'string') return '';
+      // Remove potentially dangerous characters and trim whitespace
+      return text
+        .trim()
+        .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .substring(0, 200); // Limit length
+    },
+
+    // Validate message content
+    isValidMessage: (text: string): { isValid: boolean; error?: string } => {
+      if (!text || typeof text !== 'string') {
+        return { isValid: false, error: 'Message cannot be empty' };
+      }
+      
+      const sanitized = validationUtils.sanitizeText(text);
+      if (sanitized.length === 0) {
+        return { isValid: false, error: 'Message contains only invalid characters' };
+      }
+      
+      if (sanitized.length > 200) {
+        return { isValid: false, error: 'Message is too long (max 200 characters)' };
+      }
+      
+      return { isValid: true };
+    },
+
+    // Validate conversation parameters
+    validateConversationParams: (params: {
+      postId: string;
+      postTitle: string;
+      postOwnerId: string;
+      currentUserId: string;
+    }): { isValid: boolean; errors: string[] } => {
+      const errors: string[] = [];
+      
+      if (!validationUtils.isValidFirebaseId(params.postId)) {
+        errors.push('Invalid post ID format');
+      }
+      
+      if (!params.postTitle || params.postTitle.trim().length === 0) {
+        errors.push('Post title is required');
+      }
+      
+      if (!validationUtils.isValidUserId(params.postOwnerId)) {
+        errors.push('Invalid post owner ID format');
+      }
+      
+      if (!validationUtils.isValidUserId(params.currentUserId)) {
+        errors.push('Invalid current user ID format');
+      }
+      
+      if (params.postOwnerId === params.currentUserId) {
+        errors.push('Cannot start conversation with yourself');
+      }
+      
+      return {
+        isValid: errors.length === 0,
+        errors
+      };
+    },
+
+    // Sanitize user data
+    sanitizeUserData: (userData: any): any => {
+      if (!userData || typeof userData !== 'object') return null;
+      
+      return {
+        uid: validationUtils.isValidUserId(userData.uid) ? userData.uid : null,
+        firstName: validationUtils.sanitizeText(userData.firstName || ''),
+        lastName: validationUtils.sanitizeText(userData.lastName || ''),
+        email: userData.email && typeof userData.email === 'string' ? userData.email.toLowerCase().trim() : null,
+        profilePicture: userData.profilePicture && typeof userData.profilePicture === 'string' ? userData.profilePicture : null
+      };
+    },
+
+    // Validate message object
+    validateMessage: (message: any): { isValid: boolean; error?: string } => {
+      if (!message || typeof message !== 'object') {
+        return { isValid: false, error: 'Invalid message object' };
+      }
+      
+      if (!validationUtils.isValidFirebaseId(message.id)) {
+        return { isValid: false, error: 'Invalid message ID' };
+      }
+      
+      if (!validationUtils.isValidUserId(message.senderId)) {
+        return { isValid: false, error: 'Invalid sender ID' };
+      }
+      
+      const messageValidation = validationUtils.isValidMessage(message.text);
+      if (!messageValidation.isValid) {
+        return messageValidation;
+      }
+      
+      if (!message.timestamp) {
+        return { isValid: false, error: 'Message timestamp is required' };
+      }
+      
+      return { isValid: true };
+    }
+  };
+
+  // Enhanced navigation parameter validation
+  const validateNavigationParams = () => {
+    const missingParams = [];
+    if (!postTitle) missingParams.push('postTitle');
+    if (!postId) missingParams.push('postId');
+    if (!postOwnerId) missingParams.push('postOwnerId');
+    
+    if (missingParams.length > 0) {
+      logError('validation', new Error(`Missing required navigation parameters: ${missingParams.join(', ')}`), userData);
+      return false;
+    }
+    
+    // Validate parameter formats
+    const validation = validationUtils.validateConversationParams({
+      postId: postId!,
+      postTitle: postTitle!,
+      postOwnerId: postOwnerId!,
+      currentUserId: user?.uid || ''
+    });
+    
+    if (!validation.isValid) {
+      logError('validation', new Error(`Invalid parameter format: ${validation.errors.join(', ')}`), userData);
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Simplified state management - consolidated conversation state
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [conversationId, setConversationId] = useState(
-    initialConversationId || ""
-  );
-  const [conversationData, setConversationData] = useState<any>(null);
-
-  // 🔍 SMART LISTENER: Track conversation activity for Firebase optimization
-  useEffect(() => {
-    if (conversationId) {
-      // Mark conversation as active when component mounts
-      smartListenerManager.markConversationActive(conversationId);
-      
-      // Update activity when messages change
-      if (messages.length > 0) {
-        const lastMessageTime = messages[messages.length - 1]?.timestamp?.toDate?.()?.getTime() || Date.now();
-        smartListenerManager.updateConversationActivity(conversationId, messages.length, lastMessageTime);
-      }
-
-      console.log(`📱 [SMART] Chat component mounted for conversation: ${conversationId}`);
-    }
-
-    // Cleanup: Mark conversation as inactive when component unmounts
-    return () => {
-      if (conversationId) {
-        smartListenerManager.markConversationInactive(conversationId);
-        console.log(`📱 [SMART] Chat component unmounting for conversation: ${conversationId}`);
-      }
-    };
-  }, [conversationId, messages.length]);
   
-  // Debug: Log messages state changes (only when messages actually change, not on every keystroke)
-  const prevMessagesRef = useRef<Message[]>([]);
+  // Unified conversation state
+  const [conversation, setConversation] = useState<{
+    id: string;
+    data: any;
+    status: 'idle' | 'creating' | 'ready' | 'error';
+    creationAttempts: number;
+    error: string | null;
+  }>({
+    id: initialConversationId || "",
+    data: null,
+    status: initialConversationId ? 'ready' : 'idle',
+    creationAttempts: 0,
+    error: null
+  });
+
+  // Derived state for easier access
+  const conversationId = conversation.id;
+  const conversationData = conversation.data;
+  const loading = conversation.status === 'creating';
+  const conversationCreationAttempts = conversation.creationAttempts;
+  const conversationCreationFailed = conversation.status === 'error';
+
+  // Helper functions to update conversation state
+  const updateConversationState = (updates: Partial<typeof conversation>) => {
+    setConversation((prev: typeof conversation) => {
+      const newState = { ...prev, ...updates };
+      
+      // Validate state consistency
+      if (newState.id && newState.status === 'idle') {
+        newState.status = 'ready';
+      }
+      if (!newState.id && newState.status === 'ready') {
+        newState.status = 'idle';
+      }
+      
+      console.log('Chat - Conversation state updated:', newState);
+      return newState;
+    });
+  };
+
+  const setConversationId = (id: string) => updateConversationState({ id, status: 'ready' });
+  const setConversationData = (data: any) => updateConversationState({ data });
+  const setLoading = (isLoading: boolean) => updateConversationState({ 
+    status: isLoading ? 'creating' : conversation.status === 'creating' ? 'ready' : conversation.status 
+  });
+  const setConversationCreationAttempts = (attempts: number) => updateConversationState({ creationAttempts: attempts });
+  const setConversationCreationFailed = (failed: boolean) => updateConversationState({ 
+    status: failed ? 'error' : 'idle',
+    error: failed ? 'Conversation creation failed' : null
+  });
+
+  // Validate navigation parameters on mount
   useEffect(() => {
-    // Only log if messages actually changed (not just re-renders)
-    const hasMessagesChanged = prevMessagesRef.current.length !== messages.length || 
-      JSON.stringify(prevMessagesRef.current.map(m => m.id)) !== JSON.stringify(messages.map(m => m.id));
-    
-    if (hasMessagesChanged) {
-      console.log('🔧 [Chat] Messages state updated:', {
-        conversationId,
-        messageCount: messages.length,
-        lastMessage: messages[messages.length - 1]?.text || 'none',
-        changeType: prevMessagesRef.current.length < messages.length ? 'added' : 
-                   prevMessagesRef.current.length > messages.length ? 'removed' : 'modified'
-      });
-      prevMessagesRef.current = [...messages];
+    if (!validateNavigationParams()) {
+      Alert.alert(
+        'Navigation Error',
+        'Missing required information to start chat. Please go back and try again.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+      return;
     }
-  }, [messages, conversationId]);
+  }, []);
+
+  // State machine for conversation lifecycle
+  useEffect(() => {
+    console.log('Chat - Conversation state changed:', {
+      id: conversation.id,
+      status: conversation.status,
+      attempts: conversation.creationAttempts,
+      error: conversation.error
+    });
+  }, [conversation]);
+
+  // Simple message state management - no complex tracking needed
   const flatListRef = useRef<FlatList>(null);
-  const [viewableMessages, setViewableMessages] = useState<Set<string>>(
-    new Set()
-  );
+
+
+
+  // Handle scroll events to show/hide scroll to bottom button
+  const handleScroll = (event: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const isScrolledUp = contentOffset.y < contentSize.height - layoutMeasurement.height - 100;
+    setShowScrollToBottom(isScrolledUp);
+  };
 
   // Pagination state
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Throttling and dedupe for read-marking
-  const lastConversationReadMarkTsRef = useRef<{ [key: string]: number }>({});
-  const hasBatchMarkedRef = useRef<Set<string>>(new Set());
+  // Scroll to bottom state
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   
-  // ✅ OPERATION GUARDS: Prevent duplicate conversation setups
-  const [isConversationSetup, setIsConversationSetup] = useState(false);
-  const [currentSetupConversationId, setCurrentSetupConversationId] = useState<string>('');
-  const [setupProgress, setSetupProgress] = useState<{
-    quotaChecked: boolean;
-    messagesLoaded: boolean;
-    conversationDataFetched: boolean;
-    readMarkingScheduled: boolean;
+  // Verification modal states (like web version)
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [showHandoverModal, setShowHandoverModal] = useState(false);
+  const [isClaimSubmitting, setIsClaimSubmitting] = useState(false);
+  const [isHandoverSubmitting, setIsHandoverSubmitting] = useState(false);
+  
+  // Image modal state (like web version)
+  const [selectedImage, setSelectedImage] = useState<{
+    url: string;
+    altText: string;
+  } | null>(null);
+  
+  // Toast notification state (like web version)
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'info';
+    visible: boolean;
+  } | null>(null);
+  
+  // Error handling state
+  const [errors, setErrors] = useState<{
+    conversation: string | null;
+    messages: string | null;
+    sendMessage: string | null;
+    general: string | null;
   }>({
-    quotaChecked: false,
-    messagesLoaded: false,
-    conversationDataFetched: false,
-    readMarkingScheduled: false
+    conversation: null,
+    messages: null,
+    sendMessage: null,
+    general: null
   });
+
+  // Debug state
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
   
-     // ✅ SIMPLIFIED: Removed complex quota management
-  // Check if handover button should be shown
+  // Simple state management
+  
+  // Enhanced logging and error handling
+  const logDebug = (message: string, data?: any) => {
+    const timestamp = new Date().toISOString();
+    const logEntry = `[${timestamp}] ${message}${data ? ` | Data: ${JSON.stringify(data)}` : ''}`;
+    
+    console.log('Chat Debug:', logEntry);
+    
+    if (debugMode) {
+      setDebugLogs(prev => [...prev.slice(-49), logEntry]); // Keep last 50 logs
+    }
+  };
+
+  // Error recovery functions
+  const clearError = (context: keyof typeof errors) => {
+    setErrors(prev => ({ ...prev, [context]: null }));
+    logDebug(`Error cleared for context: ${context}`);
+  };
+
+  const retryOperation = async (operation: () => Promise<void>, context: string) => {
+    try {
+      logDebug(`Retrying operation: ${context}`);
+      clearError(context as keyof typeof errors);
+      await operation();
+    } catch (error: any) {
+      logError(context, error, userData);
+      showToast(`Retry failed: ${error?.message || 'Unknown error'}`, 'error');
+    }
+  };
+
+  const resetAllErrors = () => {
+    setErrors({
+      conversation: null,
+      messages: null,
+      sendMessage: null,
+      general: null
+    });
+    logDebug('All errors cleared');
+  };
+
+  const logError = (context: string, error: any, userData?: any) => {
+    const errorInfo = {
+      context,
+      error: error?.message || error?.toString() || 'Unknown error',
+      stack: error?.stack,
+      timestamp: new Date().toISOString(),
+      conversationId,
+      userId: userData?.uid,
+      postId,
+      postOwnerId
+    };
+    
+    console.error('Chat Error:', errorInfo);
+    
+    // Store error in debug logs
+    if (debugMode) {
+      setDebugLogs(prev => [...prev.slice(-49), `ERROR: ${JSON.stringify(errorInfo)}`]);
+    }
+    
+    // Set appropriate error state
+    setErrors(prev => ({
+      ...prev,
+      [context]: errorInfo.error
+    }));
+  };
+
+  // Toast notification helper (like web version)
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message, type, visible: true });
+    setTimeout(() => setToast(null), 3000);
+    
+    // Log toast messages in debug mode
+    if (debugMode) {
+      logDebug(`Toast: ${type.toUpperCase()} - ${message}`);
+    }
+  };
+  
+  // Simplified conversation setup - no complex guards needed
+  
+     // Check if handover button should be shown
   const shouldShowHandoverButton = () => {
     if (!userData || !postOwnerId) return false;
-
-    // Don't show if current user is the post creator
     if (postOwnerId === userData.uid) return false;
-
-    // Only show for lost items
     if (conversationData?.postType !== "lost") return false;
-
-    // Only show if post is still pending
     if (conversationData?.postStatus !== "pending") return false;
-
     return true;
   };
 
   // Check if claim item button should be shown
   const shouldShowClaimItemButton = () => {
-    if (!userData || !postOwnerId) {
-      return false;
-    }
-
-    // Don't show if current user is the post creator
-    if (postOwnerId === userData.uid) {
-      return false;
-    }
-
-    // Only show for found items
-    if (conversationData?.postType !== "found") {
-      return false;
-    }
-
-    // Only show if post is still pending
-    if (conversationData?.postStatus !== "pending") {
-      return false;
-    }
-
-    // Only show if found action is "keep" or undefined (Found and Keep posts, or posts without explicit action)
-    if (
-      conversationData?.foundAction !== undefined &&
-      conversationData?.foundAction !== "keep"
-    ) {
-      return false;
-    }
-
+    if (!userData || !postOwnerId) return false;
+    if (postOwnerId === userData.uid) return false;
+    if (conversationData?.postType !== "found") return false;
+    if (conversationData?.postStatus !== "pending") return false;
+    if (conversationData?.foundAction !== undefined && conversationData?.foundAction !== "keep") return false;
     return true;
   };
 
+  // Unified conversation lifecycle management - prevents race conditions
   useEffect(() => {
-    // If no conversation exists, create one immediately
-    console.log('🔧 [Chat] Checking if conversation needs to be created:', {
-      hasConversationId: !!conversationId,
-      hasPostId: !!postId,
-      hasPostOwnerId: !!postOwnerId,
-      hasUser: !!user,
-      hasUserData: !!userData,
-      isLoading: loading
-    });
-    
-    if (!conversationId && postId && postOwnerId && user && userData && !loading) {
-      console.log('🔧 [Chat] Creating new conversation...');
-      handleCreateConversation();
-    }
-  }, [postId, postOwnerId, user, userData, loading]);
+    let isActive = true; // Track if component is still mounted
+    let messageUnsubscribe: (() => void) | null = null;
 
-  useEffect(() => {
-    if (conversationId) {
-      // ✅ OPERATION GUARD: Prevent duplicate setups for the same conversation
-      if (isConversationSetup && currentSetupConversationId === conversationId) {
-        console.log('🔧 [Chat] Conversation already set up, skipping duplicate setup:', conversationId);
-        return;
-      }
-      
-      console.log('🔧 [Chat] Setting up conversation:', conversationId);
-      
-      // Mark that we're setting up this conversation
-      setIsConversationSetup(true);
-      setCurrentSetupConversationId(conversationId);
-      
-             // ✅ SIMPLIFIED: Direct message listener setup without quota complexity
-       const setupConversation = async () => {
-         try {
-           console.log('🔧 [Chat] Setting up conversation without quota checks');
-           setSetupProgress(prev => ({ ...prev, quotaChecked: true }));
+    const manageConversationLifecycle = async () => {
+      console.log('=== CONVERSATION LIFECYCLE START ===');
+      console.log('Current state:', {
+        conversationId,
+        conversationStatus: conversation.status,
+        postId,
+        postTitle,
+        postOwnerId,
+        hasUser: !!user?.uid,
+        hasUserData: !!userData?.uid,
+        loading,
+        conversationCreationFailed,
+        conversationCreationAttempts
+      });
+
+      try {
+        // Step 1: Validate parameters
+        console.log('Step 1: Validating parameters...');
+        if (!validateNavigationParams()) {
+          console.log('❌ Parameter validation failed');
+          logDebug('Parameter validation failed, cannot proceed');
+          return;
+        }
+        console.log('✅ Parameter validation passed');
+
+        // Step 2: Check if we need to create a conversation
+        console.log('Step 2: Checking conversation creation need...');
+        const shouldCreateConversation = !conversationId && 
+            postId && 
+            postTitle && 
+            postOwnerId && 
+            user?.uid && 
+            userData?.uid && 
+            !loading &&
+            !conversationCreationFailed &&
+            conversationCreationAttempts < 3;
+        
+        console.log('Should create conversation:', shouldCreateConversation);
+        console.log('Conditions check:', {
+          hasConversationId: !!conversationId,
+          hasPostId: !!postId,
+          hasPostTitle: !!postTitle,
+          hasPostOwnerId: !!postOwnerId,
+          hasUserUid: !!user?.uid,
+          hasUserDataUid: !!userData?.uid,
+          isLoading: loading,
+          isCreationFailed: conversationCreationFailed,
+          attempts: conversationCreationAttempts
+        });
+
+        if (shouldCreateConversation) {
+          console.log('🚀 Starting conversation creation sequence');
+          logDebug('Starting conversation creation sequence');
+          setConversationCreationAttempts(conversationCreationAttempts + 1);
           
-          // ✅ SIMPLIFIED: Single, reliable message listener setup
-          console.log('🔧 [Chat] Setting up message listener with limit 50');
-          console.log('🔧 [Chat] About to call getConversationMessages for conversation:', conversationId);
+          // Validate conversation creation parameters
+          console.log('Validating conversation creation parameters...');
+          const conversationValidation = validationUtils.validateConversationParams({
+            postId: postId!,
+            postTitle: postTitle!,
+            postOwnerId: postOwnerId!,
+            currentUserId: user.uid
+          });
           
-          const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
-            console.log('🔧 [Chat] Message listener callback received:', {
-              conversationId,
-              messageCount: loadedMessages.length,
-              isInitialLoad,
-              lastMessageText: loadedMessages[loadedMessages.length - 1]?.text || 'none',
-              timestamp: new Date().toISOString()
-            });
+          console.log('Conversation validation result:', conversationValidation);
+          
+          if (!conversationValidation.isValid) {
+            console.log('❌ Conversation validation failed:', conversationValidation.errors);
+            logError('validation', new Error(`Invalid conversation parameters: ${conversationValidation.errors.join(', ')}`), userData);
+            return;
+          }
+          
+          // Sanitize user data before creation
+          console.log('Sanitizing user data...');
+          const sanitizedUserData = validationUtils.sanitizeUserData(userData);
+          const sanitizedPostOwnerData = validationUtils.sanitizeUserData(postOwnerUserData);
+          
+          console.log('Sanitized data:', {
+            currentUser: sanitizedUserData ? 'Valid' : 'Invalid',
+            postOwner: sanitizedPostOwnerData ? 'Valid' : 'Invalid'
+          });
+          
+          if (!sanitizedUserData) {
+            console.log('❌ Invalid current user data');
+            logError('validation', new Error('Invalid current user data'), userData);
+            return;
+          }
+          
+          // Create conversation
+          try {
+            console.log('🔄 Calling createConversation...');
+            const newConversationId = await createConversation(
+              postId!,
+              validationUtils.sanitizeText(postTitle!),
+              postOwnerId!,
+              user.uid,
+              sanitizedUserData,
+              sanitizedPostOwnerData
+            );
             
-            setMessages(loadedMessages);
-            setIsInitialLoad(false);
-            setSetupProgress(prev => ({ ...prev, messagesLoaded: true }));
+            console.log('✅ Conversation created successfully:', newConversationId);
             
-            // If we got fewer messages than the limit, there are no more messages
-            if (loadedMessages.length < 50) {
-              setHasMoreMessages(false);
+            if (!isActive) {
+              console.log('⚠️ Component unmounted during creation');
+              return;
             }
             
-            // Only scroll to bottom on initial load
+            logDebug('Conversation created, updating state', { newConversationId });
+            setConversationId(newConversationId);
+            setConversationCreationFailed(false);
+            showToast("Conversation started successfully!", "success");
+            
+            console.log('🔄 Exiting early to let effect re-run with new conversationId');
+            return; // Exit early, let the effect re-run with new conversationId
+          } catch (error) {
+            console.log('❌ Conversation creation failed:', error);
+            if (!isActive) return;
+            handleConversationCreationError(error);
+            return;
+          }
+        }
+
+        // Step 3: Set up message listener for existing conversation
+        console.log('Step 3: Setting up message listener...');
+        if (conversationId && conversation.status === 'ready' && isActive) {
+          console.log('✅ Setting up message listener for conversation:', conversationId);
+          logDebug('Setting up message listener for conversation', { conversationId });
+          
+          // Set up message listener
+          messageUnsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
+            console.log('📨 Messages loaded:', {
+              count: loadedMessages.length,
+              firstMessage: loadedMessages[0]?.text || 'None',
+              lastMessage: loadedMessages[loadedMessages.length - 1]?.text || 'None'
+            });
+            
+            if (!isActive) return;
+            
+            // Validate and sanitize loaded messages
+            const validatedMessages = loadedMessages
+              .map(message => {
+                const validation = validationUtils.validateMessage(message);
+                if (!validation.isValid) {
+                  console.log('⚠️ Invalid message found:', message.id, validation.error);
+                  logError('validation', new Error(`Invalid message: ${validation.error}`), userData);
+                  return null;
+                }
+                
+                // Sanitize message text
+                return {
+                  ...message,
+                  text: validationUtils.sanitizeText(message.text)
+                };
+              })
+              .filter((message): message is Message => message !== null); // Remove invalid messages
+            
+            console.log('✅ Validated messages:', validatedMessages.length);
+            setMessages(validatedMessages);
+            setIsInitialLoad(false);
+            
+            // Check if we have more messages to load (web version uses 50-message limit)
+            if (validatedMessages.length < 50) {
+              setHasMoreMessages(false);
+            } else {
+              setHasMoreMessages(true);
+            }
+            
+            // Scroll to bottom on initial load
             if (isInitialLoad) {
               scrollToBottom();
             }
-          }, 50);
+          }, 50); // Use 50-message limit like web version
           
-          console.log('🔧 [Chat] Message listener setup complete, unsubscribe function:', typeof unsubscribe);
+          // Get conversation data for UI logic
+          try {
+            console.log('🔄 Getting conversation data...');
+            const data = await getConversation(conversationId);
+            if (!isActive) return;
+            
+            console.log('✅ Conversation data loaded:', data);
+            setConversationData(data);
+            logDebug('Conversation data loaded', { data });
+          } catch (error) {
+            console.log('❌ Failed to get conversation data:', error);
+            if (!isActive) return;
+            logError('conversation', error, userData);
+          }
           
-          // Fetch conversation data for handover button logic
-          const fetchConversationData = async () => {
+          // Mark conversation as read
+          if (userData?.uid) {
             try {
-              const data = await getConversation(conversationId);
-              setConversationData(data);
-              setSetupProgress(prev => ({ ...prev, conversationDataFetched: true }));
-            } catch (error: any) {
-              console.error('❌ [Chat] Failed to fetch conversation data:', error.message);
+              console.log('🔄 Marking conversation as read...');
+              await markConversationAsRead(conversationId, userData.uid);
+              console.log('✅ Conversation marked as read');
+            } catch (error) {
+              console.log('❌ Failed to mark conversation as read:', error);
+              if (!isActive) return;
+              logError('conversation', error, userData);
             }
-          };
-          
-          fetchConversationData();
-          
-          // Mark conversation as read when user opens it
-          if (userData?.uid) {
-            markConversationAsRead(conversationId, userData.uid);
-          }
-
-          // Mark all unread messages as read when conversation is opened
-          if (userData?.uid) {
-            setSetupProgress(prev => ({ ...prev, readMarkingScheduled: true }));
-            console.log('🔧 [Chat] Will mark messages as read after conversation data loads');
           }
           
-          return unsubscribe;
-        } catch (error: any) {
-          console.error('❌ [Chat] Setup failed:', error.message);
-          // Return empty cleanup function on error
-          return () => {};
-        }
-      };
-      
-      // Execute conversation setup and store unsubscribe function
-      let unsubscribeFunction: (() => void) | null = null;
-      setupConversation().then((unsubscribe) => {
-        unsubscribeFunction = unsubscribe;
-        console.log('🔧 [Chat] Message listener setup promise resolved, unsubscribe function stored:', typeof unsubscribe);
-      });
-      
-      return () => {
-        if (unsubscribeFunction) {
-          console.log('🔧 [Chat] Cleaning up message listener for conversation:', conversationId);
-          unsubscribeFunction();
+          // Reset pagination state for new conversation
+          setHasMoreMessages(true);
+          setIsInitialLoad(true);
         } else {
-          console.log('🔧 [Chat] No unsubscribe function to clean up for conversation:', conversationId);
+          console.log('⚠️ Cannot set up message listener:', {
+            hasConversationId: !!conversationId,
+            conversationStatus: conversation.status,
+            isActive
+          });
         }
+
+        // Step 4: Mark unread messages as read when they arrive
+        if (conversationId && userData?.uid && messages.length > 0 && isActive) {
+          try {
+            console.log('🔄 Checking unread count...');
+            const unreadCount = getConversationUnreadCount(conversationId, userData.uid);
+            console.log('Unread count:', unreadCount);
+            if (unreadCount > 0) {
+              await markConversationAsRead(conversationId, userData.uid);
+              console.log('✅ Marked unread messages as read');
+            }
+          } catch (error) {
+            console.log('❌ Failed to mark unread messages as read:', error);
+            if (!isActive) return;
+            logError('conversation', error, userData);
+          }
+        }
+
+              } catch (error) {
+          console.log('❌ Error in conversation lifecycle:', error);
+          if (!isActive) return;
+          logError('conversation', error, userData);
+        }
+        
+        console.log('=== CONVERSATION LIFECYCLE END ===');
       };
-    } else {
-      // Conversation ID cleared - reset setup state
-      if (isConversationSetup) {
-        console.log('🔧 [Chat] Conversation cleared, resetting setup state');
-        setIsConversationSetup(false);
-        setCurrentSetupConversationId('');
-      }
-    }
-  }, [conversationId, getConversationMessages, getConversation, userData?.uid, markConversationAsRead]);
-
-  // ✅ NEW: Handle message marking after conversation data loads (guarded & once per conversation)
-  useEffect(() => {
-    if (!conversationId || !userData?.uid || !conversationData) return;
-    
-    const unreadCount = getConversationUnreadCount(conversationId, userData.uid);
-    const alreadyBatchMarked = hasBatchMarkedRef.current.has(conversationId);
-
-    if (unreadCount > 0 && !alreadyBatchMarked) {
-      console.log('🔧 [Chat] Processing conversation data:', {
-        conversationId,
-        postType: conversationData.postType,
-        postStatus: conversationData.postStatus,
-        action: 'marking messages as read (batch)'
-      });
-
-      markAllUnreadMessagesAsRead(conversationId, userData.uid);
-      hasBatchMarkedRef.current.add(conversationId);
-    }
-  }, [conversationId, userData?.uid, conversationData, markAllUnreadMessagesAsRead, getConversationUnreadCount]);
-
-  // ✅ NEW: Show setup summary when all progress is complete
-  useEffect(() => {
-    if (!conversationId || !isConversationSetup) return;
-    
-    const { quotaChecked, messagesLoaded, conversationDataFetched, readMarkingScheduled } = setupProgress;
-    
-    if (quotaChecked && messagesLoaded && conversationDataFetched && readMarkingScheduled) {
-             // ✅ SUMMARY LOG: Show overall conversation setup status
-       console.log('🎯 [Chat] Conversation Setup Complete:', {
-         conversationId,
-         functionality: 'full (messages + read marking)',
-         messageCount: messages.length,
-         hasConversationData: !!conversationData,
-         readMarkingScheduled: true
-       });
       
-      // Reset progress for next conversation
-      setSetupProgress({
-        quotaChecked: false,
-        messagesLoaded: false,
-        conversationDataFetched: false,
-        readMarkingScheduled: false
-      });
-    }
-  }, [conversationId, isConversationSetup, setupProgress, messages.length, conversationData]);
+      // Execute the lifecycle management
+      manageConversationLifecycle();
+      
+      // Cleanup function
+      return () => {
+        console.log('🧹 Cleaning up conversation lifecycle');
+        isActive = false;
+        if (messageUnsubscribe) {
+          messageUnsubscribe();
+        }
+        logDebug('Conversation lifecycle cleanup completed');
+      };
 
-  // ✅ NEW: Cleanup and reset quota cache when user changes or app state changes
-  useEffect(() => {
-         // User authentication state changed
-     if (userData?.uid) {
-       console.log('🔧 [Chat] User authenticated');
-     } else {
-       // User logged out
-       console.log('🔧 [Chat] User logged out');
-     }
-  }, [userData?.uid]);
-
-  // ✅ NEW: Reset quota cache when conversation changes significantly
-  useEffect(() => {
-    if (conversationId) {
-      // ✅ CONSOLIDATED: Single log for conversation change
-      console.log('🔧 [Chat] Conversation changed:', conversationId);
-      // Reset guards for new conversation
-      hasBatchMarkedRef.current.delete(conversationId);
-      delete lastConversationReadMarkTsRef.current[conversationId];
-    }
-  }, [conversationId]);
-
-  // ✅ NEW: Handle app state changes (background/foreground) to reset quota cache
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState: string) => {
-             if (nextAppState === 'active') {
-         // App came to foreground
-         console.log('🔧 [Chat] App state: foreground');
-       } else if (nextAppState === 'background') {
-         // App went to background
-         console.log('🔧 [Chat] App state: background');
-       }
-    };
-
-    // Add app state change listener
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    return () => {
-      subscription?.remove();
-    };
-  }, []);
-
-  // Mark conversation as read when new messages arrive while user is viewing (guarded & throttled)
-  useEffect(() => {
-    if (!conversationId || !userData?.uid || !messages.length) return;
-
-    const unreadCount = getConversationUnreadCount(conversationId, userData.uid);
-    if (unreadCount <= 0) return;
-
-    const now = Date.now();
-    const lastTs = lastConversationReadMarkTsRef.current[conversationId] || 0;
-    const THROTTLE_MS = 15000; // 15s
-    if (now - lastTs < THROTTLE_MS) return;
-
-    lastConversationReadMarkTsRef.current[conversationId] = now;
-    markConversationAsRead(conversationId, userData.uid);
-  }, [messages, conversationId, userData, markConversationAsRead, getConversationUnreadCount]);
+  }, [
+    // Dependencies that should trigger lifecycle management
+    postId, 
+    postTitle, 
+    postOwnerId, 
+    user?.uid, 
+    userData?.uid, 
+    conversationId, 
+    conversation.status,
+    conversationCreationAttempts,
+    conversationCreationFailed,
+    messages.length,
+    // Functions that should be stable
+    createConversation,
+    getConversationMessages,
+    getConversation,
+    markConversationAsRead,
+    getConversationUnreadCount
+  ]);
 
   // Function to mark message as read when it comes into view
   const handleMessageSeen = async (messageId: string) => {
@@ -1356,30 +1535,20 @@ export default function Chat() {
     }
   };
 
-  // Handle viewable items changed to mark messages as read
+  // Simple viewable items tracking for read receipts
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: any[] }) => {
       if (!conversationId || !userData?.uid) return;
 
-      const newViewableMessageIds = new Set(
-        viewableItems.map((item) => item.key)
-      );
-
-      // Mark messages as read that are now viewable and not sent by current user
+      // Mark messages as read when they come into view
       viewableItems.forEach((item) => {
         const message = item.item;
-        if (
-          message &&
-          message.senderId !== userData.uid &&
-          !viewableMessages.has(message.id)
-        ) {
+        if (message && message.senderId !== userData.uid) {
           handleMessageSeen(message.id);
         }
       });
-
-      setViewableMessages(newViewableMessageIds);
     },
-    [conversationId, userData, viewableMessages, handleMessageSeen]
+    [conversationId, userData, handleMessageSeen]
   );
 
   if (!user || !userData) {
@@ -1390,10 +1559,11 @@ export default function Chat() {
     );
   }
 
+  // Enhanced scroll to bottom function
   const scrollToBottom = () => {
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    if (flatListRef.current && messages.length > 0) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
   };
 
   const scrollToBottomOnNewMessage = () => {
@@ -1433,90 +1603,117 @@ export default function Chat() {
         setHasMoreMessages(false);
       }
     } catch (error) {
-      console.error("Failed to load older messages:", error);
+      logError('messages', error, userData);
+      showToast('Failed to load older messages', 'error');
     } finally {
       setIsLoadingOlderMessages(false);
     }
   };
 
-  const handleCreateConversation = async () => {
-    console.log('🔧 [Chat] handleCreateConversation called with:', {
-      postId,
-      postOwnerId,
-      postTitle,
-      userUid: user?.uid,
-      hasUserData: !!userData,
-      hasPostOwnerUserData: !!postOwnerUserData
-    });
+  // Enhanced error handling for conversation creation failures
+  const handleConversationCreationError = (error: any) => {
+    logError('conversation', error, userData);
+    
+    // Provide user-friendly error messages
+    let errorMessage = 'Failed to start conversation. Please try again.';
+    
+    if (error.message?.includes('permission')) {
+      errorMessage = 'Permission denied. Please check your account status.';
+    } else if (error.message?.includes('network')) {
+      errorMessage = 'Network error. Please check your connection and try again.';
+    } else if (error.message?.includes('quota')) {
+      errorMessage = 'Service temporarily unavailable. Please try again later.';
+    }
+    
+    // Set failure state if we've reached max attempts
+    if (conversationCreationAttempts >= 3) {
+      setConversationCreationFailed(true);
+      Alert.alert("Conversation Error", "Failed to start conversation after multiple attempts. Please check your connection and try again later.", [
+        { text: "OK", onPress: () => navigation.goBack() }
+      ]);
+    } else {
+      Alert.alert("Conversation Error", errorMessage, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Retry", onPress: () => {
+          // Reset error state and let the lifecycle management retry
+          setConversationCreationFailed(false);
+          setConversationCreationAttempts(0);
+        }}
+      ]);
+    }
+  };
 
-    if (!postId || !postOwnerId) {
-      Alert.alert("Error", "Missing post information");
+  // Simple debounce implementation for retry mechanism
+  const debouncedRetry = useCallback(() => {
+    const timeoutId = setTimeout(() => {
+      if (!conversationId && !loading) {
+        logDebug('Debounced retry triggered');
+        setConversationCreationFailed(false);
+        setConversationCreationAttempts(0);
+      }
+    }, 2000); // 2 second delay
+    
+    return () => clearTimeout(timeoutId);
+  }, [conversationId, loading]);
+
+  // Cleanup debounced retry on unmount
+  useEffect(() => {
+    const cleanup = debouncedRetry();
+    return cleanup;
+  }, [debouncedRetry]);
+
+  const handleSendMessage = async () => {
+    // Validate input and conversation state
+    if (!conversationId) {
+      showToast('No active conversation', 'error');
+      return;
+    }
+
+    // Validate message content
+    const messageValidation = validationUtils.isValidMessage(newMessage);
+    if (!messageValidation.isValid) {
+      showToast(messageValidation.error || 'Invalid message', 'error');
+      return;
+    }
+
+    // Validate conversation ID format
+    if (!validationUtils.isValidFirebaseId(conversationId)) {
+      logError('validation', new Error('Invalid conversation ID format'), userData);
+      showToast('Invalid conversation format', 'error');
+      return;
+    }
+
+    // Validate user data
+    if (!validationUtils.isValidUserId(user?.uid || '')) {
+      logError('validation', new Error('Invalid user ID format'), userData);
+      showToast('User authentication error', 'error');
       return;
     }
 
     try {
-      console.log('🔧 [Chat] Starting conversation creation...');
-      setLoading(true);
-      const newConversationId = await createConversation(
-        postId,
-        postTitle,
-        postOwnerId,
-        user.uid,
-        userData,
-        postOwnerUserData // Pass the post owner's user data
-      );
-      console.log('✅ [Chat] Conversation created successfully:', newConversationId);
-      setConversationId(newConversationId);
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !conversationId) return;
-
-    console.log('🔧 [Chat] Sending message:', {
-      conversationId,
-      messageText: newMessage.trim(),
-      userId: user.uid,
-      userName: `${userData.firstName} ${userData.lastName}`
-    });
-
-    try {
-      // Create a temporary message object for immediate display
-      const tempMessage: Message = {
-        id: `temp-${Date.now()}`, // Temporary ID
-        senderId: user.uid,
-        senderName: `${userData.firstName} ${userData.lastName}`,
-        senderProfilePicture: userData.profilePicture || undefined,
-        text: newMessage.trim(),
-        timestamp: new Date(),
-        readBy: [user.uid],
-        messageType: 'text'
-      };
-
-      // Add message to local state immediately for instant feedback
-      setMessages(prev => [...prev, tempMessage]);
-      
-      // Clear input and scroll to bottom
-      const messageText = newMessage.trim();
+      // Sanitize message text
+      const sanitizedMessage = validationUtils.sanitizeText(newMessage);
       setNewMessage('');
-      scrollToBottomOnNewMessage();
-
-      // Send message to Firebase
+      
+      // Sanitize user data before sending
+      const sanitizedUserData = validationUtils.sanitizeUserData(userData);
+      if (!sanitizedUserData) {
+        throw new Error('Invalid user data');
+      }
+      
       await sendMessage(
         conversationId,
         user.uid,
-        `${userData.firstName} ${userData.lastName}`,
-        messageText,
-        userData.profilePicture
+        `${sanitizedUserData.firstName} ${sanitizedUserData.lastName}`,
+        sanitizedMessage,
+        sanitizedUserData.profilePicture
       );
-      setNewMessage("");
+      
       scrollToBottomOnNewMessage();
+      showToast("Message sent successfully!", "success");
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      logError('sendMessage', error, userData);
+      showToast(error.message || 'Failed to send message', "error");
     }
   };
 
@@ -1524,18 +1721,14 @@ export default function Chat() {
     messageId: string,
     status: "accepted" | "rejected"
   ) => {
-    // This function will be called when a handover response is made
-    // The actual update is handled in the MessageBubble component
-    console.log(`Handover response: ${status} for message ${messageId}`);
+    // Callback for handover response updates
   };
 
   const handleClaimResponse = (
     messageId: string,
     status: "accepted" | "rejected"
   ) => {
-    // This function will be called when a claim response is made
-    // The actual update is handled in the MessageBubble component
-    console.log(`Claim response: ${status} for message ${messageId}`);
+    // Callback for claim response updates
   };
 
   const handleConfirmIdPhotoSuccess = (messageId: string) => {
@@ -1552,9 +1745,15 @@ export default function Chat() {
   };
 
   const handleHandoverRequest = async () => {
+    // Show verification modal first (like web version)
+    setShowHandoverModal(true);
+  };
+
+  const handleHandoverRequestSubmit = async () => {
     if (!conversationId || !user || !userData) return;
 
     try {
+      setIsHandoverSubmitting(true);
       const { messageService } = await import("@/utils/firebase");
       await messageService.sendHandoverRequest(
         conversationId,
@@ -1564,39 +1763,125 @@ export default function Chat() {
         conversationData?.postId || "",
         postTitle
       );
+      setShowHandoverModal(false);
+      showToast("Handover request sent successfully!", "success");
     } catch (error: any) {
-      console.error("Failed to send handover request:", error);
-      Alert.alert(
-        "Error",
-        "Failed to send handover request. Please try again."
-      );
+      logError('general', error, userData);
+      showToast("Failed to send handover request. Please try again.", "error");
+    } finally {
+      setIsHandoverSubmitting(false);
     }
   };
 
   const handleClaimRequest = async () => {
-    console.log("Claim button pressed!");
-    console.log("conversationId:", conversationId);
-    console.log("user:", user);
-    console.log("userData:", userData);
-    console.log("postId:", postId);
-    console.log("postTitle:", postTitle);
+    // Show verification modal first (like web version)
+    setShowClaimModal(true);
+  };
 
-    if (!conversationId || !user || !userData) {
-      console.log("Claim request blocked - missing required data");
-      return;
-    }
+  const handleClaimRequestSubmit = async () => {
+    if (!conversationId || !user || !userData) return;
 
-    // Navigate to claim form screen
     (navigation as any).navigate('ClaimFormScreen', {
       conversationId,
       postId,
       postTitle,
       postOwnerId,
     });
+    setShowClaimModal(false);
   };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
+              {/* Debug Panel - Only visible in debug mode */}
+        {debugMode && (
+          <View className="bg-gray-800 px-4 py-2">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-white text-sm font-bold">Debug Mode</Text>
+              <TouchableOpacity onPress={() => setDebugMode(false)}>
+                <Ionicons name="close" size={16} color="white" />
+              </TouchableOpacity>
+            </View>
+            <View className="flex-row gap-2 mb-2">
+              <TouchableOpacity
+                onPress={resetAllErrors}
+                className="bg-blue-500 px-2 py-1 rounded"
+              >
+                <Text className="text-white text-xs">Clear Errors</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setDebugLogs([])}
+                className="bg-gray-500 px-2 py-1 rounded"
+              >
+                <Text className="text-white text-xs">Clear Logs</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {/* Validation Status */}
+            <View className="mb-2 p-2 bg-gray-700 rounded">
+              <Text className="text-white text-xs font-bold mb-1">Validation Status:</Text>
+              <Text className="text-green-400 text-xs">
+                ✓ Post ID: {validationUtils.isValidFirebaseId(postId || '') ? 'Valid' : 'Invalid'}
+              </Text>
+              <Text className="text-green-400 text-xs">
+                ✓ Post Owner ID: {validationUtils.isValidUserId(postOwnerId || '') ? 'Valid' : 'Invalid'}
+              </Text>
+              <Text className="text-green-400 text-xs">
+                ✓ Current User ID: {validationUtils.isValidUserId(user?.uid || '') ? 'Valid' : 'Invalid'}
+              </Text>
+              <Text className="text-green-400 text-xs">
+                ✓ Conversation ID: {conversationId ? validationUtils.isValidFirebaseId(conversationId) ? 'Valid' : 'Invalid' : 'None'}
+              </Text>
+            </View>
+            
+            <ScrollView className="max-h-32">
+              {debugLogs.map((log, index) => (
+                <Text key={index} className="text-white text-xs font-mono">
+                  {log}
+                </Text>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+      {/* Error Display - Show active errors */}
+      {(errors.conversation || errors.messages || errors.sendMessage || errors.general) && (
+        <View className="bg-red-50 border-b border-red-200 px-4 py-3">
+          <Text className="text-red-800 font-medium mb-2">⚠️ Errors Detected</Text>
+          {errors.conversation && (
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-red-700 text-sm">Conversation: {errors.conversation}</Text>
+              <TouchableOpacity onPress={() => clearError('conversation')}>
+                <Ionicons name="close-circle" size={16} color="#dc2626" />
+              </TouchableOpacity>
+            </View>
+          )}
+          {errors.messages && (
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-red-700 text-sm">Messages: {errors.messages}</Text>
+              <TouchableOpacity onPress={() => clearError('messages')}>
+                <Ionicons name="close-circle" size={16} color="#dc2626" />
+              </TouchableOpacity>
+            </View>
+          )}
+          {errors.sendMessage && (
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-red-700 text-sm">Send Message: {errors.sendMessage}</Text>
+              <TouchableOpacity onPress={() => clearError('sendMessage')}>
+                <Ionicons name="close-circle" size={16} color="#dc2626" />
+              </TouchableOpacity>
+            </View>
+          )}
+          {errors.general && (
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-red-700 text-sm">General: {errors.general}</Text>
+              <TouchableOpacity onPress={() => clearError('general')}>
+                <Ionicons name="close-circle" size={16} color="#dc2626" />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Header */}
       <View className="bg-white border-b border-gray-200 pt-3 pb-4 px-4 flex-row items-center">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
@@ -1650,33 +1935,20 @@ export default function Chat() {
         {shouldShowClaimItemButton() && (
           <TouchableOpacity
             className="ml-3 px-4 py-2 bg-blue-500 rounded-lg"
-            onPress={() => {
-              console.log("CLAIM BUTTON PRESSED ON MOBILE!");
-              handleClaimRequest();
-            }}
+            onPress={handleClaimRequest}
           >
             <Text className="text-white font-medium text-sm">Claim Item</Text>
           </TouchableOpacity>
         )}
-        
-        {/* Debug: Manual refresh button to test message listener */}
+
+        {/* Debug Toggle Button */}
         <TouchableOpacity
-          className="ml-3 px-4 py-2 bg-yellow-500 rounded-lg"
-          onPress={() => {
-            console.log('🔧 [Chat] Manual refresh button pressed');
-            console.log('🔧 [Chat] Current messages count:', messages.length);
-            console.log('🔧 [Chat] Current conversation ID:', conversationId);
-            // Force a manual refresh by calling getConversationMessages again
-            if (conversationId) {
-              getConversationMessages(conversationId, (loadedMessages) => {
-                console.log('🔧 [Chat] Manual refresh received messages:', loadedMessages.length);
-                setMessages(loadedMessages);
-              }, 50);
-            }
-          }}
+          onPress={() => setDebugMode(!debugMode)}
+          className="ml-3 px-3 py-2 bg-gray-500 rounded-lg"
         >
-          <Text className="text-white font-medium text-xs">Refresh</Text>
+          <Ionicons name="bug" size={16} color="white" />
         </TouchableOpacity>
+
       </View>
 
       {/* Messages */}
@@ -1713,12 +1985,15 @@ export default function Chat() {
                 onClaimResponse={handleClaimResponse}
                 onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
                 onMessageSeen={() => handleMessageSeen(item.id)}
+                onImageClick={(imageUrl, altText) => setSelectedImage({ url: imageUrl, altText })}
               />
             )}
             contentContainerStyle={{ padding: 16 }}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={scrollToBottomOnNewMessage}
             onViewableItemsChanged={onViewableItemsChanged}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             viewabilityConfig={{
               itemVisiblePercentThreshold: 50,
               minimumViewTime: 100,
@@ -1747,6 +2022,236 @@ export default function Chat() {
               ) : null
             }
           />
+          
+        )}
+        
+        {/* Scroll to Bottom Button - Floating */}
+        {showScrollToBottom && (
+          <TouchableOpacity
+            onPress={scrollToBottom}
+            style={{
+              position: 'absolute',
+              bottom: 120,
+              right: 16,
+              width: 48,
+              height: 48,
+              backgroundColor: '#3b82f6',
+              borderRadius: 24,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+              zIndex: 1000,
+            }}
+          >
+            <Ionicons name="chevron-down" size={24} color="white" />
+          </TouchableOpacity>
+        )}
+
+        {/* Claim Verification Modal - Like Web Version */}
+        {showClaimModal && (
+          <View style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+          }}>
+            <View style={{
+              backgroundColor: 'white',
+              borderRadius: 12,
+              padding: 20,
+              margin: 20,
+              width: '90%',
+              maxWidth: 400,
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' }}>
+                Verify Claim Request
+              </Text>
+              <Text style={{ fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' }}>
+                Please upload a photo of your ID to verify your claim.
+              </Text>
+              
+              <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 20 }}>
+                <TouchableOpacity
+                  onPress={() => setShowClaimModal(false)}
+                  style={{
+                    paddingHorizontal: 20,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    backgroundColor: '#6b7280',
+                  }}
+                >
+                  <Text style={{ color: 'white', fontWeight: '500' }}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  onPress={handleClaimRequestSubmit}
+                  disabled={isClaimSubmitting}
+                  style={{
+                    paddingHorizontal: 20,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    backgroundColor: isClaimSubmitting ? '#9ca3af' : '#3b82f6',
+                  }}
+                >
+                  <Text style={{ color: 'white', fontWeight: '500' }}>
+                    {isClaimSubmitting ? 'Processing...' : 'Continue'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Handover Verification Modal - Like Web Version */}
+        {showHandoverModal && (
+          <View style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+          }}>
+            <View style={{
+              backgroundColor: 'white',
+              borderRadius: 12,
+              padding: 20,
+              margin: 20,
+              width: '90%',
+              maxWidth: 400,
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' }}>
+                Verify Handover Request
+              </Text>
+              <Text style={{ fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' }}>
+                Please upload a photo of your ID to verify the handover.
+              </Text>
+              
+              <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 20 }}>
+                <TouchableOpacity
+                  onPress={() => setShowHandoverModal(false)}
+                  style={{
+                    paddingHorizontal: 20,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    backgroundColor: '#6b7280',
+                  }}
+                >
+                  <Text style={{ color: 'white', fontWeight: '500' }}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  onPress={handleHandoverRequestSubmit}
+                  disabled={isHandoverSubmitting}
+                  style={{
+                    paddingHorizontal: 20,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    backgroundColor: isHandoverSubmitting ? '#9ca3af' : '#3b82f6',
+                  }}
+                >
+                  <Text style={{ color: 'white', fontWeight: '500' }}>
+                    {isHandoverSubmitting ? 'Processing...' : 'Continue'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Image Modal - Like Web Version */}
+        {selectedImage && (
+          <View style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 3000,
+          }}>
+            <TouchableOpacity
+              onPress={() => setSelectedImage(null)}
+              style={{
+                position: 'absolute',
+                top: 40,
+                right: 20,
+                zIndex: 3001,
+              }}
+            >
+              <Ionicons name="close" size={30} color="white" />
+            </TouchableOpacity>
+            
+            <Image
+              source={{ uri: selectedImage.url }}
+              style={{
+                width: '90%',
+                height: '80%',
+                resizeMode: 'contain',
+              }}
+            />
+            
+            {selectedImage.altText && (
+              <Text style={{
+                color: 'white',
+                fontSize: 16,
+                textAlign: 'center',
+                marginTop: 20,
+                paddingHorizontal: 20,
+              }}>
+                {selectedImage.altText}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {/* Toast Notification - Like Web Version */}
+        {toast && (
+          <View style={{
+            position: 'absolute',
+            top: 100,
+            left: 20,
+            right: 20,
+            backgroundColor: toast.type === 'success' ? '#10b981' : 
+                           toast.type === 'error' ? '#ef4444' : '#3b82f6',
+            borderRadius: 8,
+            padding: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            zIndex: 4000,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
+          }}>
+            <Text style={{
+              color: 'white',
+              fontSize: 14,
+              fontWeight: '500',
+              flex: 1,
+            }}>
+              {toast.message}
+            </Text>
+            <TouchableOpacity onPress={() => setToast(null)}>
+              <Ionicons name="close" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* Message Counter */}
@@ -1794,21 +2299,47 @@ export default function Chat() {
           </Text>
         )}
 
-        {/* 🔍 SMART LISTENER DEBUG: Show listener status */}
+        {/* Simple message counter */}
         <View className="mt-2 pt-2 border-t border-gray-300">
-          <TouchableOpacity
-            onPress={() => {
-              smartListenerManager.debugStatus();
-              console.log('📱 [SMART] Debug button pressed - check console for status');
-            }}
-            className="bg-blue-100 px-3 py-1 rounded-full self-center"
-          >
-            <Text className="text-xs text-blue-600 font-medium">
-              🔍 Smart Listener Status
-            </Text>
-          </TouchableOpacity>
+          <Text className="text-xs text-gray-500 text-center">
+            {messages.length} messages
+          </Text>
         </View>
       </View>
+
+        {/* Conversation Creation Status */}
+        {loading && (
+          <View className="border-t border-gray-200 bg-blue-50 px-4 py-3">
+            <View className="flex-row items-center justify-center">
+              <Ionicons name="sync" size={16} color="#3b82f6" />
+              <Text className="text-blue-700 text-sm ml-2 font-medium">
+                {conversationCreationFailed 
+                  ? "Conversation creation failed" 
+                  : `Setting up conversation... (${conversationCreationAttempts}/3)`
+                }
+              </Text>
+            </View>
+            {conversationCreationFailed && (
+              <TouchableOpacity
+                onPress={() => {
+                  setConversationCreationFailed(false);
+                  setConversationCreationAttempts(0);
+                  // The lifecycle management will automatically retry
+                }}
+                className="mt-2 bg-blue-500 px-4 py-2 rounded-lg self-center"
+              >
+                <Text className="text-white text-sm font-medium">Retry</Text>
+              </TouchableOpacity>
+            )}
+            {debugMode && (
+              <View className="mt-2 pt-2 border-t border-blue-200">
+                <Text className="text-blue-600 text-xs text-center">
+                  Status: {conversation.status} | ID: {conversation.id || 'None'} | Attempts: {conversation.creationAttempts}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Message Input */}
         <View className="border-t border-gray-200 bg-white p-4">
@@ -1818,7 +2349,11 @@ export default function Chat() {
                 value={newMessage}
                 onChangeText={setNewMessage}
                 placeholder={
-                  loading ? "Creating conversation..." : "Type a message..."
+                  loading 
+                    ? conversationCreationFailed 
+                      ? "Conversation creation failed" 
+                      : `Creating conversation... (${conversationCreationAttempts}/3)`
+                    : "Type a message..."
                 }
                 className={`border rounded-full px-4 py-3 text-base ${
                   loading ? "bg-gray-100" : "bg-white"
@@ -1833,6 +2368,23 @@ export default function Chat() {
                 maxLength={200}
                 editable={!loading}
               />
+              
+              {/* Real-time validation feedback */}
+              {newMessage.length > 0 && (
+                <View className="absolute -bottom-6 left-0 right-0">
+                  {(() => {
+                    const validation = validationUtils.isValidMessage(newMessage);
+                    if (!validation.isValid) {
+                      return (
+                        <Text className="text-red-500 text-xs">
+                          ⚠️ {validation.error}
+                        </Text>
+                      );
+                    }
+                    return null;
+                  })()}
+                </View>
+              )}
               <View className="absolute bottom-1 right-3">
                 <Text
                   className={`text-xs ${

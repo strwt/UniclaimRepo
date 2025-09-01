@@ -2968,18 +2968,30 @@ export const postService = {
 
             const postData = postDoc.data();
 
+            // Check if post can actually be activated
+            if (!postData.movedToUnclaimed && postData.status !== 'unclaimed') {
+                throw new Error('Post is not in unclaimed status and cannot be activated');
+            }
+
             // Calculate new expiry date (30 days from now)
             const newExpiryDate = new Date();
             newExpiryDate.setDate(newExpiryDate.getDate() + 30);
 
+            // Determine the status to restore to
+            let statusToRestore = 'pending';
+            if (postData.originalStatus && postData.originalStatus !== 'unclaimed') {
+                statusToRestore = postData.originalStatus;
+            }
+
             await updateDoc(postRef, {
                 isExpired: false,
                 movedToUnclaimed: false,
-                status: postData.originalStatus || 'pending',
-                expiryDate: newExpiryDate
+                status: statusToRestore,
+                expiryDate: newExpiryDate,
+                updatedAt: serverTimestamp()
             });
 
-            console.log(`Post ${postId} activated and moved back to active status`);
+            console.log(`Post ${postId} activated and moved back to active status with status: ${statusToRestore}`);
         } catch (error: any) {
             console.error('Error activating ticket:', error);
             throw new Error(error.message || 'Failed to activate ticket');

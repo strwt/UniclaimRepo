@@ -29,6 +29,15 @@ export default function Ticket() {
   const [searchText, setSearchText] = useState("");
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
 
+  // Debug logging for component state
+  console.log('🔍 [DEBUG] Ticket Component:', {
+    userData: userData ? { email: userData.email, uid: userData.uid } : null,
+    authLoading,
+    postsCount: posts.length,
+    postsLoading,
+    activeTab
+  });
+
   // Edit modal state
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -44,6 +53,15 @@ export default function Ticket() {
       post.title.toLowerCase().includes(searchText.toLowerCase()) ||
       post.description.toLowerCase().includes(searchText.toLowerCase());
     return matchesTab && matchesSearch;
+  });
+
+  // Debug logging for filtered posts
+  console.log('🔍 [DEBUG] Ticket Filtered Posts:', {
+    totalPosts: posts.length,
+    filteredCount: filteredPosts.length,
+    activeTab,
+    searchText,
+    samplePosts: filteredPosts.slice(0, 2).map(p => ({ id: p.id, title: p.title, status: p.status }))
   });
 
   const handleClearSearch = () => {

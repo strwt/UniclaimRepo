@@ -152,7 +152,11 @@ const ConversationItem = ({
               </Text>
               {/* Get the current user's unread count from this conversation */}
               {conversation.unreadCounts?.[userData?.uid || ""] > 0 && (
-                <View className="bg-blue-500 rounded-full w-3 h-3 mt-1 self-end" />
+                <View className="bg-blue-500 rounded-full px-2 py-1 mt-1 self-end min-w-[20px] items-center justify-center">
+                  <Text className="text-white text-xs font-bold">
+                    {conversation.unreadCounts[userData?.uid || ""] > 99 ? '99+' : conversation.unreadCounts[userData?.uid || ""]}
+                  </Text>
+                </View>
               )}
             </View>
           </View>
@@ -164,16 +168,28 @@ const ConversationItem = ({
 
 export default function Message() {
   const navigation = useNavigation<MessageNavigationProp>();
-  const { conversations, loading } = useMessage();
-  const { isAdmin } = useAuth();
+  const { conversations, loading, refreshConversations } = useMessage();
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleConversationPress = (conversation: Conversation) => {
     navigation.navigate("Chat", {
       conversationId: conversation.id,
       postTitle: conversation.postTitle,
-      postOwnerId: conversation.postCreatorId, // Add this line
-      postId: conversation.postId, // Add this line too
+      postOwnerId: conversation.postCreatorId,
+      postId: conversation.postId,
+      postOwnerUserData: conversation.participantData?.[conversation.postCreatorId] || {},
     });
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshConversations();
+    } catch (error) {
+      console.error('Failed to refresh conversations:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Sort conversations by most recent message timestamp (newest first)
@@ -213,33 +229,7 @@ export default function Message() {
     );
   }
 
-  // Admin users see a different interface
-  if (isAdmin) {
-    return (
-      <PageLayout>
-        <SafeAreaView className="flex-1 bg-gray-50">
-          <View className="bg-white border-b border-gray-200 p-4">
-            <Text className="text-xl font-bold text-gray-800">Admin Panel</Text>
-          </View>
 
-          <View className="flex-1 items-center justify-center px-6">
-            <View className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 w-full max-w-sm">
-              <Text className="text-lg font-semibold text-gray-800 text-center mb-2">
-                Admin Access
-              </Text>
-              <Text className="text-gray-600 text-center text-sm mb-4">
-                You are logged in as an administrator.
-              </Text>
-              <Text className="text-gray-500 text-center text-xs leading-5">
-                For full administrative features, please use the web interface
-                at the admin dashboard.
-              </Text>
-            </View>
-          </View>
-        </SafeAreaView>
-      </PageLayout>
-    );
-  }
 
   return (
     <PageLayout>
@@ -256,17 +246,19 @@ export default function Message() {
             </Text>
           </View>
         ) : (
-          <FlatList
-            data={sortedConversations}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <ConversationItem
-                conversation={item}
-                onPress={() => handleConversationPress(item)}
-              />
-            )}
-            showsVerticalScrollIndicator={false}
-          />
+                     <FlatList
+             data={sortedConversations}
+             keyExtractor={(item) => item.id}
+             renderItem={({ item }) => (
+               <ConversationItem
+                 conversation={item}
+                 onPress={() => handleConversationPress(item)}
+               />
+             )}
+             showsVerticalScrollIndicator={false}
+             refreshing={refreshing}
+             onRefresh={handleRefresh}
+           />
         )}
       </SafeAreaView>
     </PageLayout>

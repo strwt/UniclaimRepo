@@ -200,12 +200,27 @@ export default function AdminHomePage() {
   };
 
   const handleActivateTicket = async (post: Post) => {
-    if (confirm(`Are you sure you want to activate "${post.title}"? This will move it back to active status with a new 30-day period.`)) {
+    const canActivate = post.status === 'unclaimed' || post.movedToUnclaimed;
+    
+    if (!canActivate) {
+      showToast("error", "Cannot Activate", "This post cannot be activated as it's not in unclaimed status.");
+      return;
+    }
+
+    const confirmMessage = post.movedToUnclaimed 
+      ? `Are you sure you want to activate "${post.title}"? This will move it back to active status with a new 30-day period.`
+      : `Are you sure you want to activate "${post.title}"? This will move it back to active status with a new 30-day period.`;
+
+    if (confirm(confirmMessage)) {
       try {
         const { postService } = await import('../../utils/firebase');
         await postService.activateTicket(post.id);
         
-        showToast("success", "Ticket Activated", `"${post.title}" has been activated and moved back to active status.`);
+        const statusMessage = post.movedToUnclaimed 
+          ? `"${post.title}" has been activated from expired status and moved back to active status.`
+          : `"${post.title}" has been activated and moved back to active status.`;
+        
+        showToast("success", "Ticket Activated", statusMessage);
         console.log('Ticket activated successfully:', post.title);
       } catch (error: any) {
         console.error('Failed to activate ticket:', error);
@@ -304,13 +319,14 @@ export default function AdminHomePage() {
 
     if (viewType === "all") {
       // Show all posts EXCEPT unclaimed ones in "All Item Reports"
-      shouldShow = post.status !== 'unclaimed';
+      shouldShow = post.status !== 'unclaimed' && !post.movedToUnclaimed;
     } else if (viewType === "unclaimed") {
-      shouldShow = post.status === 'unclaimed';
+      // Show posts that are either status 'unclaimed' OR have movedToUnclaimed flag
+      shouldShow = post.status === 'unclaimed' || post.movedToUnclaimed;
     } else if (viewType === "completed") {
       shouldShow = true; // resolvedPosts already filtered
     } else {
-      shouldShow = post.type.toLowerCase() === viewType;
+      shouldShow = post.type.toLowerCase() === viewType && post.status !== 'unclaimed' && !post.movedToUnclaimed;
     }
 
     return shouldShow;
@@ -393,7 +409,7 @@ export default function AdminHomePage() {
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-orange-600">
-              {posts?.filter(p => p.status === 'unclaimed').length || 0}
+              {posts?.filter(p => p.status === 'unclaimed' || p.movedToUnclaimed).length || 0}
             </div>
             <div className="text-sm text-gray-600">Unclaimed</div>
           </div>
