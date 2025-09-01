@@ -3235,6 +3235,13 @@ export const postService = {
                 status,
                 updatedAt: serverTimestamp()
             });
+
+            // If status is changed to 'unclaimed', automatically delete all related conversations
+            if (status === 'unclaimed') {
+                console.log(`🗑️ Mobile: Post marked as unclaimed, deleting all related conversations for post: ${postId}`);
+                await this.deleteConversationsByPostId(postId);
+                console.log(`✅ Mobile: Successfully deleted conversations for unclaimed post: ${postId}`);
+            }
         } catch (error: any) {
             console.error('Error updating post status:', error);
             throw new Error(error.message || 'Failed to update post status');
