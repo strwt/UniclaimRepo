@@ -40,6 +40,209 @@ import {
 //     deleteObject
 // } from 'firebase/storage';
 
+// 🔧 Import enhanced listener manager for quota optimization
+import { listenerManager } from './ListenerManager';
+
+// 🔍 FIREBASE QUOTA MONITORING SYSTEM
+// This system tracks all Firebase operations to identify quota usage patterns
+
+class FirebaseQuotaMonitor {
+    private static instance: FirebaseQuotaMonitor;
+    private operationCounts: Map<string, number> = new Map();
+    private listenerCounts: Map<string, number> = new Map();
+    private lastReset: number = Date.now();
+    private readonly RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+
+    private constructor() {
+        this.startPeriodicReset();
+    }
+
+    static getInstance(): FirebaseQuotaMonitor {
+        if (!FirebaseQuotaMonitor.instance) {
+            FirebaseQuotaMonitor.instance = new FirebaseQuotaMonitor();
+        }
+        return FirebaseQuotaMonitor.instance;
+    }
+
+    // Track document reads
+    trackRead(collection: string, operation: string = 'getDoc'): void {
+        const key = `read_${collection}_${operation}`;
+        const count = this.operationCounts.get(key) || 0;
+        this.operationCounts.set(key, count + 1);
+
+        console.log(`📊 [QUOTA] Document READ: ${collection} (${operation}) - Total: ${count + 1}`);
+        this.logQuotaSummary();
+    }
+
+    // Track document writes
+    trackWrite(collection: string, operation: string = 'setDoc'): void {
+        const key = `write_${collection}_${operation}`;
+        const count = this.operationCounts.get(key) || 0;
+        this.operationCounts.set(key, count + 1);
+
+        console.log(`📊 [QUOTA] Document WRITE: ${collection} (${operation}) - Total: ${count + 1}`);
+        this.logQuotaSummary();
+    }
+
+    // Track real-time listeners
+    trackListener(collection: string, operation: string = 'onSnapshot'): void {
+        const key = `listener_${collection}_${operation}`;
+        const count = this.listenerCounts.get(key) || 0;
+        this.listenerCounts.set(key, count + 1);
+
+        console.log(`📊 [QUOTA] LISTENER STARTED: ${collection} (${operation}) - Active: ${count + 1}`);
+        this.logQuotaSummary();
+    }
+
+    // Track listener cleanup
+    trackListenerCleanup(collection: string, operation: string = 'onSnapshot'): void {
+        const key = `listener_${collection}_${operation}`;
+        const count = this.listenerCounts.get(key) || 0;
+        const newCount = Math.max(0, count - 1);
+        this.listenerCounts.set(key, newCount);
+
+        console.log(`📊 [QUOTA] LISTENER CLEANED: ${collection} (${operation}) - Active: ${newCount}`);
+        this.logQuotaSummary();
+    }
+
+    // Track batch operations
+    trackBatch(collection: string, operationCount: number): void {
+        const key = `batch_${collection}`;
+        const count = this.operationCounts.get(key) || 0;
+        this.operationCounts.set(key, count + 1);
+
+        console.log(`📊 [QUOTA] BATCH OPERATION: ${collection} (${operationCount} operations) - Total batches: ${count + 1}`);
+        this.logQuotaSummary();
+    }
+
+    // Track query operations
+    trackQuery(collection: string, filters: string[] = []): void {
+        const key = `query_${collection}_${filters.join('_')}`;
+        const count = this.operationCounts.get(key) || 0;
+        this.operationCounts.set(key, count + 1);
+
+        console.log(`📊 [QUOTA] QUERY: ${collection} [${filters.join(', ')}] - Total: ${count + 1}`);
+        this.logQuotaSummary();
+    }
+
+    // Log current quota usage summary
+    private logQuotaSummary(): void {
+        const now = Date.now();
+        if (now - this.lastReset > this.RESET_INTERVAL) {
+            this.resetCounts();
+            return;
+        }
+
+        const totalReads = Array.from(this.operationCounts.entries())
+            .filter(([key]) => key.startsWith('read_'))
+            .reduce((sum, [_, count]) => sum + count, 0);
+
+        const totalWrites = Array.from(this.operationCounts.entries())
+            .filter(([key]) => key.startsWith('write_'))
+            .reduce((sum, [_, count]) => sum + count, 0);
+
+        const totalListeners = Array.from(this.listenerCounts.values())
+            .reduce((sum, count) => sum + count, 0);
+
+        const totalBatches = Array.from(this.operationCounts.entries())
+            .filter(([key]) => key.startsWith('batch_'))
+            .reduce((sum, [_, count]) => sum + count, 0);
+
+        const totalQueries = Array.from(this.operationCounts.entries())
+            .filter(([key]) => key.startsWith('query_'))
+            .reduce((sum, [_, count]) => sum + count, 0);
+
+        console.log(`📊 [QUOTA SUMMARY] Reads: ${totalReads} | Writes: ${totalWrites} | Listeners: ${totalListeners} | Batches: ${totalBatches} | Queries: ${totalQueries}`);
+
+        // Log high-usage operations
+        this.logHighUsageOperations();
+    }
+
+    // Log operations that might be consuming excessive quota
+    private logHighUsageOperations(): void {
+        const highUsageThreshold = 10;
+
+        for (const [key, count] of this.operationCounts.entries()) {
+            if (count >= highUsageThreshold) {
+                console.warn(`⚠️ [QUOTA WARNING] High usage detected: ${key} = ${count} operations`);
+            }
+        }
+
+        for (const [key, count] of this.listenerCounts.entries()) {
+            if (count >= 3) {
+                console.warn(`⚠️ [QUOTA WARNING] Multiple active listeners: ${key} = ${count} active`);
+            }
+        }
+    }
+
+    // Reset all counts (called periodically)
+    private resetCounts(): void {
+        this.operationCounts.clear();
+        this.listenerCounts.clear();
+        this.lastReset = Date.now();
+        console.log(`📊 [QUOTA] Counts reset at ${new Date().toISOString()}`);
+    }
+
+    // Start periodic reset timer
+    private startPeriodicReset(): void {
+        setInterval(() => {
+            this.resetCounts();
+        }, this.RESET_INTERVAL);
+    }
+
+    // Get current quota statistics
+    getQuotaStats(): {
+        reads: number;
+        writes: number;
+        listeners: number;
+        batches: number;
+        queries: number;
+        topOperations: Array<{ operation: string; count: number }>;
+        activeListeners: Array<{ listener: string; count: number }>;
+    } {
+        const reads = Array.from(this.operationCounts.entries())
+            .filter(([key]) => key.startsWith('read_'))
+            .reduce((sum, [_, count]) => sum + count, 0);
+
+        const writes = Array.from(this.operationCounts.entries())
+            .filter(([key]) => key.startsWith('write_'))
+            .reduce((sum, [_, count]) => sum + count, 0);
+
+        const listeners = Array.from(this.listenerCounts.values())
+            .reduce((sum, count) => sum + count, 0);
+
+        const batches = Array.from(this.operationCounts.entries())
+            .filter(([key]) => key.startsWith('batch_'))
+            .reduce((sum, [_, count]) => sum + count, 0);
+
+        const queries = Array.from(this.operationCounts.entries())
+            .filter(([key]) => key.startsWith('query_'))
+            .reduce((sum, [_, count]) => sum + count, 0);
+
+        const topOperations = Array.from(this.operationCounts.entries())
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 5)
+            .map(([key, count]) => ({ operation: key, count }));
+
+        const activeListeners = Array.from(this.listenerCounts.entries())
+            .filter(([, count]) => count > 0)
+            .map(([key, count]) => ({ listener: key, count }));
+
+        return {
+            reads,
+            writes,
+            listeners,
+            batches,
+            queries,
+            topOperations,
+            activeListeners
+        };
+    }
+}
+
+// Global quota monitor instance
+export const quotaMonitor = FirebaseQuotaMonitor.getInstance();
+
 // Firebase configuration
 // Create a .env file in the mobile folder with your Firebase config:
 // EXPO_PUBLIC_FIREBASE_API_KEY=your-api-key
@@ -164,6 +367,9 @@ export const authService = {
         studentId: string
     ): Promise<{ user: FirebaseUser; userData: UserData }> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('users', 'register');
+
             const userCredential: UserCredential = await createUserWithEmailAndPassword(
                 auth,
                 email,
@@ -205,6 +411,9 @@ export const authService = {
     // Login user
     async login(email: string, password: string): Promise<FirebaseUser> {
         try {
+            // 🔍 Track auth operation for quota monitoring
+            quotaMonitor.trackRead('auth', 'login');
+
             const userCredential: UserCredential = await signInWithEmailAndPassword(
                 auth,
                 email,
@@ -219,6 +428,9 @@ export const authService = {
     // Logout user
     async logout(): Promise<void> {
         try {
+            // 🔍 Track auth operation for quota monitoring
+            quotaMonitor.trackRead('auth', 'logout');
+
             await signOut(auth);
         } catch (error: any) {
             throw new Error(error.message || 'Logout failed');
@@ -228,6 +440,9 @@ export const authService = {
     // Get user data from Firestore
     async getUserData(uid: string): Promise<UserData | null> {
         try {
+            // 🔍 Track read operation for quota monitoring
+            quotaMonitor.trackRead('users', 'getUserData');
+
             const userDoc = await getDoc(doc(db, 'users', uid));
             if (userDoc.exists()) {
                 const userData = userDoc.data() as UserData;
@@ -244,6 +459,9 @@ export const authService = {
     // Update user data in Firestore
     async updateUserData(uid: string, updates: Partial<Omit<UserData, 'uid' | 'email' | 'createdAt'>>): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('users', 'updateUserData');
+
             const updateData = {
                 ...updates,
                 updatedAt: serverTimestamp()
@@ -261,6 +479,18 @@ export const authService = {
 export const messageService = {
     // Create a new conversation
     async createConversation(postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: UserData, postOwnerUserData?: any): Promise<string> {
+        // 🔍 Track write operation for quota monitoring
+        quotaMonitor.trackWrite('conversations', 'createConversation');
+
+        console.log('🔧 [createConversation] Starting conversation creation:', {
+            postId,
+            postTitle,
+            postOwnerId,
+            currentUserId,
+            hasCurrentUserData: !!currentUserData,
+            hasPostOwnerData: !!postOwnerUserData
+        });
+
         try {
             // Fetch post details to get type, status, and creator ID
             let postType: "lost" | "found" = "lost";
@@ -269,6 +499,7 @@ export const messageService = {
             let foundAction: "keep" | "turnover to OSA" | "turnover to Campus Security" | undefined = undefined;
 
             try {
+                console.log('🔧 [createConversation] Fetching post details from database...');
                 const postDoc = await getDoc(doc(db, 'posts', postId));
                 if (postDoc.exists()) {
                     const postData = postDoc.data();
@@ -276,27 +507,46 @@ export const messageService = {
                     postStatus = postData.status || "pending";
                     postCreatorId = postData.creatorId || postOwnerId;
                     foundAction = postData.foundAction; // Include foundAction for found items
+                    console.log('🔧 [createConversation] Post data retrieved:', {
+                        postType,
+                        postStatus,
+                        postCreatorId,
+                        foundAction
+                    });
+                } else {
+                    console.warn('⚠️ [createConversation] Post not found in database');
                 }
             } catch (error) {
-                console.warn('Could not fetch post data:', error);
+                console.warn('⚠️ [createConversation] Could not fetch post data:', error);
                 // Continue with default values if fetch fails
             }
 
             // Simple duplicate check: get all user conversations and filter in JavaScript
+            console.log('🔧 [createConversation] Checking for existing conversations...');
             const userConversationsQuery = query(
                 collection(db, 'conversations'),
                 where(`participants.${currentUserId}`, '!=', null)
             );
             const userConversationsSnapshot = await getDocs(userConversationsQuery);
+            console.log('🔧 [createConversation] Found user conversations:', userConversationsSnapshot.docs.length);
+
             const existingConversation = userConversationsSnapshot.docs.find((docSnap) => {
                 const data: any = docSnap.data();
-                return data.postId === postId && data.participants && data.participants[postOwnerId];
+                const isDuplicate = data.postId === postId && data.participants && data.participants[postOwnerId];
+                if (isDuplicate) {
+                    console.log('🔧 [createConversation] Found existing conversation:', docSnap.id);
+                }
+                return isDuplicate;
             });
             if (existingConversation) {
+                console.log('🔧 [createConversation] Returning existing conversation ID:', existingConversation.id);
                 return existingConversation.id;
             }
 
+            console.log('🔧 [createConversation] No existing conversation found, creating new one...');
+
             // Build conversation data dynamically to avoid undefined fields
+            console.log('🔧 [createConversation] Building conversation data...');
             const conversationData: any = {
                 postId,
                 postTitle,
@@ -323,12 +573,23 @@ export const messageService = {
                 createdAt: serverTimestamp()
             };
 
+            console.log('🔧 [createConversation] Conversation data prepared:', {
+                postId: conversationData.postId,
+                postTitle: conversationData.postTitle,
+                postType: conversationData.postType,
+                postStatus: conversationData.postStatus,
+                participantCount: Object.keys(conversationData.participants).length
+            });
+
             // Only include foundAction if it has a valid value (not undefined)
             if (foundAction !== undefined) {
                 conversationData.foundAction = foundAction;
+                console.log('🔧 [createConversation] Added foundAction:', foundAction);
             }
 
+            console.log('🔧 [createConversation] Creating conversation document in Firestore...');
             const conversationRef = await addDoc(collection(db, 'conversations'), conversationData);
+            console.log('✅ [createConversation] Conversation created successfully with ID:', conversationRef.id);
 
             return conversationRef.id;
         } catch (error: any) {
@@ -344,6 +605,17 @@ export const messageService = {
 
     // Send a message
     async sendMessage(conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string): Promise<void> {
+        // 🔍 Track write operation for quota monitoring
+        quotaMonitor.trackWrite(`conversations/${conversationId}/messages`, 'sendMessage');
+
+        console.log('🔧 [sendMessage] Starting message send:', {
+            conversationId,
+            senderId,
+            senderName,
+            textLength: text.length,
+            hasProfilePicture: !!senderProfilePicture
+        });
+
         try {
             const messagesRef = collection(db, 'conversations', conversationId, 'messages');
             const messageData = {
@@ -356,21 +628,33 @@ export const messageService = {
                 messageType: "text" // Default message type
             };
 
+            console.log('🔧 [sendMessage] Message data prepared:', {
+                messageType: messageData.messageType,
+                readByCount: messageData.readBy.length,
+                timestamp: messageData.timestamp
+            });
+
+            console.log('🔧 [sendMessage] Adding message to Firestore...');
             await addDoc(messagesRef, messageData);
+            console.log('✅ [sendMessage] Message added successfully');
 
             // Get conversation data to find other participants
+            console.log('🔧 [sendMessage] Fetching conversation data for participant updates...');
             const conversationRef = doc(db, 'conversations', conversationId);
             const conversationDoc = await getDoc(conversationRef);
 
             if (!conversationDoc.exists()) {
+                console.error('❌ [sendMessage] Conversation not found:', conversationId);
                 throw new Error('Conversation not found');
             }
 
             const conversationData = conversationDoc.data();
             const participantIds = Object.keys(conversationData.participants || {});
+            console.log('🔧 [sendMessage] Found participants:', participantIds);
 
             // Increment unread count for all participants except the sender
             const otherParticipantIds = participantIds.filter(id => id !== senderId);
+            console.log('🔧 [sendMessage] Other participants (excluding sender):', otherParticipantIds);
 
             // Prepare unread count updates for each receiver
             const unreadCountUpdates: { [key: string]: any } = {};
@@ -378,7 +662,10 @@ export const messageService = {
                 unreadCountUpdates[`unreadCounts.${participantId}`] = increment(1);
             });
 
+            console.log('🔧 [sendMessage] Unread count updates prepared:', Object.keys(unreadCountUpdates));
+
             // Update conversation with last message and increment unread counts for other participants
+            console.log('🔧 [sendMessage] Updating conversation with last message and unread counts...');
             await updateDoc(conversationRef, {
                 lastMessage: {
                     text,
@@ -387,6 +674,7 @@ export const messageService = {
                 },
                 ...unreadCountUpdates
             });
+            console.log('✅ [sendMessage] Conversation updated successfully');
 
         } catch (error: any) {
             console.error('❌ Mobile: Failed to send message:', error);
@@ -402,6 +690,9 @@ export const messageService = {
     // Send a handover request message
     async sendHandoverRequest(conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, handoverReason?: string, idPhotoUrl?: string, itemPhotos?: { url: string; uploadedAt: any; description?: string }[]): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite(`conversations/${conversationId}/messages`, 'sendHandoverRequest');
+
             // First, check if this conversation already has a handover request
             const conversationRef = doc(db, 'conversations', conversationId);
             const conversationDoc = await getDoc(conversationRef);
@@ -477,6 +768,9 @@ export const messageService = {
     // Send a claim request message
     async sendClaimRequest(conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string, evidencePhotos?: { url: string; uploadedAt: any; description?: string }[]): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite(`conversations/${conversationId}/messages`, 'sendClaimRequest');
+
             // First, check if this conversation already has a claim request
             const conversationRef = doc(db, 'conversations', conversationId);
             const conversationDoc = await getDoc(conversationRef);
@@ -557,6 +851,9 @@ export const messageService = {
     // Update claim response
     async updateClaimResponse(conversationId: string, messageId: string, status: 'accepted' | 'rejected', responderId: string, idPhotoUrl?: string): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite(`conversations/${conversationId}/messages`, 'updateClaimResponse');
+
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
 
             // Update the claim message with the response
@@ -647,6 +944,9 @@ export const messageService = {
     // Confirm ID photo for claim
     async confirmClaimIdPhoto(conversationId: string, messageId: string, confirmBy: string): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite(`conversations/${conversationId}/messages`, 'confirmClaimIdPhoto');
+
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
 
             // STEP 1: Update the claim message to confirm the ID photo
@@ -819,6 +1119,9 @@ export const messageService = {
     // Update handover response with ID photo
     async updateHandoverResponse(conversationId: string, messageId: string, status: 'accepted' | 'rejected', responderId: string, idPhotoUrl?: string): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite(`conversations/${conversationId}/messages`, 'updateHandoverResponse');
+
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
 
             // Update the handover message with the response and ID photo
@@ -909,6 +1212,9 @@ export const messageService = {
     // Confirm ID photo for handover
     async confirmHandoverIdPhoto(conversationId: string, messageId: string, confirmBy: string): Promise<{ success: boolean; conversationDeleted: boolean; postId?: string; error?: string }> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite(`conversations/${conversationId}/messages`, 'confirmHandoverIdPhoto');
+
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
 
             // Update the handover message to confirm the ID photo
@@ -1128,108 +1434,294 @@ export const messageService = {
 
     // Get conversation data (for handover button logic)
     async getConversation(conversationId: string): Promise<any> {
-        try {
-            const conversationDoc = await getDoc(doc(db, 'conversations', conversationId));
-            if (conversationDoc.exists()) {
-                return {
-                    id: conversationDoc.id,
-                    ...conversationDoc.data()
-                };
+        let retryCount = 0;
+        const maxRetries = 2;
+
+        while (retryCount <= maxRetries) {
+            try {
+                // 🔍 Track read operation for quota monitoring
+                quotaMonitor.trackRead('conversations', 'getConversation');
+
+                const conversationDoc = await getDoc(doc(db, 'conversations', conversationId));
+                if (conversationDoc.exists()) {
+                    return {
+                        id: conversationDoc.id,
+                        ...conversationDoc.data()
+                    };
+                }
+                return null;
+            } catch (error: any) {
+                retryCount++;
+
+                // ✅ Enhanced error handling with retry logic
+                if (error.code === 'resource-exhausted') {
+                    if (retryCount <= maxRetries) {
+                        console.warn(`⚠️ [QUOTA] Firebase quota exceeded while getting conversation (attempt ${retryCount}/${maxRetries}) - retrying...`);
+                        quotaMonitor.trackRead('conversations', 'quota_exceeded');
+                        // Wait before retry (exponential backoff)
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+                        continue;
+                    } else {
+                        console.error('❌ Mobile: Failed to get conversation after retries - quota exceeded');
+                        throw new Error('Service temporarily unavailable due to high usage. Please try again later.');
+                    }
+                } else if (error.code === 'permission-denied') {
+                    console.warn('⚠️ Permission denied while getting conversation - operation skipped');
+                    throw new Error('You do not have permission to access this conversation');
+                } else if (error.code === 'not-found') {
+                    console.warn('⚠️ Conversation not found');
+                    return null;
+                } else {
+                    console.error('❌ Mobile: Failed to get conversation:', error);
+                    throw new Error(error.message || 'Failed to get conversation');
+                }
             }
-            return null;
-        } catch (error: any) {
-            console.error('❌ Mobile: Failed to get conversation:', error);
-            throw new Error(error.message || 'Failed to get conversation');
         }
+
+        throw new Error('Failed to get conversation after multiple attempts');
     },
 
     // Get user's conversations
     getUserConversations(userId: string, callback: (conversations: any[]) => void) {
-        const q = query(
-            collection(db, 'conversations'),
-            where(`participants.${userId}`, '!=', null)
-        );
+        // 🔍 Use enhanced listener manager for deduplication
+        const listenerKey = `user-conversations-${userId}`;
 
-        return onSnapshot(q, (snapshot) => {
-            const conversations = snapshot.docs
-                .map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }))
-                .sort((a: any, b: any) => {
-                    // Sort by createdAt in descending order (newest first)
-                    const aTime = a.createdAt?.toDate?.() || a.createdAt || new Date(0);
-                    const bTime = b.createdAt?.toDate?.() || b.createdAt || new Date(0);
-                    return bTime.getTime() - aTime.getTime();
+        return listenerManager.startMessageListener(
+            listenerKey,
+            'user-conversations',
+            () => {
+                // 🔍 Track listener creation for quota monitoring
+                quotaMonitor.trackListener('conversations', 'getUserConversations');
+
+                const q = query(
+                    collection(db, 'conversations'),
+                    where(`participants.${userId}`, '!=', null)
+                );
+
+                return onSnapshot(q, (snapshot) => {
+                    const conversations = snapshot.docs
+                        .map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }))
+                        .sort((a: any, b: any) => {
+                            // Sort by createdAt in descending order (newest first)
+                            const aTime = a.createdAt?.toDate?.() || a.createdAt || new Date(0);
+                            const bTime = b.createdAt?.toDate?.() || b.createdAt || new Date(0);
+                            return bTime.getTime() - aTime.getTime();
+                        });
+
+                    // 🔍 Broadcast to all callbacks using the listener manager
+                    listenerManager.broadcastToCallbacks(listenerKey, conversations);
+                }, (error) => {
+                    // 🔍 Track errors for quota monitoring
+                    if (error.code === 'resource-exhausted') {
+                        console.warn('⚠️ [QUOTA] Firebase quota exceeded in getUserConversations');
+                    }
+                    console.error('Error in getUserConversations listener:', error);
+                    // 🔍 Broadcast empty array to all callbacks
+                    listenerManager.broadcastToCallbacks(listenerKey, []);
                 });
-            callback(conversations);
-        });
+            },
+            callback
+        );
     },
 
     // Get messages for a conversation with pagination
     getConversationMessages(conversationId: string, callback: (messages: any[]) => void, messageLimit: number = 50) {
-        const q = query(
-            collection(db, 'conversations', conversationId, 'messages'),
-            orderBy('timestamp', 'asc'),
-            limit(messageLimit)
-        );
+        // 🔍 Use enhanced listener manager for deduplication
+        const listenerKey = `conversation-messages-${conversationId}`;
 
-        return onSnapshot(q, (snapshot) => {
-            const messages = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            callback(messages);
-        });
+        return listenerManager.startMessageListener(
+            listenerKey,
+            'messages',
+            () => {
+                // 🔍 Track listener creation for quota monitoring
+                quotaMonitor.trackListener(`conversations/${conversationId}/messages`, 'getConversationMessages');
+
+                console.log('🔧 [getConversationMessages] Setting up message listener:', {
+                    conversationId,
+                    messageLimit: Math.min(messageLimit, 25) // Reduced from 50 to 25
+                });
+
+                const q = query(
+                    collection(db, 'conversations', conversationId, 'messages'),
+                    orderBy('timestamp', 'asc'),
+                    limit(Math.min(messageLimit, 25)) // Reduced limit for quota optimization
+                );
+
+                return onSnapshot(q, (snapshot) => {
+                    const messages = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+
+                    // 🔍 Enhanced logging for read receipt debugging
+                    const changes = snapshot.docChanges();
+                    const hasReadByChanges = changes.some(change =>
+                        change.type === 'modified' &&
+                        change.doc.data().readBy !== change.doc.data().readBy
+                    );
+
+                    console.log('🔧 [getConversationMessages] Received message update:', {
+                        conversationId,
+                        messageCount: messages.length,
+                        hasChanges: changes.length > 0,
+                        hasReadByChanges,
+                        changes: changes.map(change => ({
+                            type: change.type,
+                            docId: change.doc.id,
+                            hasReadBy: !!change.doc.data().readBy,
+                            readByLength: change.doc.data().readBy?.length || 0
+                        }))
+                    });
+
+                    // 🔍 Broadcast to all callbacks using the listener manager
+                    listenerManager.broadcastToCallbacks(listenerKey, messages);
+                }, (error) => {
+                    console.error('❌ [getConversationMessages] Error in message listener:', {
+                        conversationId,
+                        errorCode: error.code,
+                        errorMessage: error.message
+                    });
+
+                    if (error.code === 'resource-exhausted') {
+                        console.warn('⚠️ [QUOTA] Firebase quota exceeded in getConversationMessages');
+                        quotaMonitor.trackRead(`conversations/${conversationId}/messages`, 'quota_exceeded');
+                        listenerManager.broadcastToCallbacks(listenerKey, []);
+                    } else if (error.code === 'permission-denied') {
+                        console.warn('⚠️ [getConversationMessages] Permission denied - user may not have access to this conversation');
+                        listenerManager.broadcastToCallbacks(listenerKey, []);
+                    } else if (error.code === 'not-found') {
+                        console.warn('⚠️ [getConversationMessages] Conversation not found - may have been deleted');
+                        listenerManager.broadcastToCallbacks(listenerKey, []);
+                    } else {
+                        console.error('❌ [getConversationMessages] Unknown error fetching conversation messages:', error);
+                        listenerManager.broadcastToCallbacks(listenerKey, []);
+                    }
+                });
+            },
+            callback
+        );
     },
 
     // Get older messages for pagination
     async getOlderMessages(conversationId: string, lastMessageTimestamp: any, messageLimit: number = 20): Promise<any[]> {
-        try {
-            const q = query(
-                collection(db, 'conversations', conversationId, 'messages'),
-                orderBy('timestamp', 'desc'),
-                startAfter(lastMessageTimestamp),
-                limit(messageLimit)
-            );
+        let retryCount = 0;
+        const maxRetries = 2;
 
-            const snapshot = await getDocs(q);
-            const messages = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+        while (retryCount <= maxRetries) {
+            try {
+                // 🔍 Track read operation for quota monitoring
+                quotaMonitor.trackRead(`conversations/${conversationId}/messages`, 'getOlderMessages');
 
-            // Reverse to maintain ascending order
-            return messages.reverse();
-        } catch (error: any) {
-            console.error('Failed to get older messages:', error);
-            throw new Error(error.message || 'Failed to get older messages');
+                const q = query(
+                    collection(db, 'conversations', conversationId, 'messages'),
+                    orderBy('timestamp', 'desc'),
+                    startAfter(lastMessageTimestamp),
+                    limit(messageLimit)
+                );
+
+                const snapshot = await getDocs(q);
+                const messages = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                // Reverse to maintain ascending order
+                return messages.reverse();
+            } catch (error: any) {
+                retryCount++;
+
+                // ✅ Enhanced error handling with retry logic
+                if (error.code === 'resource-exhausted') {
+                    if (retryCount <= maxRetries) {
+                        console.warn(`⚠️ [QUOTA] Firebase quota exceeded while getting older messages (attempt ${retryCount}/${maxRetries}) - retrying...`);
+                        quotaMonitor.trackRead(`conversations/${conversationId}/messages`, 'quota_exceeded');
+                        // Wait before retry (exponential backoff)
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+                        continue;
+                    } else {
+                        console.error('❌ Failed to get older messages after retries - quota exceeded');
+                        throw new Error('Unable to load older messages due to high server usage. Please try again later.');
+                    }
+                } else if (error.code === 'permission-denied') {
+                    console.warn('⚠️ Permission denied while getting older messages - operation skipped');
+                    throw new Error('You do not have permission to access these messages');
+                } else if (error.code === 'not-found') {
+                    console.warn('⚠️ Conversation not found while getting older messages');
+                    throw new Error('Conversation not found');
+                } else {
+                    console.error('Failed to get older messages:', error);
+                    throw new Error(error.message || 'Failed to get older messages');
+                }
+            }
         }
+
+        throw new Error('Failed to get older messages after multiple attempts');
     },
 
     // Mark message as read
     async markMessageAsRead(conversationId: string, messageId: string, userId: string): Promise<void> {
+        console.log('🔧 [markMessageAsRead] Starting to mark message as read:', {
+            conversationId,
+            messageId,
+            userId
+        });
+
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite(`conversations/${conversationId}/messages`, 'markMessageAsRead');
+
             // Get the message document reference
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+
+            console.log('🔧 [markMessageAsRead] Updating message with arrayUnion:', {
+                messageRef: messageRef.path,
+                userId
+            });
 
             // Add the user to the readBy array if they're not already there
             await updateDoc(messageRef, {
                 readBy: arrayUnion(userId)
             });
+
+            console.log('✅ [markMessageAsRead] Message marked as read successfully');
         } catch (error: any) {
-            throw new Error(error.message || 'Failed to mark message as read');
+            // ✅ Enhanced error handling with quota-specific logic
+            if (error.code === 'resource-exhausted') {
+                console.warn('⚠️ [QUOTA] Firebase quota exceeded while marking message as read - operation skipped');
+                quotaMonitor.trackRead(`conversations/${conversationId}/messages`, 'quota_exceeded');
+                // Don't throw error for quota issues - just log and continue
+                return;
+            } else if (error.code === 'permission-denied') {
+                console.warn('⚠️ Permission denied while marking message as read - operation skipped');
+                return;
+            } else {
+                console.error('❌ Failed to mark message as read:', error);
+                throw new Error(error.message || 'Failed to mark message as read');
+            }
         }
     },
 
     // Mark all unread messages as read automatically when chat opens
     async markAllUnreadMessagesAsRead(conversationId: string, userId: string): Promise<void> {
+        console.log('🔧 [markAllUnreadMessagesAsRead] Starting batch read marking:', {
+            conversationId,
+            userId
+        });
+
         try {
+            // ✅ Use batch operations instead of individual updates to reduce quota usage
+            const batch = writeBatch(db);
+
             // Get all messages in the conversation
+            console.log('🔧 [markAllUnreadMessagesAsRead] Fetching all messages for conversation...');
             const messagesRef = collection(db, 'conversations', conversationId, 'messages');
             const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
 
             const messagesSnapshot = await getDocs(messagesQuery);
+            console.log('🔧 [markAllUnreadMessagesAsRead] Total messages found:', messagesSnapshot.docs.length);
 
             // Find ALL unread messages (any type) that haven't been read by this user
             const unreadMessages = messagesSnapshot.docs.filter(doc => {
@@ -1239,17 +1731,28 @@ export const messageService = {
                 return notReadByUser; // Include ALL message types
             });
 
-            // Mark each unread message as read
-            const updatePromises = unreadMessages.map(doc => {
-                return updateDoc(doc.ref, {
+            console.log('🔧 [markAllUnreadMessagesAsRead] Unread messages found:', {
+                total: messagesSnapshot.docs.length,
+                unread: unreadMessages.length,
+                alreadyRead: messagesSnapshot.docs.length - unreadMessages.length
+            });
+
+            // ✅ Batch all updates into one operation instead of multiple individual updates
+            unreadMessages.forEach(doc => {
+                batch.update(doc.ref, {
                     readBy: arrayUnion(userId)
                 });
             });
 
-            // Execute all updates
-            if (updatePromises.length > 0) {
-                await Promise.all(updatePromises);
-                console.log(`✅ Marked ${updatePromises.length} unread messages as read for user ${userId}`);
+            // ✅ Execute all updates in a single batch operation
+            if (unreadMessages.length > 0) {
+                console.log('🔧 [markAllUnreadMessagesAsRead] Committing batch update...');
+                // 🔍 Track batch operation for quota monitoring
+                quotaMonitor.trackBatch(`conversations/${conversationId}/messages`, unreadMessages.length);
+                await batch.commit();
+                console.log(`✅ [markAllUnreadMessagesAsRead] Marked ${unreadMessages.length} unread messages as read for user ${userId} (batch operation)`);
+            } else {
+                console.log('🔧 [markAllUnreadMessagesAsRead] No unread messages to mark');
             }
         } catch (error: any) {
             console.error('Failed to mark unread messages as read:', error);
@@ -1259,19 +1762,54 @@ export const messageService = {
 
     // Mark conversation as read
     async markConversationAsRead(conversationId: string, userId: string): Promise<void> {
+        console.log('🔧 [markConversationAsRead] Marking conversation as read:', {
+            conversationId,
+            userId
+        });
+
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('conversations', 'markConversationAsRead');
+
             // Reset the unread count for the specific user who is reading the conversation
+            console.log('🔧 [markConversationAsRead] Updating unread count to 0...');
             await updateDoc(doc(db, 'conversations', conversationId), {
                 [`unreadCounts.${userId}`]: 0
             });
+            console.log('✅ [markConversationAsRead] Conversation marked as read successfully');
         } catch (error: any) {
-            throw new Error(error.message || 'Failed to mark conversation as read');
+            // ✅ Enhanced error handling with quota-specific logic
+            console.error('❌ [markConversationAsRead] Error occurred:', {
+                conversationId,
+                userId,
+                errorCode: error.code,
+                errorMessage: error.message
+            });
+
+            if (error.code === 'resource-exhausted') {
+                console.warn('⚠️ [QUOTA] Firebase quota exceeded while marking conversation as read - operation skipped');
+                quotaMonitor.trackRead('conversations', 'quota_exceeded');
+                // Don't throw error for quota issues - just log and continue
+                return;
+            } else if (error.code === 'permission-denied') {
+                console.warn('⚠️ [markConversationAsRead] Permission denied while marking conversation as read - operation skipped');
+                return;
+            } else if (error.code === 'not-found') {
+                console.warn('⚠️ [markConversationAsRead] Conversation not found while marking as read - operation skipped');
+                return;
+            } else {
+                console.error('❌ [markConversationAsRead] Failed to mark conversation as read:', error);
+                throw new Error(error.message || 'Failed to mark conversation as read');
+            }
         }
     },
 
     // Get current conversations for a user (one-time query, not real-time)
     async getCurrentConversations(userId: string): Promise<any[]> {
         try {
+            // 🔍 Track read operation for quota monitoring
+            quotaMonitor.trackRead('conversations', 'getCurrentConversations');
+
             const q = query(
                 collection(db, 'conversations'),
                 where(`participants.${userId}`, '!=', null)
@@ -1307,6 +1845,9 @@ export const messageService = {
     // Delete a message (only the sender can delete their own messages)
     async deleteMessage(conversationId: string, messageId: string, currentUserId: string): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite(`conversations/${conversationId}/messages`, 'deleteMessage');
+
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
 
             // Get the message to verify ownership
@@ -1405,6 +1946,9 @@ export const ghostConversationService = {
     // Detect ghost conversations (conversations without corresponding posts)
     async detectGhostConversations(): Promise<{ conversationId: string; postId: string; reason: string }[]> {
         try {
+            // 🔍 Track read operation for quota monitoring
+            quotaMonitor.trackRead('conversations', 'detectGhostConversations');
+
             // Get all conversations
             const conversationsSnapshot = await getDocs(collection(db, 'conversations'));
             const ghostConversations: { conversationId: string; postId: string; reason: string }[] = [];
@@ -1462,6 +2006,9 @@ export const ghostConversationService = {
     // Clean up ghost conversations
     async cleanupGhostConversations(ghostConversations: { conversationId: string; postId: string; reason: string }[]): Promise<{ success: number; failed: number; errors: string[] }> {
         try {
+            // 🔍 Track batch operation for quota monitoring
+            quotaMonitor.trackBatch('conversations', ghostConversations.length);
+
             const batch = writeBatch(db);
             let success = 0;
             let failed = 0;
@@ -1501,6 +2048,9 @@ export const ghostConversationService = {
         details: string[];
     }> {
         try {
+            // 🔍 Track read operation for quota monitoring
+            quotaMonitor.trackRead('conversations', 'validateConversationIntegrity');
+
             const result: {
                 totalConversations: number;
                 validConversations: number;
@@ -1634,6 +2184,9 @@ export const backgroundCleanupService = {
         issues: string[];
     }> {
         try {
+            // 🔍 Track read operation for quota monitoring
+            quotaMonitor.trackRead('conversations', 'quickHealthCheck');
+
             // Get total conversation count
             const conversationsSnapshot = await getDocs(collection(db, 'conversations'));
             const totalConversations = conversationsSnapshot.docs.length;
@@ -1703,6 +2256,9 @@ export const imageService = {
     // Upload multiple images and return their URLs
     async uploadImages(imageUris: string[], postId?: string): Promise<string[]> {
         try {
+            // 🔍 Track image operation for quota monitoring
+            quotaMonitor.trackWrite('images', `upload_${imageUris.length}`);
+
             return await cloudinaryService.uploadImages(imageUris, 'posts');
         } catch (error: any) {
             console.error('Error uploading images:', error);
@@ -1716,6 +2272,9 @@ export const imageService = {
             if (imageUrls.length === 0) {
                 return;
             }
+
+            // 🔍 Track image operation for quota monitoring
+            quotaMonitor.trackWrite('images', `delete_${imageUrls.length}`);
 
             const deletePromises = imageUrls.map(async (url) => {
                 if (url.includes('cloudinary.com')) {
@@ -1768,6 +2327,9 @@ export const imageService = {
     // Delete single profile picture from Cloudinary and update user profile
     async deleteProfilePicture(profilePictureUrl: string, userId?: string): Promise<void> {
         try {
+            // 🔍 Track image operation for quota monitoring
+            quotaMonitor.trackWrite('images', 'deleteProfilePicture');
+
             if (!profilePictureUrl || !profilePictureUrl.includes('cloudinary.com')) {
                 return; // No Cloudinary image to delete
             }
@@ -1834,6 +2396,9 @@ export const userService = {
     // Update user profile data
     async updateUserProfile(userId: string, updates: Partial<UserData>): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('users', 'updateUserProfile');
+
             const userRef = doc(db, 'users', userId);
             await updateDoc(userRef, {
                 ...updates,
@@ -1848,6 +2413,9 @@ export const userService = {
     // Get user data by ID
     async getUserById(userId: string): Promise<UserData | null> {
         try {
+            // 🔍 Track read operation for quota monitoring
+            quotaMonitor.trackRead('users', 'getUserById');
+
             const userDoc = await getDoc(doc(db, 'users', userId));
             if (userDoc.exists()) {
                 return userDoc.data() as UserData;
@@ -1983,6 +2551,9 @@ export const postService = {
     // Create a new post
     async createPost(postData: Omit<Post, 'id' | 'createdAt' | 'creatorId'>, creatorId: string): Promise<string> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('posts', 'createPost');
+
             // Generate a unique post ID
             const postId = `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -2027,66 +2598,89 @@ export const postService = {
 
     // Get all posts with real-time updates
     getAllPosts(callback: (posts: Post[]) => void) {
-        const q = query(
-            collection(db, 'posts'),
-            orderBy('createdAt', 'desc')
-        );
+        // 🔍 Use ListenerManager for deduplication and quota optimization
+        const listenerKey = 'posts-getAllPosts';
 
-        return onSnapshot(q, (snapshot) => {
-            const posts = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
-            })) as Post[];
+        return listenerManager.startListener(listenerKey, () => {
+            // 🔍 Track listener creation for quota monitoring
+            quotaMonitor.trackListener('posts', 'getAllPosts');
 
-            callback(posts);
-        }, (error) => {
-            if (isPermissionError(error)) {
-                // This is expected during logout - don't log as error
-                console.log('Posts listener permission error (expected during logout):', error.message);
-            } else {
-                console.error('Error fetching posts:', error);
-            }
-            callback([]);
+            const q = query(
+                collection(db, 'posts'),
+                orderBy('createdAt', 'desc')
+            );
+
+            return onSnapshot(q, (snapshot) => {
+                const posts = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+                })) as Post[];
+
+                callback(posts);
+            }, (error) => {
+                if (isPermissionError(error)) {
+                    // This is expected during logout - don't log as error
+                    console.log('Posts listener permission error (expected during logout):', error.message);
+                } else if (error.code === 'resource-exhausted') {
+                    console.warn('⚠️ [QUOTA] Firebase quota exceeded in getAllPosts');
+                    quotaMonitor.trackRead('posts', 'quota_exceeded');
+                } else {
+                    console.error('Error fetching posts:', error);
+                }
+                callback([]);
+            });
         });
     },
 
     // Get posts by type (lost/found)
     getPostsByType(type: 'lost' | 'found', callback: (posts: Post[]) => void) {
-        const q = query(
-            collection(db, 'posts'),
-            where('type', '==', type)
-            // Removed orderBy to avoid composite index requirement
-        );
+        // 🔍 Use ListenerManager for deduplication and quota optimization
+        const listenerKey = `posts-getPostsByType-${type}`;
 
-        return onSnapshot(q, (snapshot) => {
-            const posts = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
-            })) as Post[];
+        return listenerManager.startListener(listenerKey, () => {
+            // 🔍 Track listener creation for quota monitoring
+            quotaMonitor.trackListener('posts', `getPostsByType_${type}`);
+            const q = query(
+                collection(db, 'posts'),
+                where('type', '==', type)
+                // Removed orderBy to avoid composite index requirement
+            );
 
-            // Sort posts by createdAt in JavaScript instead
-            const sortedPosts = posts.sort((a, b) => {
-                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
-                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
-                return dateB.getTime() - dateA.getTime(); // Most recent first
+            return onSnapshot(q, (snapshot) => {
+                const posts = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+                })) as Post[];
+
+                // Sort posts by createdAt in JavaScript instead
+                const sortedPosts = posts.sort((a, b) => {
+                    const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                    const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                    return dateB.getTime() - dateA.getTime(); // Most recent first
+                });
+
+                callback(sortedPosts);
+            }, (error) => {
+                if (isPermissionError(error)) {
+                    // This is expected during logout - don't log as error
+                    console.log('Posts by type listener permission error (expected during logout):', error.message);
+                } else if (error.code === 'resource-exhausted') {
+                    console.warn('⚠️ [QUOTA] Firebase quota exceeded in getPostsByType');
+                    quotaMonitor.trackRead('posts', 'quota_exceeded');
+                } else {
+                    console.error('Error fetching posts by type:', error);
+                }
+                callback([]);
             });
-
-            callback(sortedPosts);
-        }, (error) => {
-            if (isPermissionError(error)) {
-                // This is expected during logout - don't log as error
-                console.log('Posts by type listener permission error (expected during logout):', error.message);
-            } else {
-                console.error('Error fetching posts by type:', error);
-            }
-            callback([]);
         });
     },
 
     // Get posts by category
     getPostsByCategory(category: string, callback: (posts: Post[]) => void) {
+        // 🔍 Track listener creation for quota monitoring
+        quotaMonitor.trackListener('posts', `getPostsByCategory_${category}`);
         const q = query(
             collection(db, 'posts'),
             where('category', '==', category)
@@ -2121,6 +2715,8 @@ export const postService = {
 
     // Get posts by user email
     getUserPosts(userEmail: string, callback: (posts: Post[]) => void) {
+        // 🔍 Track listener creation for quota monitoring
+        quotaMonitor.trackListener('posts', `getUserPosts_${userEmail}`);
         const q = query(
             collection(db, 'posts'),
             where('user.email', '==', userEmail)
@@ -2156,6 +2752,9 @@ export const postService = {
     // Get a single post by ID
     async getPostById(postId: string): Promise<Post | null> {
         try {
+            // 🔍 Track read operation for quota monitoring
+            quotaMonitor.trackRead('posts', 'getPostById');
+
             const postDoc = await getDoc(doc(db, 'posts', postId));
             if (postDoc.exists()) {
                 const data = postDoc.data();
@@ -2177,6 +2776,9 @@ export const postService = {
     // Revert post resolution - change resolved post back to pending and reset related claim request
     async revertPostResolution(postId: string, adminId: string, reason?: string): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('posts', 'revertPostResolution');
+
             // STEP 3: Change post status back to pending
             await updateDoc(doc(db, 'posts', postId), {
                 status: 'pending',
@@ -2234,8 +2836,6 @@ export const postService = {
                 }
             }
 
-
-
         } catch (error: any) {
             console.error('❌ Mobile: Failed to revert post resolution:', error);
             throw new Error(error.message || 'Failed to revert post resolution');
@@ -2245,6 +2845,9 @@ export const postService = {
     // Update post
     async updatePost(postId: string, updates: Partial<Post>): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('posts', 'updatePost');
+
             const updateData = {
                 ...updates,
                 updatedAt: serverTimestamp()
@@ -2293,6 +2896,9 @@ export const postService = {
     // Delete post
     async deletePost(postId: string): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('posts', 'deletePost');
+
             // Get post data to delete associated images
             const post = await this.getPostById(postId);
 
@@ -2435,6 +3041,8 @@ export const postService = {
             }
 
             // STEP 6: Execute the batch operation atomically
+            // 🔍 Track batch operation for quota monitoring
+            quotaMonitor.trackBatch('conversations', conversationsSnapshot.docs.length * 2); // messages + conversations
             await batch.commit();
 
             // STEP 7: Verify deletion was successful
@@ -2459,6 +3067,9 @@ export const postService = {
     // Search posts by title or description
     async searchPosts(searchTerm: string): Promise<Post[]> {
         try {
+            // 🔍 Track read operation for quota monitoring
+            quotaMonitor.trackRead('posts', 'searchPosts');
+
             const postsSnapshot = await getDocs(collection(db, 'posts'));
             const posts = postsSnapshot.docs.map(doc => ({
                 id: doc.id,
@@ -2481,6 +3092,9 @@ export const postService = {
 
     // Get posts by location
     getPostsByLocation(location: string, callback: (posts: Post[]) => void) {
+        // 🔍 Track listener creation for quota monitoring
+        quotaMonitor.trackListener('posts', `getPostsByLocation_${location}`);
+
         const q = query(
             collection(db, 'posts'),
             where('location', '==', location)
@@ -2508,6 +3122,9 @@ export const postService = {
     // Move post to unclaimed status (expired posts)
     async movePostToUnclaimed(postId: string): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('posts', 'movePostToUnclaimed');
+
             const postRef = doc(db, 'posts', postId);
             const postDoc = await getDoc(postRef);
 
@@ -2533,6 +3150,9 @@ export const postService = {
     // Activate ticket (move back to active from unclaimed)
     async activateTicket(postId: string): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('posts', 'activateTicket');
+
             const postRef = doc(db, 'posts', postId);
             const postDoc = await getDoc(postRef);
 
@@ -2563,6 +3183,9 @@ export const postService = {
     // Update post status
     async updatePostStatus(postId: string, status: 'pending' | 'resolved'): Promise<void> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('posts', 'updatePostStatus');
+
             await updateDoc(doc(db, 'posts', postId), {
                 status,
                 updatedAt: serverTimestamp()
@@ -2576,6 +3199,9 @@ export const postService = {
     // Clean up handover details and photos when reverting a completed report
     async cleanupHandoverDetailsAndPhotos(postId: string): Promise<{ photosDeleted: number; errors: string[] }> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('posts', 'cleanupHandoverDetailsAndPhotos');
+
             console.log(`🧹 Mobile: Starting cleanup of handover details and photos for post: ${postId}`);
 
             // Get the post to extract handover details
@@ -2661,6 +3287,9 @@ export const postService = {
     // Clean up claim details and photos when reverting a completed report
     async cleanupClaimDetailsAndPhotos(postId: string): Promise<{ photosDeleted: number; errors: string[] }> {
         try {
+            // 🔍 Track write operation for quota monitoring
+            quotaMonitor.trackWrite('posts', 'cleanupClaimDetailsAndPhotos');
+
             console.log(`🧹 Mobile: Starting cleanup of claim details and photos for post: ${postId}`);
 
             // Get the post to extract claim details
@@ -2839,3 +3468,70 @@ export class QuotaManager {
 
 // Global quota manager instance
 export const quotaManager = QuotaManager.getInstance();
+
+// 🔍 UTILITY FUNCTIONS FOR DEVELOPERS TO MONITOR QUOTA USAGE
+
+// Get current quota statistics (useful for debugging)
+export const getQuotaStats = () => {
+    return quotaMonitor.getQuotaStats();
+};
+
+// Log current quota status to console
+export const logQuotaStatus = () => {
+    const stats = quotaMonitor.getQuotaStats();
+    console.log('📊 [QUOTA STATUS] Current Firebase Usage:');
+    console.log(`   📖 Reads: ${stats.reads}`);
+    console.log(`   ✏️  Writes: ${stats.writes}`);
+    console.log(`   🔊 Listeners: ${stats.listeners}`);
+    console.log(`   📦 Batches: ${stats.batches}`);
+    console.log(`   🔍 Queries: ${stats.queries}`);
+
+    if (stats.topOperations.length > 0) {
+        console.log('   🏆 Top Operations:');
+        stats.topOperations.forEach((op, index) => {
+            console.log(`      ${index + 1}. ${op.operation}: ${op.count}`);
+        });
+    }
+
+    if (stats.activeListeners.length > 0) {
+        console.log('   🔊 Active Listeners:');
+        stats.activeListeners.forEach((listener, index) => {
+            console.log(`      ${index + 1}. ${listener.listener}: ${listener.count}`);
+        });
+    }
+};
+
+// Reset quota counters (useful for testing)
+export const resetQuotaCounters = () => {
+    console.log('📊 [QUOTA] Manually resetting quota counters');
+    // This will trigger the reset in the monitor
+    quotaMonitor['resetCounts']();
+};
+
+// Get quota recommendations based on current usage
+export const getQuotaRecommendations = (): string[] => {
+    const stats = quotaMonitor.getQuotaStats();
+    const recommendations: string[] = [];
+
+    if (stats.reads > 100) {
+        recommendations.push('Consider implementing caching for frequently read data');
+    }
+
+    if (stats.writes > 50) {
+        recommendations.push('Consider batching multiple write operations');
+    }
+
+    if (stats.listeners > 5) {
+        recommendations.push('Review active listeners - consider reducing real-time updates');
+    }
+
+    if (stats.batches === 0 && stats.writes > 20) {
+        recommendations.push('Consider using batch operations for multiple writes');
+    }
+
+    if (stats.queries > 30) {
+        recommendations.push('Review query patterns - consider adding indexes or caching');
+    }
+
+    return recommendations;
+};

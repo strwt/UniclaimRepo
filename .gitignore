@@ -91,6 +91,13 @@ DUPLICATE_*.md
 CENTRALIZED_*.md
 README_HANDOVER_CLEANUP_FEATURE.md
 
+# Project-specific dev docs and test components
+mobile/README_*.md
+mobile/README_STEP2_IMPLEMENTATION.md
+mobile/README_STEP3_IMPLEMENTATION.md
+mobile/components/ListenerTest.tsx
+mobile/components/OptimizedMessageTest.tsx
+
 # Sensitive data
 secrets/
 *.key

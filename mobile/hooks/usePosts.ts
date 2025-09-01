@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { postService } from '../utils/firebase';
+import { listenerManager } from '../utils/ListenerManager';
 import type { Post } from '../types/type';
 import { useAuth } from '../context/AuthContext';
 
@@ -55,16 +56,18 @@ export const usePosts = () => {
             setLoading(true);
         }
 
-        // Subscribe to real-time updates
-        const unsubscribe = postService.getAllPosts((fetchedPosts) => {
-            setPosts(fetchedPosts);
-            setLoading(false);
-            setIsInitialLoad(false);
+        // Subscribe to real-time updates using ListenerManager to prevent duplicates
+        const unsubscribe = listenerManager.startListener('all-posts', () => {
+            return postService.getAllPosts((fetchedPosts) => {
+                setPosts(fetchedPosts);
+                setLoading(false);
+                setIsInitialLoad(false);
 
-            // Cache the data
-            globalPostCache.set(cacheKey, {
-                posts: fetchedPosts,
-                timestamp: Date.now()
+                // Cache the data
+                globalPostCache.set(cacheKey, {
+                    posts: fetchedPosts,
+                    timestamp: Date.now()
+                });
             });
         });
 
@@ -133,14 +136,16 @@ export const usePostsByType = (type: 'lost' | 'found') => {
             setLoading(true);
         }
 
-        const unsubscribe = postService.getPostsByType(type, (fetchedPosts) => {
-            setPosts(fetchedPosts);
-            setLoading(false);
-            setIsInitialLoad(false);
+        const unsubscribe = listenerManager.startListener(`posts-${type}`, () => {
+            return postService.getPostsByType(type, (fetchedPosts) => {
+                setPosts(fetchedPosts);
+                setLoading(false);
+                setIsInitialLoad(false);
 
-            globalPostCache.set(cacheKey, {
-                posts: fetchedPosts,
-                timestamp: Date.now()
+                globalPostCache.set(cacheKey, {
+                    posts: fetchedPosts,
+                    timestamp: Date.now()
+                });
             });
         });
 
@@ -197,9 +202,11 @@ export const usePostsByCategory = (category: string) => {
 
         setLoading(true);
 
-        const unsubscribe = postService.getPostsByCategory(category, (fetchedPosts) => {
-            setPosts(fetchedPosts);
-            setLoading(false);
+        const unsubscribe = listenerManager.startListener(`posts-category-${category}`, () => {
+            return postService.getPostsByCategory(category, (fetchedPosts) => {
+                setPosts(fetchedPosts);
+                setLoading(false);
+            });
         });
 
         // Store unsubscribe function for cleanup
@@ -251,9 +258,11 @@ export const useUserPosts = (userEmail: string) => {
 
         setLoading(true);
 
-        const unsubscribe = postService.getUserPosts(userEmail, (fetchedPosts) => {
-            setPosts(fetchedPosts);
-            setLoading(false);
+        const unsubscribe = listenerManager.startListener(`user-posts-${userEmail}`, () => {
+            return postService.getUserPosts(userEmail, (fetchedPosts) => {
+                setPosts(fetchedPosts);
+                setLoading(false);
+            });
         });
 
         // Store unsubscribe function for cleanup
@@ -305,9 +314,11 @@ export const useUserPostsWithSet = (userEmail: string) => {
 
         setLoading(true);
 
-        const unsubscribe = postService.getUserPosts(userEmail, (fetchedPosts) => {
-            setPosts(fetchedPosts);
-            setLoading(false);
+        const unsubscribe = listenerManager.startListener(`user-posts-with-set-${userEmail}`, () => {
+            return postService.getUserPosts(userEmail, (fetchedPosts) => {
+                setPosts(fetchedPosts);
+                setLoading(false);
+            });
         });
 
         // Store unsubscribe function for cleanup

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { messageService } from "../utils/firebase";
 import { useAuth } from "./AuthContext";
+import { listenerManager } from "../utils/ListenerManager";
 import type { Conversation, Message } from "../types/type";
 
 interface MessageContextType {
@@ -53,22 +54,24 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     setLoading(true);
 
     // Simple listener that automatically handles conversation updates
-    const unsubscribe = messageService.getUserConversations(userId, (loadedConversations) => {
-      setConversations(loadedConversations);
-      setLoading(false);
-    }, (error) => {
-      console.error('Mobile MessageContext: Listener error:', error);
-      setLoading(false);
+    const unsubscribe = listenerManager.startListener(`user-conversations-${userId}`, () => {
+      return messageService.getUserConversations(userId, (loadedConversations) => {
+        setConversations(loadedConversations);
+        setLoading(false);
+      }, (error) => {
+        console.error('Mobile MessageContext: Listener error:', error);
+        setLoading(false);
 
-      // Only try to refresh for permission errors (not for admin users)
-      if (error?.code === 'permission-denied' || error?.code === 'not-found') {
-        console.log('Permission error detected, attempting refresh...');
-        refreshConversations().catch(refreshError => {
-          console.error('Refresh also failed:', refreshError);
-          // If refresh fails, just set empty conversations
-          setConversations([]);
-        });
-      }
+        // Only try to refresh for permission errors (not for admin users)
+        if (error?.code === 'permission-denied' || error?.code === 'not-found') {
+          console.log('Permission error detected, attempting refresh...');
+          refreshConversations().catch(refreshError => {
+            console.error('Refresh also failed:', refreshError);
+            // If refresh fails, just set empty conversations
+            setConversations([]);
+          });
+        }
+      });
     });
 
     return () => {

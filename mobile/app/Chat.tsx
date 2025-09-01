@@ -10,7 +10,8 @@ import {
   Platform,
   Alert,
   Image,
-  Linking
+  Linking,
+  AppState
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -28,6 +29,7 @@ const MessageBubble = ({
   isOwnMessage,
   conversationId,
   currentUserId,
+  isCurrentUserPostOwner,
   onHandoverResponse,
   onClaimResponse,
   onConfirmIdPhotoSuccess,
@@ -37,6 +39,7 @@ const MessageBubble = ({
   isOwnMessage: boolean;
   conversationId: string;
   currentUserId: string;
+  isCurrentUserPostOwner?: boolean;
   onHandoverResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
   onClaimResponse?: (messageId: string, status: 'accepted' | 'rejected') => void;
   onConfirmIdPhotoSuccess?: (messageId: string) => void;
@@ -48,6 +51,26 @@ const MessageBubble = ({
   const [selectedIdPhoto, setSelectedIdPhoto] = useState<string | null>(null);
   const [isUploadingIdPhoto, setIsUploadingIdPhoto] = useState(false);
   const [hasBeenSeen, setHasBeenSeen] = useState(false);
+  
+  // Debug: Log read receipt changes only when they actually change
+  const prevReadByRef = useRef<string[]>([]);
+  useEffect(() => {
+    if (message.readBy && message.readBy.length > 1) {
+      const currentReadBy = JSON.stringify(message.readBy.sort());
+      const prevReadBy = JSON.stringify(prevReadByRef.current.sort());
+      
+      if (currentReadBy !== prevReadBy) {
+        console.log('🔍 [ReadReceipt] Message read status changed:', {
+          messageId: message.id,
+          readBy: message.readBy,
+          readByLength: message.readBy.length,
+          previousReadBy: prevReadByRef.current
+        });
+        prevReadByRef.current = [...message.readBy];
+      }
+    }
+  }, [message.readBy, message.id]);
+  
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -272,7 +295,7 @@ const MessageBubble = ({
 
     // Show different UI based on status and user role
     const canRespond = handoverData.status === 'pending' && !isOwnMessage;
-    const canConfirm = handoverData.status === 'pending_confirmation' && postOwnerId === user?.uid;
+    const canConfirm = handoverData.status === 'pending_confirmation' && !!isCurrentUserPostOwner;
     const isCompleted = handoverData.status === 'accepted' || handoverData.status === 'rejected';
 
     return (
@@ -321,12 +344,12 @@ const MessageBubble = ({
         )}
 
         {/* Show owner's ID photo if uploaded */}
-        {handoverData.ownerIdPhotoUrl && (
+        {handoverData.ownerIdPhoto && (
           <View className="mb-3 p-2 bg-white rounded border">
             <Text className="text-xs text-gray-600 mb-1">Owner ID Photo:</Text>
             <TouchableOpacity
               onPress={() => {
-                if (handoverData.ownerIdPhotoUrl) {
+                if (handoverData.ownerIdPhoto) {
                   // For mobile, we'll use a simple alert with option to view
                   Alert.alert(
                     'View Owner ID Photo',
@@ -337,8 +360,8 @@ const MessageBubble = ({
                         text: 'View Full Size',
                         onPress: () => {
                           // Open in device's default image viewer
-                          if (handoverData.ownerIdPhotoUrl) {
-                            Linking.openURL(handoverData.ownerIdPhotoUrl);
+                          if (handoverData.ownerIdPhoto) {
+                            Linking.openURL(handoverData.ownerIdPhoto);
                           }
                         }
                       }
@@ -348,7 +371,7 @@ const MessageBubble = ({
               }}
             >
               <Image
-                source={{ uri: handoverData.ownerIdPhotoUrl }}
+                source={{ uri: handoverData.ownerIdPhoto }}
                 className="w-24 h-16 rounded"
                 resizeMode="cover"
               />
@@ -821,19 +844,27 @@ const MessageBubble = ({
           </Text>
           {isOwnMessage && (
             <View>
-              {message.readBy && message.readBy.length > 1 ? (
-                <Ionicons 
-                  name="eye" 
-                  size={12} 
-                  color="#3b82f6" 
-                />
-              ) : (
-                <Ionicons 
-                  name="checkmark" 
-                  size={12} 
-                  color="#9ca3af" 
-                />
-              )}
+              {(() => {
+                // Check if message has been read by the other person (not just the sender)
+                // If current user is post owner, check if requester has read it
+                // If current user is requester, check if post owner has read it
+                const hasBeenReadByOther = message.readBy && 
+                  message.readBy.length > 1; // More than just the sender
+                
+                return hasBeenReadByOther ? (
+                  <Ionicons 
+                    name="eye" 
+                    size={12} 
+                    color="#3b82f6" 
+                  />
+                ) : (
+                  <Ionicons 
+                    name="checkmark" 
+                    size={12} 
+                    color="#9ca3af" 
+                  />
+                );
+              })()}
             </View>
           )}
         </View>
@@ -869,6 +900,25 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState(initialConversationId || '');
   const [conversationData, setConversationData] = useState<any>(null);
+  
+  // Debug: Log messages state changes (only when messages actually change, not on every keystroke)
+  const prevMessagesRef = useRef<Message[]>([]);
+  useEffect(() => {
+    // Only log if messages actually changed (not just re-renders)
+    const hasMessagesChanged = prevMessagesRef.current.length !== messages.length || 
+      JSON.stringify(prevMessagesRef.current.map(m => m.id)) !== JSON.stringify(messages.map(m => m.id));
+    
+    if (hasMessagesChanged) {
+      console.log('🔧 [Chat] Messages state updated:', {
+        conversationId,
+        messageCount: messages.length,
+        lastMessage: messages[messages.length - 1]?.text || 'none',
+        changeType: prevMessagesRef.current.length < messages.length ? 'added' : 
+                   prevMessagesRef.current.length > messages.length ? 'removed' : 'modified'
+      });
+      prevMessagesRef.current = [...messages];
+    }
+  }, [messages, conversationId]);
   const flatListRef = useRef<FlatList>(null);
   const [viewableMessages, setViewableMessages] = useState<Set<string>>(new Set());
   
@@ -876,6 +926,71 @@ export default function Chat() {
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  // Throttling and dedupe for read-marking
+  const lastConversationReadMarkTsRef = useRef<{ [key: string]: number }>({});
+  const hasBatchMarkedRef = useRef<Set<string>>(new Set());
+  
+  // ✅ OPERATION GUARDS: Prevent duplicate conversation setups
+  const [isConversationSetup, setIsConversationSetup] = useState(false);
+  const [currentSetupConversationId, setCurrentSetupConversationId] = useState<string>('');
+  const [setupProgress, setSetupProgress] = useState<{
+    quotaChecked: boolean;
+    messagesLoaded: boolean;
+    conversationDataFetched: boolean;
+    readMarkingScheduled: boolean;
+  }>({
+    quotaChecked: false,
+    messagesLoaded: false,
+    conversationDataFetched: false,
+    readMarkingScheduled: false
+  });
+  
+  // ✅ QUOTA OPTIMIZATION: Cache quota status to prevent constant checking
+  const quotaCacheRef = useRef<{
+    status: 'normal' | 'limited' | 'unknown';
+    lastChecked: number;
+    warningShown: boolean;
+  }>({
+    status: 'unknown',
+    lastChecked: 0,
+    warningShown: false
+  });
+
+  // ✅ QUOTA MANAGEMENT: Function to manually reset quota cache when needed
+  const resetQuotaCache = useCallback(() => {
+    console.log('🔧 [Chat] Manually resetting quota cache');
+    quotaCacheRef.current = {
+      status: 'unknown',
+      lastChecked: 0,
+      warningShown: false
+    };
+  }, []);
+
+  // ✅ QUOTA MANAGEMENT: Function to force refresh quota status
+  const refreshQuotaStatus = useCallback(async () => {
+    console.log('🔧 [Chat] Force refreshing quota status...');
+    try {
+      const { quotaManager } = await import('@/utils/firebase');
+      const now = Date.now();
+      
+      if (quotaManager.shouldReduceOperations()) {
+        quotaCacheRef.current.status = 'limited';
+        console.warn('⚠️ [Chat] Quota status refreshed: LIMITED');
+      } else {
+        quotaCacheRef.current.status = 'normal';
+        console.log('✅ [Chat] Quota status refreshed: NORMAL');
+      }
+      
+      quotaCacheRef.current.lastChecked = now;
+      quotaCacheRef.current.warningShown = false; // Allow warning to show again
+      
+    } catch (error) {
+      console.error('❌ [Chat] Failed to refresh quota status:', error);
+      quotaCacheRef.current.status = 'normal'; // Fall back to normal
+      quotaCacheRef.current.lastChecked = Date.now();
+    }
+  }, []);
   
   // Check if handover button should be shown
   const shouldShowHandoverButton = () => {
@@ -924,62 +1039,334 @@ export default function Chat() {
   
   useEffect(() => {
     // If no conversation exists, create one immediately
+    console.log('🔧 [Chat] Checking if conversation needs to be created:', {
+      hasConversationId: !!conversationId,
+      hasPostId: !!postId,
+      hasPostOwnerId: !!postOwnerId,
+      hasUser: !!user,
+      hasUserData: !!userData,
+      isLoading: loading
+    });
+    
     if (!conversationId && postId && postOwnerId && user && userData && !loading) {
+      console.log('🔧 [Chat] Creating new conversation...');
       handleCreateConversation();
     }
   }, [postId, postOwnerId, user, userData, loading]);
 
   useEffect(() => {
     if (conversationId) {
-      // Load initial messages with pagination (limit to 50 messages)
-      const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
-        setMessages(loadedMessages);
-        setIsInitialLoad(false);
-        
-        // If we got fewer messages than the limit, there are no more messages
-        if (loadedMessages.length < 50) {
-          setHasMoreMessages(false);
-        }
-        
-        // Only scroll to bottom on initial load
-        if (isInitialLoad) {
-          scrollToBottom();
-        }
-      }, 50);
+      // ✅ OPERATION GUARD: Prevent duplicate setups for the same conversation
+      if (isConversationSetup && currentSetupConversationId === conversationId) {
+        console.log('🔧 [Chat] Conversation already set up, skipping duplicate setup:', conversationId);
+        return;
+      }
       
-      // Fetch conversation data for handover button logic
-      const fetchConversationData = async () => {
+      console.log('🔧 [Chat] Setting up conversation:', conversationId);
+      
+      // Mark that we're setting up this conversation
+      setIsConversationSetup(true);
+      setCurrentSetupConversationId(conversationId);
+      
+      // ✅ OPTIMIZED: Use cached quota status instead of checking every time
+      const setupConversation = async () => {
         try {
-          const data = await getConversation(conversationId);
-          setConversationData(data);
-        } catch (error) {
-          console.error('Failed to fetch conversation data:', error);
+          let quotaStatus = quotaCacheRef.current.status;
+          
+          // Only check quota if we haven't checked recently (first time or after 5 minutes)
+          const now = Date.now();
+          const shouldCheckQuota = quotaCacheRef.current.status === 'unknown' || 
+                                 (now - quotaCacheRef.current.lastChecked) > 300000; // 5 minutes
+          
+          if (shouldCheckQuota) {
+            console.log('🔧 [Chat] Checking Firebase quota status...');
+            try {
+              const { quotaManager } = await import('@/utils/firebase');
+              if (quotaManager.shouldReduceOperations()) {
+                quotaStatus = 'limited';
+                console.warn('⚠️ [Chat] Quota limited - using reduced functionality');
+                
+                // Show user-friendly warning (only once per session)
+                if (!quotaCacheRef.current.warningShown) {
+                  Alert.alert(
+                    'Limited Functionality',
+                    'Due to high server usage, some chat features may be temporarily limited. Please try again later.',
+                    [{ text: 'OK' }]
+                  );
+                  quotaCacheRef.current.warningShown = true;
+                }
+              } else {
+                quotaStatus = 'normal';
+                console.log('✅ [Chat] Quota normal - full functionality available');
+              }
+              
+              // Cache the quota check result
+              quotaCacheRef.current.status = quotaStatus;
+              quotaCacheRef.current.lastChecked = now;
+              setSetupProgress(prev => ({ ...prev, quotaChecked: true }));
+              
+            } catch (error: any) {
+              console.error('❌ [Chat] Quota check failed:', error.message || 'Unknown error');
+              quotaStatus = 'normal'; // Fall back to normal on error
+              quotaCacheRef.current.status = quotaStatus;
+              quotaCacheRef.current.lastChecked = now;
+              setSetupProgress(prev => ({ ...prev, quotaChecked: true }));
+            }
+          } else {
+            // Use cached quota status - simplified logging
+            const timeAgo = Math.round((now - quotaCacheRef.current.lastChecked) / 1000);
+            console.log(`🔧 [Chat] Using cached quota: ${quotaStatus} (${timeAgo}s ago)`);
+            setSetupProgress(prev => ({ ...prev, quotaChecked: true }));
+          }
+          
+          if (quotaStatus === 'limited') {
+            // Use limited functionality - only load messages, skip read marking
+            console.log('🔧 [Chat] Setting up limited functionality (messages only)');
+            
+            console.log('🔧 [Chat] Setting up message listener with limit 50 (limited mode)');
+            const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
+              console.log('🔧 [Chat] Message listener callback received (limited mode):', {
+                conversationId,
+                messageCount: loadedMessages.length,
+                isInitialLoad
+              });
+              
+              setMessages(loadedMessages);
+              setIsInitialLoad(false);
+              setSetupProgress(prev => ({ ...prev, messagesLoaded: true }));
+              
+              if (loadedMessages.length < 50) {
+                setHasMoreMessages(false);
+              }
+              
+              if (isInitialLoad) {
+                scrollToBottom();
+              }
+            }, 50);
+            
+            // Fetch basic conversation data only
+            const fetchConversationData = async () => {
+              try {
+                const data = await getConversation(conversationId);
+                setConversationData(data);
+                setSetupProgress(prev => ({ ...prev, conversationDataFetched: true }));
+              } catch (error: any) {
+                console.error('❌ [Chat] Failed to fetch conversation data:', error.message);
+              }
+            };
+            
+            fetchConversationData();
+            
+            return unsubscribe;
+          }
+          
+          // ✅ Normal quota - proceed with full functionality
+          console.log('🔧 [Chat] Setting up full functionality (messages + read marking)');
+          
+          // Load initial messages with pagination (limit to 50 messages)
+          console.log('🔧 [Chat] Setting up message listener with limit 50');
+          const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
+            console.log('🔧 [Chat] Message listener callback received:', {
+              conversationId,
+              messageCount: loadedMessages.length,
+              isInitialLoad
+            });
+            
+            setMessages(loadedMessages);
+            setIsInitialLoad(false);
+            setSetupProgress(prev => ({ ...prev, messagesLoaded: true }));
+            
+            // If we got fewer messages than the limit, there are no more messages
+            if (loadedMessages.length < 50) {
+              setHasMoreMessages(false);
+            }
+            
+            // Only scroll to bottom on initial load
+            if (isInitialLoad) {
+              scrollToBottom();
+            }
+          }, 50);
+          
+          // Fetch conversation data for handover button logic
+          const fetchConversationData = async () => {
+            try {
+              const data = await getConversation(conversationId);
+              setConversationData(data);
+              setSetupProgress(prev => ({ ...prev, conversationDataFetched: true }));
+            } catch (error: any) {
+              console.error('❌ [Chat] Failed to fetch conversation data:', error.message);
+            }
+          };
+          
+          fetchConversationData();
+          
+          // Mark conversation as read when user opens it
+          if (userData?.uid) {
+            markConversationAsRead(conversationId, userData.uid);
+          }
+
+          // ✅ FIXED: Don't check conversationData here - it will be undefined on first run
+          // Mark all unread messages as read when conversation is opened
+          if (userData?.uid) {
+            // We'll handle this in a separate useEffect after conversationData is loaded
+            setSetupProgress(prev => ({ ...prev, readMarkingScheduled: true }));
+            console.log('🔧 [Chat] Will mark messages as read after conversation data loads');
+          }
+          
+          return unsubscribe;
+          
+        } catch (error: any) {
+          console.error('❌ [Chat] Setup failed, using fallback:', error.message);
+          // Fall back to limited functionality on error
+          console.log('🔧 [Chat] Setting up message listener with limit 50 (fallback mode)');
+          const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
+            console.log('🔧 [Chat] Message listener callback received (fallback mode):', {
+              conversationId,
+              messageCount: loadedMessages.length,
+              isInitialLoad
+            });
+            
+            setMessages(loadedMessages);
+            setIsInitialLoad(false);
+            setSetupProgress(prev => ({ ...prev, messagesLoaded: true }));
+          }, 50);
+          
+          return unsubscribe;
         }
       };
       
-      fetchConversationData();
-      
-      // Mark conversation as read when user opens it
-      if (userData?.uid) {
-        markConversationAsRead(conversationId, userData.uid);
+      // Execute conversation setup
+      const cleanupPromise = setupConversation();
+      return () => {
+        cleanupPromise.then((unsubscribe: any) => {
+          if (unsubscribe) unsubscribe();
+        });
+      };
+    } else {
+      // Conversation ID cleared - reset setup state
+      if (isConversationSetup) {
+        console.log('🔧 [Chat] Conversation cleared, resetting setup state');
+        setIsConversationSetup(false);
+        setCurrentSetupConversationId('');
       }
-
-              // Mark all unread messages as read when conversation is opened
-        if (userData?.uid && (conversationData?.postType === 'lost' || conversationData?.postType === 'found')) {
-          markAllUnreadMessagesAsRead(conversationId, userData.uid);
-        }
-      
-      return () => unsubscribe();
     }
-  }, [conversationId, getConversationMessages, getConversation, isInitialLoad, conversationData, markAllUnreadMessagesAsRead, markConversationAsRead]);
+  }, [conversationId, getConversationMessages, getConversation, userData?.uid, markConversationAsRead]);
 
-  // Mark conversation as read when new messages arrive while user is viewing
+  // ✅ NEW: Handle message marking after conversation data loads (guarded & once per conversation)
+  useEffect(() => {
+    if (!conversationId || !userData?.uid || !conversationData) return;
+    
+    const unreadCount = getConversationUnreadCount(conversationId, userData.uid);
+    const alreadyBatchMarked = hasBatchMarkedRef.current.has(conversationId);
+
+    if (unreadCount > 0 && !alreadyBatchMarked) {
+      console.log('🔧 [Chat] Processing conversation data:', {
+        conversationId,
+        postType: conversationData.postType,
+        postStatus: conversationData.postStatus,
+        action: 'marking messages as read (batch)'
+      });
+
+      markAllUnreadMessagesAsRead(conversationId, userData.uid);
+      hasBatchMarkedRef.current.add(conversationId);
+    }
+  }, [conversationId, userData?.uid, conversationData, markAllUnreadMessagesAsRead, getConversationUnreadCount]);
+
+  // ✅ NEW: Show setup summary when all progress is complete
+  useEffect(() => {
+    if (!conversationId || !isConversationSetup) return;
+    
+    const { quotaChecked, messagesLoaded, conversationDataFetched, readMarkingScheduled } = setupProgress;
+    
+    if (quotaChecked && messagesLoaded && conversationDataFetched && readMarkingScheduled) {
+      // ✅ SUMMARY LOG: Show overall conversation setup status
+      console.log('🎯 [Chat] Conversation Setup Complete:', {
+        conversationId,
+        quotaStatus: quotaCacheRef.current.status,
+        functionality: quotaCacheRef.current.status === 'limited' ? 'limited (messages only)' : 'full (messages + read marking)',
+        messageCount: messages.length,
+        hasConversationData: !!conversationData,
+        readMarkingScheduled: true
+      });
+      
+      // Reset progress for next conversation
+      setSetupProgress({
+        quotaChecked: false,
+        messagesLoaded: false,
+        conversationDataFetched: false,
+        readMarkingScheduled: false
+      });
+    }
+  }, [conversationId, isConversationSetup, setupProgress, messages.length, conversationData]);
+
+  // ✅ NEW: Cleanup and reset quota cache when user changes or app state changes
+  useEffect(() => {
+    // Reset quota cache when user changes (login/logout)
+    if (userData?.uid) {
+      console.log('🔧 [Chat] User authenticated, quota cache ready for use');
+    } else {
+      // User logged out - reset quota cache
+      console.log('🔧 [Chat] User logged out, resetting quota cache');
+      quotaCacheRef.current = {
+        status: 'unknown',
+        lastChecked: 0,
+        warningShown: false
+      };
+    }
+  }, [userData?.uid]);
+
+  // ✅ NEW: Reset quota cache when conversation changes significantly
+  useEffect(() => {
+    if (conversationId) {
+      // ✅ CONSOLIDATED: Single log for conversation change
+      console.log('🔧 [Chat] Conversation changed:', conversationId);
+      // Reset guards for new conversation
+      hasBatchMarkedRef.current.delete(conversationId);
+      delete lastConversationReadMarkTsRef.current[conversationId];
+    }
+  }, [conversationId]);
+
+  // ✅ NEW: Handle app state changes (background/foreground) to reset quota cache
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        // App came to foreground - check if we should refresh quota status
+        const now = Date.now();
+        const timeSinceLastCheck = now - quotaCacheRef.current.lastChecked;
+        
+        if (timeSinceLastCheck > 600000) { // 10 minutes
+          // ✅ CONSOLIDATED: Single log for app state change with quota info
+          console.log('🔧 [Chat] App state: foreground (quota cache may be stale)');
+        }
+      } else if (nextAppState === 'background') {
+        // App went to background - log for debugging
+        console.log('🔧 [Chat] App state: background (quota cache preserved)');
+      }
+    };
+
+    // Add app state change listener
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
+  // Mark conversation as read when new messages arrive while user is viewing (guarded & throttled)
   useEffect(() => {
     if (!conversationId || !userData?.uid || !messages.length) return;
 
-    // Mark conversation as read since user is actively viewing it
+    const unreadCount = getConversationUnreadCount(conversationId, userData.uid);
+    if (unreadCount <= 0) return;
+
+    const now = Date.now();
+    const lastTs = lastConversationReadMarkTsRef.current[conversationId] || 0;
+    const THROTTLE_MS = 15000; // 15s
+    if (now - lastTs < THROTTLE_MS) return;
+
+    lastConversationReadMarkTsRef.current[conversationId] = now;
     markConversationAsRead(conversationId, userData.uid);
-  }, [messages, conversationId, userData, markConversationAsRead]);
+  }, [messages, conversationId, userData, markConversationAsRead, getConversationUnreadCount]);
 
   // Function to mark message as read when it comes into view
   const handleMessageSeen = async (messageId: string) => {
@@ -1062,12 +1449,23 @@ export default function Chat() {
   };
 
   const handleCreateConversation = async () => {
+    console.log('🔧 [Chat] handleCreateConversation called with:', {
+      postId,
+      postOwnerId,
+      postTitle,
+      userUid: user?.uid,
+      hasUserData: !!userData,
+      hasPostOwnerUserData: !!postOwnerUserData
+    });
+
     if (!postId || !postOwnerId) {
+      console.error('❌ [Chat] Missing required data for conversation creation');
       Alert.alert('Error', 'Missing post information');
       return;
     }
 
     try {
+      console.log('🔧 [Chat] Starting conversation creation...');
       setLoading(true);
       const newConversationId = await createConversation(
         postId,
@@ -1077,8 +1475,10 @@ export default function Chat() {
         userData,
         postOwnerUserData // Pass the post owner's user data
       );
+      console.log('✅ [Chat] Conversation created successfully:', newConversationId);
       setConversationId(newConversationId);
     } catch (error: any) {
+      console.error('❌ [Chat] Failed to create conversation:', error);
       Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
@@ -1088,17 +1488,54 @@ export default function Chat() {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !conversationId) return;
 
+    console.log('🔧 [Chat] Sending message:', {
+      conversationId,
+      messageText: newMessage.trim(),
+      userId: user.uid,
+      userName: `${userData.firstName} ${userData.lastName}`
+    });
+
     try {
+      // Create a temporary message object for immediate display
+      const tempMessage: Message = {
+        id: `temp-${Date.now()}`, // Temporary ID
+        senderId: user.uid,
+        senderName: `${userData.firstName} ${userData.lastName}`,
+        senderProfilePicture: userData.profilePicture || undefined,
+        text: newMessage.trim(),
+        timestamp: new Date(),
+        readBy: [user.uid],
+        messageType: 'text'
+      };
+
+      // Add message to local state immediately for instant feedback
+      setMessages(prev => [...prev, tempMessage]);
+      
+      // Clear input and scroll to bottom
+      const messageText = newMessage.trim();
+      setNewMessage('');
+      scrollToBottomOnNewMessage();
+
+      // Send message to Firebase
       await sendMessage(
         conversationId,
         user.uid,
         `${userData.firstName} ${userData.lastName}`,
-        newMessage.trim(),
+        messageText,
         userData.profilePicture
       );
-      setNewMessage('');
-      scrollToBottomOnNewMessage();
+
+      console.log('✅ [Chat] Message sent successfully to Firebase');
+      
+      // The real-time listener should update the message with the real Firebase ID
+      // If it doesn't, we'll need to handle that case
+      
     } catch (error: any) {
+      console.error('❌ [Chat] Failed to send message:', error);
+      
+      // Remove the temporary message if sending failed
+      setMessages(prev => prev.filter(msg => msg.id !== `temp-${Date.now()}`));
+      
       Alert.alert('Error', error.message);
     }
   };
@@ -1165,12 +1602,12 @@ export default function Chat() {
     }
 
     // Navigate to claim form screen
-    navigation.navigate('ClaimFormScreen' as never, {
+    (navigation as any).navigate('ClaimFormScreen', {
       conversationId,
       postId,
       postTitle,
       postOwnerId,
-    } as never);
+    });
   };
 
   return (
@@ -1224,10 +1661,7 @@ export default function Chat() {
         {shouldShowClaimItemButton() && (
           <TouchableOpacity
             className="ml-3 px-4 py-2 bg-blue-500 rounded-lg"
-            onPress={() => {
-              console.log('CLAIM BUTTON PRESSED ON MOBILE!');
-              handleClaimRequest();
-            }}
+            onPress={handleClaimRequest}
           >
             <Text className="text-white font-medium text-sm">Claim Item</Text>
           </TouchableOpacity>
@@ -1263,6 +1697,7 @@ export default function Chat() {
                 isOwnMessage={item.senderId === user.uid}
                 conversationId={conversationId}
                 currentUserId={user?.uid || ''}
+                isCurrentUserPostOwner={postOwnerId === userData?.uid}
                 onHandoverResponse={handleHandoverResponse}
                 onClaimResponse={handleClaimResponse}
                 onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
