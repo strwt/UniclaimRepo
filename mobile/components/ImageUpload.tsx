@@ -38,7 +38,7 @@ export default function ImageUploader({ images, setImages }: Props) {
   };
 
   return (
-    <View className="w-full mt-2">
+    <View className="w-full">
       <Text className="text-base font-manrope-semibold">Image Upload</Text>
 
       <View
