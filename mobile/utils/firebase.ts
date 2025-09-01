@@ -28,7 +28,8 @@ import {
     writeBatch,
     increment,
     limit,
-    startAfter
+    startAfter,
+    arrayUnion
 } from 'firebase/firestore';
 // Firebase Storage removed - using Cloudinary instead
 // import {
@@ -1209,21 +1210,50 @@ export const messageService = {
     // Mark message as read
     async markMessageAsRead(conversationId: string, messageId: string, userId: string): Promise<void> {
         try {
+            // Get the message document reference
             const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
-            const messageDoc = await getDoc(messageRef);
 
-            if (messageDoc.exists()) {
-                const messageData = messageDoc.data();
-                const readBy = messageData.readBy || [];
-
-                if (!readBy.includes(userId)) {
-                    await updateDoc(messageRef, {
-                        readBy: [...readBy, userId]
-                    });
-                }
-            }
+            // Add the user to the readBy array if they're not already there
+            await updateDoc(messageRef, {
+                readBy: arrayUnion(userId)
+            });
         } catch (error: any) {
             throw new Error(error.message || 'Failed to mark message as read');
+        }
+    },
+
+    // Mark all unread messages as read automatically when chat opens
+    async markAllUnreadMessagesAsRead(conversationId: string, userId: string): Promise<void> {
+        try {
+            // Get all messages in the conversation
+            const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+            const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
+
+            const messagesSnapshot = await getDocs(messagesQuery);
+
+            // Find ALL unread messages (any type) that haven't been read by this user
+            const unreadMessages = messagesSnapshot.docs.filter(doc => {
+                const messageData = doc.data();
+                const notReadByUser = !messageData.readBy?.includes(userId);
+
+                return notReadByUser; // Include ALL message types
+            });
+
+            // Mark each unread message as read
+            const updatePromises = unreadMessages.map(doc => {
+                return updateDoc(doc.ref, {
+                    readBy: arrayUnion(userId)
+                });
+            });
+
+            // Execute all updates
+            if (updatePromises.length > 0) {
+                await Promise.all(updatePromises);
+                console.log(`✅ Marked ${updatePromises.length} unread messages as read for user ${userId}`);
+            }
+        } catch (error: any) {
+            console.error('Failed to mark unread messages as read:', error);
+            // Don't throw error - just log it to avoid breaking the chat experience
         }
     },
 

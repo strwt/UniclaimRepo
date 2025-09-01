@@ -862,7 +862,7 @@ export default function Chat() {
   const route = useRoute<ChatRouteProp>();
   const { conversationId: initialConversationId, postTitle, postId, postOwnerId, postOwnerUserData } = route.params;
   
-  const { sendMessage, createConversation, getConversationMessages, getOlderMessages, getConversation, sendClaimRequest, updateClaimResponse, markConversationAsRead, markMessageAsRead, getConversationUnreadCount } = useMessage();
+  const { sendMessage, createConversation, getConversationMessages, getOlderMessages, getConversation, sendClaimRequest, updateClaimResponse, markConversationAsRead, markMessageAsRead, markAllUnreadMessagesAsRead, getConversationUnreadCount } = useMessage();
   const { user, userData } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -963,10 +963,15 @@ export default function Chat() {
       if (userData?.uid) {
         markConversationAsRead(conversationId, userData.uid);
       }
+
+              // Mark all unread messages as read when conversation is opened
+        if (userData?.uid && (conversationData?.postType === 'lost' || conversationData?.postType === 'found')) {
+          markAllUnreadMessagesAsRead(conversationId, userData.uid);
+        }
       
       return () => unsubscribe();
     }
-  }, [conversationId, getConversationMessages, getConversation, isInitialLoad]);
+  }, [conversationId, getConversationMessages, getConversation, isInitialLoad, conversationData, markAllUnreadMessagesAsRead, markConversationAsRead]);
 
   // Mark conversation as read when new messages arrive while user is viewing
   useEffect(() => {

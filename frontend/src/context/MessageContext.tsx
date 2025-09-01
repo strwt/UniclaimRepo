@@ -11,6 +11,7 @@ interface MessageContextType {
   getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void) => () => void;
   markConversationAsRead: (conversationId: string) => Promise<void>;
   markMessageAsRead: (conversationId: string, messageId: string) => Promise<void>;
+  markAllUnreadMessagesAsRead: (conversationId: string) => Promise<void>; // New: Mark all unread messages as read
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>; // New: Delete message function
   updateHandoverResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update handover response
   confirmHandoverIdPhoto: (conversationId: string, messageId: string) => Promise<{ success: boolean; conversationDeleted: boolean; postId?: string; error?: string }>; // New: Confirm ID photo function
@@ -110,6 +111,19 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
   };
 
+  const markAllUnreadMessagesAsRead = async (conversationId: string): Promise<void> => {
+    if (!userId) {
+      console.log('🛡️ markAllUnreadMessagesAsRead: Skipping - userId is null');
+      return;
+    }
+
+    try {
+      await messageService.markAllUnreadMessagesAsRead(conversationId, userId);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to mark all unread messages as read');
+    }
+  };
+
   const deleteMessage = async (conversationId: string, messageId: string): Promise<void> => {
     try {
       await messageService.deleteMessage(conversationId, messageId, userId!);
@@ -206,6 +220,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         getConversationMessages,
         markConversationAsRead,
         markMessageAsRead,
+        markAllUnreadMessagesAsRead,
         deleteMessage,
         updateHandoverResponse,
         confirmHandoverIdPhoto,

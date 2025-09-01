@@ -13,12 +13,13 @@ interface MessageContextType {
   getConversation: (conversationId: string) => Promise<any>; // Add getConversation function
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>; // New: Delete message function
   markMessageAsRead: (conversationId: string, messageId: string) => Promise<void>; // New: Mark message as read
+  markAllUnreadMessagesAsRead: (conversationId: string, userId: string) => Promise<void>; // New: Mark all unread messages as read
   updateHandoverResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update handover response
   confirmHandoverIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm ID photo function
   sendClaimRequest: (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string, evidencePhotos?: { url: string; uploadedAt: any; description?: string }[]) => Promise<void>; // New: Send claim request
   updateClaimResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update claim response
   confirmClaimIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm claim ID photo
-  refreshConversations: () => Promise<void>; // Add refresh function
+  refreshConversations: () => Promise<void>;
   markConversationAsRead: (conversationId: string, userId: string) => Promise<void>; // New: Mark conversation as read
   getUnreadConversationCount: (userId: string) => number; // New: Get count of conversations with unread messages
   getTotalUnreadMessageCount: (userId: string) => number; // New: Get total count of unread messages
@@ -142,6 +143,15 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
       await messageService.markMessageAsRead(conversationId, messageId, userId);
     } catch (error: any) {
       console.error('Failed to mark message as read:', error);
+      // Don't throw error - just log it
+    }
+  };
+
+  const markAllUnreadMessagesAsRead = async (conversationId: string, userId: string): Promise<void> => {
+    try {
+      await messageService.markAllUnreadMessagesAsRead(conversationId, userId);
+    } catch (error: any) {
+      console.error('Failed to mark all unread messages as read:', error);
       // Don't throw error - just log it
     }
   };
@@ -306,6 +316,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         getConversation,
         deleteMessage,
         markMessageAsRead,
+        markAllUnreadMessagesAsRead,
         updateHandoverResponse,
         confirmHandoverIdPhoto,
         sendClaimRequest,

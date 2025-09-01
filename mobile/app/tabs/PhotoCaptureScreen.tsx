@@ -90,8 +90,7 @@ export default function PhotoCaptureScreen() {
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsEditing: false,
         quality: 0.8,
       });
 
@@ -102,8 +101,18 @@ export default function PhotoCaptureScreen() {
         };
 
         if (type === 'id') {
+          // Check if ID photo already exists
+          if (idPhoto) {
+            Alert.alert('Photo Limit Reached', 'You can only upload 1 ID photo. Please remove the existing photo first.');
+            return;
+          }
           setIdPhoto(photoData);
         } else {
+          // Check if maximum evidence photos reached
+          if (evidencePhotos.length >= 3) {
+            Alert.alert('Photo Limit Reached', 'You can only upload a maximum of 3 evidence photos.');
+            return;
+          }
           setEvidencePhotos(prev => [...prev, photoData]);
         }
       }
@@ -119,8 +128,7 @@ export default function PhotoCaptureScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsEditing: false,
         quality: 0.8,
       });
 
@@ -131,8 +139,18 @@ export default function PhotoCaptureScreen() {
         };
 
         if (type === 'id') {
+          // Check if ID photo already exists
+          if (idPhoto) {
+            Alert.alert('Photo Limit Reached', 'You can only upload 1 ID photo. Please remove the existing photo first.');
+            return;
+          }
           setIdPhoto(photoData);
         } else {
+          // Check if maximum evidence photos reached
+          if (evidencePhotos.length >= 3) {
+            Alert.alert('Photo Limit Reached', 'You can only upload a maximum of 3 evidence photos.');
+            return;
+          }
           setEvidencePhotos(prev => [...prev, photoData]);
         }
       }
@@ -282,14 +300,20 @@ export default function PhotoCaptureScreen() {
           <View className="flex-row gap-3 mt-4">
             <TouchableOpacity
               onPress={() => takePhoto('id')}
-              className="flex-1 bg-blue-500 py-3 rounded-lg items-center"
+              disabled={!!idPhoto}
+              className={`flex-1 py-3 rounded-lg items-center ${
+                idPhoto ? 'bg-gray-400' : 'bg-blue-500'
+              }`}
             >
               <Ionicons name="camera" size={20} color="white" />
               <Text className="text-white font-medium mt-1">Take Photo</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => selectFromGallery('id')}
-              className="flex-1 bg-gray-500 py-3 rounded-lg items-center"
+              disabled={!!idPhoto}
+              className={`flex-1 py-3 rounded-lg items-center ${
+                idPhoto ? 'bg-gray-400' : 'bg-gray-500'
+              }`}
             >
               <Ionicons name="images" size={20} color="white" />
               <Text className="text-white font-medium mt-1">Choose Photo</Text>
@@ -331,14 +355,20 @@ export default function PhotoCaptureScreen() {
           <View className="flex-row gap-3">
             <TouchableOpacity
               onPress={() => takePhoto('evidence')}
-              className="flex-1 bg-blue-500 py-3 rounded-lg items-center"
+              disabled={evidencePhotos.length >= 3}
+              className={`flex-1 py-3 rounded-lg items-center ${
+                evidencePhotos.length >= 3 ? 'bg-gray-400' : 'bg-blue-500'
+              }`}
             >
               <Ionicons name="camera" size={20} color="white" />
               <Text className="text-white font-medium mt-1">Take Photo</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => selectFromGallery('evidence')}
-              className="flex-1 bg-gray-500 py-3 rounded-lg items-center"
+              disabled={evidencePhotos.length >= 3}
+              className={`flex-1 py-3 rounded-lg items-center ${
+                evidencePhotos.length >= 3 ? 'bg-gray-400' : 'bg-gray-500'
+              }`}
             >
               <Ionicons name="images" size={20} color="white" />
               <Text className="text-white font-medium mt-1">Choose Photo</Text>
@@ -383,32 +413,41 @@ export default function PhotoCaptureScreen() {
         {/* Evidence Photos Section */}
         {renderPhotoSection(
           'Proof of Ownership',
-          'Take photos showing proof that this item belongs to you (e.g., receipts, serial numbers, distinctive marks).',
+          `Take photos showing proof that this item belongs to you (e.g., receipts, serial numbers, distinctive marks). ${evidencePhotos.length}/3 photos taken.`,
           'evidence',
           null,
           evidencePhotos
         )}
 
-        {/* Photo Guidelines */}
-        <View className="bg-yellow-50 rounded-lg p-4 mb-6 border border-yellow-200">
-          <View className="flex-row items-start">
-            <Ionicons name="warning" size={20} color="#D97706" />
-            <View className="ml-3 flex-1">
-              <Text className="text-yellow-800 font-medium mb-2">
-                Photo Guidelines
-              </Text>
-              <Text className="text-yellow-700 text-sm">
-                • Ensure photos are clear and well-lit
-              </Text>
-              <Text className="text-yellow-700 text-sm">
-                • ID photo should show your name clearly
-              </Text>
-              <Text className="text-yellow-700 text-sm">
-                • Evidence photos should clearly show proof of ownership
-              </Text>
-            </View>
-          </View>
-        </View>
+                 {/* Photo Guidelines */}
+         <View className="bg-yellow-50 rounded-lg p-4 mb-6 border border-yellow-200">
+           <View className="flex-row items-start">
+             <Ionicons name="warning" size={20} color="#D97706" />
+             <View className="ml-3 flex-1">
+               <Text className="text-yellow-800 font-medium mb-2">
+                 Photo Guidelines
+               </Text>
+               <Text className="text-yellow-700 text-sm">
+                 • Ensure photos are clear and well-lit
+               </Text>
+               <Text className="text-yellow-700 text-sm">
+                 • ID photo should show your name clearly
+               </Text>
+               <Text className="text-yellow-700 text-sm">
+                 • Maximum of 1 ID photo allowed
+               </Text>
+               <Text className="text-yellow-700 text-sm">
+                 • Evidence photos should clearly show proof of ownership
+               </Text>
+               <Text className="text-yellow-700 text-sm">
+                 • Maximum of 3 evidence photos allowed
+               </Text>
+               <Text className="text-yellow-700 text-sm">
+                 • Full photos will be sent - no cropping required
+               </Text>
+             </View>
+           </View>
+         </View>
       </ScrollView>
 
       {/* Submit Button */}

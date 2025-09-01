@@ -39,6 +39,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     getConversationMessages,
     markConversationAsRead,
     markMessageAsRead,
+    markAllUnreadMessagesAsRead, // Add the new function
     sendClaimRequest,
     conversations,
   } = useMessage();
@@ -105,6 +106,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           markConversationAsRead(conversation.id);
         }
 
+        // Mark all unread messages as read when conversation is opened and messages are loaded
+        if (userData && conversation?.unreadCounts?.[userData.uid] > 0 && conversation?.id) {
+          markAllUnreadMessagesAsRead(conversation.id);
+        }
+
         // Scroll to bottom when conversation is opened and messages are loaded
         // Use requestAnimationFrame to ensure DOM is fully rendered
         requestAnimationFrame(() => {
@@ -114,7 +120,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
 
     return () => unsubscribe();
-  }, [conversation, getConversationMessages, markConversationAsRead, userData]);
+  }, [conversation, getConversationMessages, markConversationAsRead, userData, markAllUnreadMessagesAsRead]);
 
   // Mark conversation as read when new messages arrive while user is viewing
   useEffect(() => {
