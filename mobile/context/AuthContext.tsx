@@ -33,6 +33,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Track ban listener to clean up on logout
   const banListenerRef = useRef<(() => void) | null>(null);
+  // Track smart ban check system
+  const smartBanCheckRef = useRef<{ activatePeriodicChecks: () => void; deactivatePeriodicChecks: () => void } | null>(null);
 
   // Helper function to check if user is admin
   const checkIfAdmin = (email: string | null): boolean => {
@@ -93,6 +95,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     // User was unbanned
                     setIsBanned(false);
                     setBanInfo(null);
+                    
+                    // Deactivate periodic checks since real-time listener is working
+                    if (smartBanCheckRef.current) {
+                      smartBanCheckRef.current.deactivatePeriodicChecks();
+                    }
                   }
                 }
               },
@@ -117,13 +124,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 // Only start fallback if still authenticated
                 if (isAuthenticated) {
-                  startPeriodicBanCheck();
+                  // Start smart ban check system
+                  const smartBanCheck = startSmartBanCheck();
+                  smartBanCheckRef.current = smartBanCheck;
+                  smartBanCheck.activatePeriodicChecks();
                 }
               }
             );
 
             // Store the unsubscribe function for cleanup on logout
             banListenerRef.current = banUnsubscribe;
+            
+            // Deactivate periodic checks since real-time listener is working
+            if (smartBanCheckRef.current) {
+              smartBanCheckRef.current.deactivatePeriodicChecks();
+            }
           }
           
         } catch (error: any) {
@@ -141,6 +156,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log('Cleaning up ban listener');
           banListenerRef.current();
           banListenerRef.current = null;
+        }
+
+        // Clean up smart ban check if it exists
+        if (smartBanCheckRef.current) {
+          console.log('Cleaning up smart ban check system');
+          smartBanCheckRef.current.deactivatePeriodicChecks();
+          smartBanCheckRef.current = null;
         }
 
         setUser(null);
@@ -163,6 +185,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('Cleaning up ban listener on unmount');
         banListenerRef.current();
         banListenerRef.current = null;
+      }
+
+      // Clean up smart ban check on component unmount
+      if (smartBanCheckRef.current) {
+        console.log('Cleaning up smart ban check on unmount');
+        smartBanCheckRef.current.deactivatePeriodicChecks();
+        smartBanCheckRef.current = null;
       }
     };
   }, []);
@@ -294,7 +323,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const startPeriodicBanCheck = () => {
-    // Fallback method: check ban status every 30 seconds
+    // SMART BAN CHECKING: Only run periodic checks if real-time listener fails
+    // This prevents unnecessary quota consumption for non-banned users
+    console.log('🔄 Starting smart ban check system (mobile)');
+    
     const intervalId = setInterval(async () => {
       if (!auth.currentUser) {
         clearInterval(intervalId);
@@ -308,11 +340,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           clearInterval(intervalId);
           handleImmediateBanLogout(userData);
         }
-      } catch (error) {
-        console.warn('Periodic ban check error (mobile):', error);
+      } catch (error: any) {
+        // Handle quota errors gracefully - don't spam the console
+        if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+          console.warn('Periodic ban check quota exceeded (mobile) - will retry later');
+          // Don't clear interval - let it retry when quota resets
+        } else {
+          console.warn('Periodic ban check error (mobile):', error);
+        }
         // Continue checking - don't stop on errors
       }
-    }, 30000); // Check every 30 seconds
+    }, 300000); // Check every 5 minutes (300,000 ms)
+  };
+
+  // NEW: Smart ban checking that only runs when needed
+  const startSmartBanCheck = () => {
+    console.log('🧠 Starting smart ban check system (mobile)');
+    
+    // Only start periodic checks if real-time listener fails
+    // This prevents unnecessary quota consumption for non-banned users
+    let periodicCheckActive = false;
+    
+    const intervalId = setInterval(async () => {
+      if (!auth.currentUser) {
+        clearInterval(intervalId);
+        return;
+      }
+      
+      // Skip periodic checks if real-time listener is working
+      if (!periodicCheckActive) {
+        return;
+      }
+      
+      try {
+        const userData = await authService.getUserData(auth.currentUser.uid);
+        if (userData && userData.status === 'banned') {
+          console.log('Ban detected via periodic check (mobile)');
+          clearInterval(intervalId);
+          handleImmediateBanLogout(userData);
+        }
+      } catch (error: any) {
+        // Handle quota errors gracefully - don't spam the console
+        if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+          console.warn('Periodic ban check quota exceeded (mobile) - will retry later');
+          // Don't clear interval - let it retry when quota resets
+        } else {
+          console.warn('Periodic ban check error (mobile):', error);
+        }
+        // Continue checking - don't stop on errors
+      }
+    }, 300000); // Check every 5 minutes (300,000 ms)
+    
+    // Return function to activate periodic checks only when needed
+    return {
+      activatePeriodicChecks: () => {
+        periodicCheckActive = true;
+        console.log('⚠️ Activating periodic ban checks due to real-time listener failure');
+      },
+      deactivatePeriodicChecks: () => {
+        periodicCheckActive = false;
+        console.log('✅ Deactivating periodic ban checks - real-time listener working');
+      }
+    };
   };
 
   return (
