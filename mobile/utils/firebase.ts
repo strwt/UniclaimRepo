@@ -1529,80 +1529,61 @@ export const messageService = {
 
     // Get messages for a conversation with pagination
     getConversationMessages(conversationId: string, callback: (messages: any[]) => void, messageLimit: number = 50) {
-        // 🔍 Use enhanced listener manager for deduplication
-        const listenerKey = `conversation-messages-${conversationId}`;
+        console.log('🔧 [getConversationMessages] Setting up message listener:', {
+            conversationId,
+            messageLimit: messageLimit
+        });
 
-        return listenerManager.startMessageListener(
-            listenerKey,
-            'messages',
-            () => {
-                // 🔍 Track listener creation for quota monitoring
-                quotaMonitor.trackListener(`conversations/${conversationId}/messages`, 'getConversationMessages');
-
-                console.log('🔧 [getConversationMessages] Setting up message listener:', {
-                    conversationId,
-                    messageLimit: Math.min(messageLimit, 25) // Reduced from 50 to 25
-                });
-
-                const q = query(
-                    collection(db, 'conversations', conversationId, 'messages'),
-                    orderBy('timestamp', 'asc'),
-                    limit(Math.min(messageLimit, 25)) // Reduced limit for quota optimization
-                );
-
-                return onSnapshot(q, (snapshot) => {
-                    const messages = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-
-                    // 🔍 Enhanced logging for read receipt debugging
-                    const changes = snapshot.docChanges();
-                    const hasReadByChanges = changes.some(change =>
-                        change.type === 'modified' &&
-                        change.doc.data().readBy !== change.doc.data().readBy
-                    );
-
-                    console.log('🔧 [getConversationMessages] Received message update:', {
-                        conversationId,
-                        messageCount: messages.length,
-                        hasChanges: changes.length > 0,
-                        hasReadByChanges,
-                        changes: changes.map(change => ({
-                            type: change.type,
-                            docId: change.doc.id,
-                            hasReadBy: !!change.doc.data().readBy,
-                            readByLength: change.doc.data().readBy?.length || 0
-                        }))
-                    });
-
-                    // 🔍 Broadcast to all callbacks using the listener manager
-                    listenerManager.broadcastToCallbacks(listenerKey, messages);
-                }, (error) => {
-                    console.error('❌ [getConversationMessages] Error in message listener:', {
-                        conversationId,
-                        errorCode: error.code,
-                        errorMessage: error.message
-                    });
-
-                    if (error.code === 'resource-exhausted') {
-                        console.warn('⚠️ [QUOTA] Firebase quota exceeded in getConversationMessages');
-                        quotaMonitor.trackRead(`conversations/${conversationId}/messages`, 'quota_exceeded');
-                        listenerManager.broadcastToCallbacks(listenerKey, []);
-                    } else if (error.code === 'permission-denied') {
-                        console.warn('⚠️ [getConversationMessages] Permission denied - user may not have access to this conversation');
-                        listenerManager.broadcastToCallbacks(listenerKey, []);
-                    } else if (error.code === 'not-found') {
-                        console.warn('⚠️ [getConversationMessages] Conversation not found - may have been deleted');
-                        listenerManager.broadcastToCallbacks(listenerKey, []);
-                    } else {
-                        console.error('❌ [getConversationMessages] Unknown error fetching conversation messages:', error);
-                        listenerManager.broadcastToCallbacks(listenerKey, []);
-                    }
-                });
-            },
-            callback
+        // ✅ SIMPLIFIED: Direct message listener setup without complex listener manager
+        const q = query(
+            collection(db, 'conversations', conversationId, 'messages'),
+            orderBy('timestamp', 'asc'),
+            limit(messageLimit)
         );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const messages = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            console.log('🔧 [getConversationMessages] Received message update:', {
+                conversationId,
+                messageCount: messages.length,
+                hasChanges: snapshot.docChanges().length > 0,
+                lastMessage: (messages[messages.length - 1] as any)?.text || 'none'
+            });
+
+            // ✅ DIRECT: Call the callback directly for immediate updates
+            try {
+                callback(messages);
+            } catch (error) {
+                console.error('❌ [getConversationMessages] Error in callback:', error);
+            }
+        }, (error) => {
+            console.error('❌ [getConversationMessages] Error in message listener:', {
+                conversationId,
+                errorCode: error.code,
+                errorMessage: error.message
+            });
+
+            if (error.code === 'resource-exhausted') {
+                console.warn('⚠️ [QUOTA] Firebase quota exceeded in getConversationMessages');
+                quotaMonitor.trackRead(`conversations/${conversationId}/messages`, 'quota_exceeded');
+                callback([]);
+            } else if (error.code === 'permission-denied') {
+                console.warn('⚠️ [QUOTA] Permission denied - user may not have access to this conversation');
+                callback([]);
+            } else if (error.code === 'not-found') {
+                console.warn('⚠️ [QUOTA] Conversation not found - may have been deleted');
+                callback([]);
+            } else {
+                console.error('❌ [QUOTA] Unknown error fetching conversation messages:', error);
+                callback([]);
+            }
+        });
+
+        return unsubscribe;
     },
 
     // Get older messages for pagination

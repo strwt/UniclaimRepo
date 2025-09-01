@@ -1023,8 +1023,7 @@ export default function Chat() {
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-<<<<<<< HEAD
-  
+
   // Throttling and dedupe for read-marking
   const lastConversationReadMarkTsRef = useRef<{ [key: string]: number }>({});
   const hasBatchMarkedRef = useRef<Set<string>>(new Set());
@@ -1044,51 +1043,7 @@ export default function Chat() {
     readMarkingScheduled: false
   });
   
-  // ✅ QUOTA OPTIMIZATION: Cache quota status to prevent constant checking
-  const quotaCacheRef = useRef<{
-    status: 'normal' | 'limited' | 'unknown';
-    lastChecked: number;
-    warningShown: boolean;
-  }>({
-    status: 'unknown',
-    lastChecked: 0,
-    warningShown: false
-  });
-
-  // ✅ QUOTA MANAGEMENT: Function to manually reset quota cache when needed
-  const resetQuotaCache = useCallback(() => {
-    console.log('🔧 [Chat] Manually resetting quota cache');
-    quotaCacheRef.current = {
-      status: 'unknown',
-      lastChecked: 0,
-      warningShown: false
-    };
-  }, []);
-
-  // ✅ QUOTA MANAGEMENT: Function to force refresh quota status
-  const refreshQuotaStatus = useCallback(async () => {
-    console.log('🔧 [Chat] Force refreshing quota status...');
-    try {
-      const { quotaManager } = await import('@/utils/firebase');
-      const now = Date.now();
-      
-      if (quotaManager.shouldReduceOperations()) {
-        quotaCacheRef.current.status = 'limited';
-        console.warn('⚠️ [Chat] Quota status refreshed: LIMITED');
-      } else {
-        quotaCacheRef.current.status = 'normal';
-        console.log('✅ [Chat] Quota status refreshed: NORMAL');
-      }
-      
-      quotaCacheRef.current.lastChecked = now;
-      quotaCacheRef.current.warningShown = false; // Allow warning to show again
-      
-    } catch (error) {
-      console.error('❌ [Chat] Failed to refresh quota status:', error);
-      quotaCacheRef.current.status = 'normal'; // Fall back to normal
-      quotaCacheRef.current.lastChecked = Date.now();
-    }
-  }, []);
+     // ✅ SIMPLIFIED: Removed complex quota management
   // Check if handover button should be shown
   const shouldShowHandoverButton = () => {
     if (!userData || !postOwnerId) return false;
@@ -1139,7 +1094,6 @@ export default function Chat() {
 
   useEffect(() => {
     // If no conversation exists, create one immediately
-<<<<<<< HEAD
     console.log('🔧 [Chat] Checking if conversation needs to be created:', {
       hasConversationId: !!conversationId,
       hasPostId: !!postId,
@@ -1151,23 +1105,12 @@ export default function Chat() {
     
     if (!conversationId && postId && postOwnerId && user && userData && !loading) {
       console.log('🔧 [Chat] Creating new conversation...');
-=======
-    if (
-      !conversationId &&
-      postId &&
-      postOwnerId &&
-      user &&
-      userData &&
-      !loading
-    ) {
->>>>>>> 9c9796d97a6b45ce037dc48e491ee9062050d005
       handleCreateConversation();
     }
   }, [postId, postOwnerId, user, userData, loading]);
 
   useEffect(() => {
     if (conversationId) {
-<<<<<<< HEAD
       // ✅ OPERATION GUARD: Prevent duplicate setups for the same conversation
       if (isConversationSetup && currentSetupConversationId === conversationId) {
         console.log('🔧 [Chat] Conversation already set up, skipping duplicate setup:', conversationId);
@@ -1180,108 +1123,23 @@ export default function Chat() {
       setIsConversationSetup(true);
       setCurrentSetupConversationId(conversationId);
       
-      // ✅ OPTIMIZED: Use cached quota status instead of checking every time
-      const setupConversation = async () => {
-        try {
-          let quotaStatus = quotaCacheRef.current.status;
+             // ✅ SIMPLIFIED: Direct message listener setup without quota complexity
+       const setupConversation = async () => {
+         try {
+           console.log('🔧 [Chat] Setting up conversation without quota checks');
+           setSetupProgress(prev => ({ ...prev, quotaChecked: true }));
           
-          // Only check quota if we haven't checked recently (first time or after 5 minutes)
-          const now = Date.now();
-          const shouldCheckQuota = quotaCacheRef.current.status === 'unknown' || 
-                                 (now - quotaCacheRef.current.lastChecked) > 300000; // 5 minutes
-          
-          if (shouldCheckQuota) {
-            console.log('🔧 [Chat] Checking Firebase quota status...');
-            try {
-              const { quotaManager } = await import('@/utils/firebase');
-              if (quotaManager.shouldReduceOperations()) {
-                quotaStatus = 'limited';
-                console.warn('⚠️ [Chat] Quota limited - using reduced functionality');
-                
-                // Show user-friendly warning (only once per session)
-                if (!quotaCacheRef.current.warningShown) {
-                  Alert.alert(
-                    'Limited Functionality',
-                    'Due to high server usage, some chat features may be temporarily limited. Please try again later.',
-                    [{ text: 'OK' }]
-                  );
-                  quotaCacheRef.current.warningShown = true;
-                }
-              } else {
-                quotaStatus = 'normal';
-                console.log('✅ [Chat] Quota normal - full functionality available');
-              }
-              
-              // Cache the quota check result
-              quotaCacheRef.current.status = quotaStatus;
-              quotaCacheRef.current.lastChecked = now;
-              setSetupProgress(prev => ({ ...prev, quotaChecked: true }));
-              
-            } catch (error: any) {
-              console.error('❌ [Chat] Quota check failed:', error.message || 'Unknown error');
-              quotaStatus = 'normal'; // Fall back to normal on error
-              quotaCacheRef.current.status = quotaStatus;
-              quotaCacheRef.current.lastChecked = now;
-              setSetupProgress(prev => ({ ...prev, quotaChecked: true }));
-            }
-          } else {
-            // Use cached quota status - simplified logging
-            const timeAgo = Math.round((now - quotaCacheRef.current.lastChecked) / 1000);
-            console.log(`🔧 [Chat] Using cached quota: ${quotaStatus} (${timeAgo}s ago)`);
-            setSetupProgress(prev => ({ ...prev, quotaChecked: true }));
-          }
-          
-          if (quotaStatus === 'limited') {
-            // Use limited functionality - only load messages, skip read marking
-            console.log('🔧 [Chat] Setting up limited functionality (messages only)');
-            
-            console.log('🔧 [Chat] Setting up message listener with limit 50 (limited mode)');
-            const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
-              console.log('🔧 [Chat] Message listener callback received (limited mode):', {
-                conversationId,
-                messageCount: loadedMessages.length,
-                isInitialLoad
-              });
-              
-              setMessages(loadedMessages);
-              setIsInitialLoad(false);
-              setSetupProgress(prev => ({ ...prev, messagesLoaded: true }));
-              
-              if (loadedMessages.length < 50) {
-                setHasMoreMessages(false);
-              }
-              
-              if (isInitialLoad) {
-                scrollToBottom();
-              }
-            }, 50);
-            
-            // Fetch basic conversation data only
-            const fetchConversationData = async () => {
-              try {
-                const data = await getConversation(conversationId);
-                setConversationData(data);
-                setSetupProgress(prev => ({ ...prev, conversationDataFetched: true }));
-              } catch (error: any) {
-                console.error('❌ [Chat] Failed to fetch conversation data:', error.message);
-              }
-            };
-            
-            fetchConversationData();
-            
-            return unsubscribe;
-          }
-          
-          // ✅ Normal quota - proceed with full functionality
-          console.log('🔧 [Chat] Setting up full functionality (messages + read marking)');
-          
-          // Load initial messages with pagination (limit to 50 messages)
+          // ✅ SIMPLIFIED: Single, reliable message listener setup
           console.log('🔧 [Chat] Setting up message listener with limit 50');
+          console.log('🔧 [Chat] About to call getConversationMessages for conversation:', conversationId);
+          
           const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
             console.log('🔧 [Chat] Message listener callback received:', {
               conversationId,
               messageCount: loadedMessages.length,
-              isInitialLoad
+              isInitialLoad,
+              lastMessageText: loadedMessages[loadedMessages.length - 1]?.text || 'none',
+              timestamp: new Date().toISOString()
             });
             
             setMessages(loadedMessages);
@@ -1298,6 +1156,8 @@ export default function Chat() {
               scrollToBottom();
             }
           }, 50);
+          
+          console.log('🔧 [Chat] Message listener setup complete, unsubscribe function:', typeof unsubscribe);
           
           // Fetch conversation data for handover button logic
           const fetchConversationData = async () => {
@@ -1317,42 +1177,34 @@ export default function Chat() {
             markConversationAsRead(conversationId, userData.uid);
           }
 
-          // ✅ FIXED: Don't check conversationData here - it will be undefined on first run
           // Mark all unread messages as read when conversation is opened
           if (userData?.uid) {
-            // We'll handle this in a separate useEffect after conversationData is loaded
             setSetupProgress(prev => ({ ...prev, readMarkingScheduled: true }));
             console.log('🔧 [Chat] Will mark messages as read after conversation data loads');
           }
           
           return unsubscribe;
-          
         } catch (error: any) {
-          console.error('❌ [Chat] Setup failed, using fallback:', error.message);
-          // Fall back to limited functionality on error
-          console.log('🔧 [Chat] Setting up message listener with limit 50 (fallback mode)');
-          const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
-            console.log('🔧 [Chat] Message listener callback received (fallback mode):', {
-              conversationId,
-              messageCount: loadedMessages.length,
-              isInitialLoad
-            });
-            
-            setMessages(loadedMessages);
-            setIsInitialLoad(false);
-            setSetupProgress(prev => ({ ...prev, messagesLoaded: true }));
-          }, 50);
-          
-          return unsubscribe;
+          console.error('❌ [Chat] Setup failed:', error.message);
+          // Return empty cleanup function on error
+          return () => {};
         }
       };
       
-      // Execute conversation setup
-      const cleanupPromise = setupConversation();
+      // Execute conversation setup and store unsubscribe function
+      let unsubscribeFunction: (() => void) | null = null;
+      setupConversation().then((unsubscribe) => {
+        unsubscribeFunction = unsubscribe;
+        console.log('🔧 [Chat] Message listener setup promise resolved, unsubscribe function stored:', typeof unsubscribe);
+      });
+      
       return () => {
-        cleanupPromise.then((unsubscribe: any) => {
-          if (unsubscribe) unsubscribe();
-        });
+        if (unsubscribeFunction) {
+          console.log('🔧 [Chat] Cleaning up message listener for conversation:', conversationId);
+          unsubscribeFunction();
+        } else {
+          console.log('🔧 [Chat] No unsubscribe function to clean up for conversation:', conversationId);
+        }
       };
     } else {
       // Conversation ID cleared - reset setup state
@@ -1363,65 +1215,6 @@ export default function Chat() {
       }
     }
   }, [conversationId, getConversationMessages, getConversation, userData?.uid, markConversationAsRead]);
-=======
-      // Load initial messages with pagination (limit to 50 messages)
-      const unsubscribe = getConversationMessages(
-        conversationId,
-        (loadedMessages) => {
-          setMessages(loadedMessages);
-          setIsInitialLoad(false);
-
-          // If we got fewer messages than the limit, there are no more messages
-          if (loadedMessages.length < 50) {
-            setHasMoreMessages(false);
-          }
-
-          // Only scroll to bottom on initial load
-          if (isInitialLoad) {
-            scrollToBottom();
-          }
-        },
-        50
-      );
-
-      // Fetch conversation data for handover button logic
-      const fetchConversationData = async () => {
-        try {
-          const data = await getConversation(conversationId);
-          setConversationData(data);
-        } catch (error) {
-          console.error("Failed to fetch conversation data:", error);
-        }
-      };
-
-      fetchConversationData();
-
-      // Mark conversation as read when user opens it
-      if (userData?.uid) {
-        markConversationAsRead(conversationId, userData.uid);
-      }
-
-      // Mark all unread messages as read when conversation is opened
-      if (
-        userData?.uid &&
-        (conversationData?.postType === "lost" ||
-          conversationData?.postType === "found")
-      ) {
-        markAllUnreadMessagesAsRead(conversationId, userData.uid);
-      }
-
-      return () => unsubscribe();
-    }
-  }, [
-    conversationId,
-    getConversationMessages,
-    getConversation,
-    isInitialLoad,
-    conversationData,
-    markAllUnreadMessagesAsRead,
-    markConversationAsRead,
-  ]);
->>>>>>> 9c9796d97a6b45ce037dc48e491ee9062050d005
 
   // ✅ NEW: Handle message marking after conversation data loads (guarded & once per conversation)
   useEffect(() => {
@@ -1450,15 +1243,14 @@ export default function Chat() {
     const { quotaChecked, messagesLoaded, conversationDataFetched, readMarkingScheduled } = setupProgress;
     
     if (quotaChecked && messagesLoaded && conversationDataFetched && readMarkingScheduled) {
-      // ✅ SUMMARY LOG: Show overall conversation setup status
-      console.log('🎯 [Chat] Conversation Setup Complete:', {
-        conversationId,
-        quotaStatus: quotaCacheRef.current.status,
-        functionality: quotaCacheRef.current.status === 'limited' ? 'limited (messages only)' : 'full (messages + read marking)',
-        messageCount: messages.length,
-        hasConversationData: !!conversationData,
-        readMarkingScheduled: true
-      });
+             // ✅ SUMMARY LOG: Show overall conversation setup status
+       console.log('🎯 [Chat] Conversation Setup Complete:', {
+         conversationId,
+         functionality: 'full (messages + read marking)',
+         messageCount: messages.length,
+         hasConversationData: !!conversationData,
+         readMarkingScheduled: true
+       });
       
       // Reset progress for next conversation
       setSetupProgress({
@@ -1472,18 +1264,13 @@ export default function Chat() {
 
   // ✅ NEW: Cleanup and reset quota cache when user changes or app state changes
   useEffect(() => {
-    // Reset quota cache when user changes (login/logout)
-    if (userData?.uid) {
-      console.log('🔧 [Chat] User authenticated, quota cache ready for use');
-    } else {
-      // User logged out - reset quota cache
-      console.log('🔧 [Chat] User logged out, resetting quota cache');
-      quotaCacheRef.current = {
-        status: 'unknown',
-        lastChecked: 0,
-        warningShown: false
-      };
-    }
+         // User authentication state changed
+     if (userData?.uid) {
+       console.log('🔧 [Chat] User authenticated');
+     } else {
+       // User logged out
+       console.log('🔧 [Chat] User logged out');
+     }
   }, [userData?.uid]);
 
   // ✅ NEW: Reset quota cache when conversation changes significantly
@@ -1500,19 +1287,13 @@ export default function Chat() {
   // ✅ NEW: Handle app state changes (background/foreground) to reset quota cache
   useEffect(() => {
     const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState === 'active') {
-        // App came to foreground - check if we should refresh quota status
-        const now = Date.now();
-        const timeSinceLastCheck = now - quotaCacheRef.current.lastChecked;
-        
-        if (timeSinceLastCheck > 600000) { // 10 minutes
-          // ✅ CONSOLIDATED: Single log for app state change with quota info
-          console.log('🔧 [Chat] App state: foreground (quota cache may be stale)');
-        }
-      } else if (nextAppState === 'background') {
-        // App went to background - log for debugging
-        console.log('🔧 [Chat] App state: background (quota cache preserved)');
-      }
+             if (nextAppState === 'active') {
+         // App came to foreground
+         console.log('🔧 [Chat] App state: foreground');
+       } else if (nextAppState === 'background') {
+         // App went to background
+         console.log('🔧 [Chat] App state: background');
+       }
     };
 
     // Add app state change listener
@@ -1644,12 +1425,7 @@ export default function Chat() {
     });
 
     if (!postId || !postOwnerId) {
-<<<<<<< HEAD
-      console.error('❌ [Chat] Missing required data for conversation creation');
-      Alert.alert('Error', 'Missing post information');
-=======
       Alert.alert("Error", "Missing post information");
->>>>>>> 9c9796d97a6b45ce037dc48e491ee9062050d005
       return;
     }
 
@@ -1667,12 +1443,7 @@ export default function Chat() {
       console.log('✅ [Chat] Conversation created successfully:', newConversationId);
       setConversationId(newConversationId);
     } catch (error: any) {
-<<<<<<< HEAD
-      console.error('❌ [Chat] Failed to create conversation:', error);
-      Alert.alert('Error', error.message);
-=======
       Alert.alert("Error", error.message);
->>>>>>> 9c9796d97a6b45ce037dc48e491ee9062050d005
     } finally {
       setLoading(false);
     }
@@ -1717,26 +1488,10 @@ export default function Chat() {
         messageText,
         userData.profilePicture
       );
-<<<<<<< HEAD
-
-      console.log('✅ [Chat] Message sent successfully to Firebase');
-      
-      // The real-time listener should update the message with the real Firebase ID
-      // If it doesn't, we'll need to handle that case
-      
-    } catch (error: any) {
-      console.error('❌ [Chat] Failed to send message:', error);
-      
-      // Remove the temporary message if sending failed
-      setMessages(prev => prev.filter(msg => msg.id !== `temp-${Date.now()}`));
-      
-      Alert.alert('Error', error.message);
-=======
       setNewMessage("");
       scrollToBottomOnNewMessage();
     } catch (error: any) {
       Alert.alert("Error", error.message);
->>>>>>> 9c9796d97a6b45ce037dc48e491ee9062050d005
     }
   };
 
@@ -1807,24 +1562,12 @@ export default function Chat() {
     }
 
     // Navigate to claim form screen
-<<<<<<< HEAD
     (navigation as any).navigate('ClaimFormScreen', {
       conversationId,
       postId,
       postTitle,
       postOwnerId,
     });
-=======
-    navigation.navigate(
-      "ClaimFormScreen" as never,
-      {
-        conversationId,
-        postId,
-        postTitle,
-        postOwnerId,
-      } as never
-    );
->>>>>>> 9c9796d97a6b45ce037dc48e491ee9062050d005
   };
 
   return (
@@ -1882,18 +1625,33 @@ export default function Chat() {
         {shouldShowClaimItemButton() && (
           <TouchableOpacity
             className="ml-3 px-4 py-2 bg-blue-500 rounded-lg"
-<<<<<<< HEAD
-            onPress={handleClaimRequest}
-=======
             onPress={() => {
               console.log("CLAIM BUTTON PRESSED ON MOBILE!");
               handleClaimRequest();
             }}
->>>>>>> 9c9796d97a6b45ce037dc48e491ee9062050d005
           >
             <Text className="text-white font-medium text-sm">Claim Item</Text>
           </TouchableOpacity>
         )}
+        
+        {/* Debug: Manual refresh button to test message listener */}
+        <TouchableOpacity
+          className="ml-3 px-4 py-2 bg-yellow-500 rounded-lg"
+          onPress={() => {
+            console.log('🔧 [Chat] Manual refresh button pressed');
+            console.log('🔧 [Chat] Current messages count:', messages.length);
+            console.log('🔧 [Chat] Current conversation ID:', conversationId);
+            // Force a manual refresh by calling getConversationMessages again
+            if (conversationId) {
+              getConversationMessages(conversationId, (loadedMessages) => {
+                console.log('🔧 [Chat] Manual refresh received messages:', loadedMessages.length);
+                setMessages(loadedMessages);
+              }, 50);
+            }
+          }}
+        >
+          <Text className="text-white font-medium text-xs">Refresh</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Messages */}
@@ -1924,12 +1682,8 @@ export default function Chat() {
                 message={item}
                 isOwnMessage={item.senderId === user.uid}
                 conversationId={conversationId}
-<<<<<<< HEAD
-                currentUserId={user?.uid || ''}
-                isCurrentUserPostOwner={postOwnerId === userData?.uid}
-=======
                 currentUserId={user?.uid || ""}
->>>>>>> 9c9796d97a6b45ce037dc48e491ee9062050d005
+                isCurrentUserPostOwner={postOwnerId === userData?.uid}
                 onHandoverResponse={handleHandoverResponse}
                 onClaimResponse={handleClaimResponse}
                 onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
