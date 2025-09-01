@@ -16,6 +16,7 @@ import type { Post } from "@/types/type";
 import { auth } from "@/utils/firebase";
 import { postService } from "@/utils/firebase";
 import EditTicketModal from "@/components/EditTicketModal";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function Ticket() {
   const { userData, loading: authLoading } = useAuth();
@@ -175,19 +176,17 @@ export default function Ticket() {
                 Search
               </Text>
             </TouchableOpacity>
-          </View>
 
-          {/* Clear Search Button */}
-          {searchText.length > 0 && (
-            <TouchableOpacity
-              onPress={handleClearSearch}
-              className="bg-gray-200 rounded-md h-[2.5rem] px-4 justify-center items-center self-start"
-            >
-              <Text className="text-black font-manrope-medium text-sm">
-                Clear Search
-              </Text>
-            </TouchableOpacity>
-          )}
+            {/* Clear Search Button */}
+            {searchText.length > 0 && (
+              <TouchableOpacity
+                onPress={handleClearSearch}
+                className="bg-red-500 rounded-md h-[3.3rem] px-4 justify-center items-center self-start"
+              >
+                <Ionicons name="close-outline" size={23} color="#fff" />
+              </TouchableOpacity>
+            )}
+          </View>
 
           {/* Toggle Buttons for Active/Completed */}
           <View className="flex-row mt-4 gap-2">
@@ -385,7 +384,7 @@ const TicketCard = ({
 
         {/* Category and Type */}
         <View className="flex-row items-center gap-2 mt-3">
-          <View className="bg-gray-100 px-2 py-1 rounded">
+          <View className="bg-gray-300 px-2 py-1 rounded">
             <Text className="text-xs text-gray-600 font-manrope-medium capitalize">
               {post.category}
             </Text>
@@ -410,7 +409,7 @@ const TicketCard = ({
           {/* Edit Button */}
           <TouchableOpacity
             onPress={() => onEdit(post)}
-            className="flex-1 bg-teal-500 rounded-md h-[3.3rem] px-4 justify-center items-center"
+            className="flex-1 bg-navyblue rounded-md h-[3.3rem] px-4 justify-center items-center"
           >
             <Text className="text-white font-manrope-medium text-base">
               Edit Ticket
