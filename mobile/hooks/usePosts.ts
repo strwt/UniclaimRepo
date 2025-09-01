@@ -335,3 +335,63 @@ export const useUserPostsWithSet = (userEmail: string) => {
 
     return { posts, setPosts, loading };
 };
+
+// Custom hook for resolved posts (completed reports)
+export const useResolvedPosts = () => {
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const { isAuthenticated } = useAuth();
+    const unsubscribeRef = useRef<(() => void) | null>(null);
+
+    useEffect(() => {
+        // If user is not authenticated, clear posts and don't set up listeners
+        if (!isAuthenticated) {
+            console.log('User not authenticated - clearing resolved posts and listeners');
+
+            // Clear posts
+            setPosts([]);
+            setLoading(false);
+            setError(null);
+
+            // Clean up any existing listener
+            if (unsubscribeRef.current) {
+                console.log('Cleaning up resolved posts listener');
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+            return;
+        }
+
+        // User is authenticated - set up listeners
+        console.log('User authenticated - setting up resolved posts listener');
+
+        setLoading(true);
+        setError(null);
+
+        // Subscribe to resolved posts using the dedicated method
+        const unsubscribe = listenerManager.startListener('resolved-posts', () => {
+            return postService.getResolvedPosts((fetchedPosts: Post[]) => {
+                console.log('🔍 [DEBUG] useResolvedPosts: Fetched resolved posts count:', fetchedPosts.length);
+                console.log('🔍 [DEBUG] useResolvedPosts: Sample resolved posts:', fetchedPosts.slice(0, 3).map(p => ({ id: p.id, status: p.status, title: p.title })));
+
+                setPosts(fetchedPosts);
+                setLoading(false);
+                setError(null);
+            });
+        });
+
+        // Store unsubscribe function for cleanup
+        unsubscribeRef.current = unsubscribe;
+
+        return () => {
+            if (unsubscribe) {
+                console.log('Cleaning up resolved posts listener on unmount');
+                unsubscribe();
+                unsubscribeRef.current = null;
+            }
+        };
+    }, [isAuthenticated]);
+
+    return { posts, loading, error };
+};
