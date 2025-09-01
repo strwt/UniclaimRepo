@@ -154,7 +154,7 @@ export default function HomePage() {
             setTimeout(() => setIsLoading(false), 200);
           }}
         >
-          Lost Item Reports
+          Lost Items
         </button>
 
         <button
@@ -170,7 +170,7 @@ export default function HomePage() {
             setTimeout(() => setIsLoading(false), 200);
           }}
         >
-          Found Item Reports
+          Found Items
         </button>
 
         <button
@@ -186,7 +186,7 @@ export default function HomePage() {
             setTimeout(() => setIsLoading(false), 200);
           }}
         >
-          Completed Reports
+          Completed Items
         </button>
       </div>
 

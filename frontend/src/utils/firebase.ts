@@ -467,6 +467,14 @@ export const messageService = {
                 },
                 ...unreadCountUpdates
             });
+
+            // 🔒 Cleanup old messages after sending to maintain 50-message limit
+            try {
+                await this.cleanupOldMessages(conversationId);
+            } catch (cleanupError) {
+                console.warn('⚠️ [sendMessage] Message cleanup failed, but message was sent successfully:', cleanupError);
+                // Don't throw error - cleanup failure shouldn't break message sending
+            }
         } catch (error: any) {
             throw new Error(error.message || 'Failed to send message');
         }
@@ -596,6 +604,14 @@ export const messageService = {
                 },
                 ...unreadCountUpdates
             });
+
+            // 🔒 Cleanup old messages after sending to maintain 50-message limit
+            try {
+                await this.cleanupOldMessages(conversationId);
+            } catch (cleanupError) {
+                console.warn('⚠️ [sendHandoverRequest] Message cleanup failed, but handover request was sent successfully:', cleanupError);
+                // Don't throw error - cleanup failure shouldn't break handover request
+            }
         } catch (error: any) {
             throw new Error(error.message || 'Failed to send handover request');
         }
@@ -727,6 +743,14 @@ export const messageService = {
                 },
                 ...unreadCountUpdates
             });
+
+            // 🔒 Cleanup old messages after sending to maintain 50-message limit
+            try {
+                await this.cleanupOldMessages(conversationId);
+            } catch (cleanupError) {
+                console.warn('⚠️ [sendClaimRequest] Message cleanup failed, but claim request was sent successfully:', cleanupError);
+                // Don't throw error - cleanup failure shouldn't break claim request
+            }
         } catch (error: any) {
             throw new Error(error.message || 'Failed to send claim request');
         }
@@ -1383,11 +1407,12 @@ export const messageService = {
         }
     },
 
-    // Get messages for a conversation
+    // Get messages for a conversation with 50-message limit
     getConversationMessages(conversationId: string, callback: (messages: any[]) => void) {
         const q = query(
             collection(db, 'conversations', conversationId, 'messages'),
-            orderBy('timestamp', 'asc')
+            orderBy('timestamp', 'asc'),
+            limit(50) // 🔒 Limit to 50 messages for performance
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -1405,6 +1430,46 @@ export const messageService = {
         return () => {
             listenerManager.removeListener(listenerId);
         };
+    },
+
+    // 🔒 Cleanup old messages when conversation exceeds 50 messages
+    async cleanupOldMessages(conversationId: string): Promise<void> {
+        try {
+            console.log('🔧 [cleanupOldMessages] Starting cleanup for conversation:', conversationId);
+
+            // Get all messages ordered by timestamp (oldest first)
+            const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+            const messagesQuery = query(
+                messagesRef,
+                orderBy('timestamp', 'asc')
+            );
+
+            const messagesSnapshot = await getDocs(messagesQuery);
+            const totalMessages = messagesSnapshot.docs.length;
+
+            // If we have more than 50 messages, delete the oldest ones
+            if (totalMessages > 50) {
+                const messagesToDelete = totalMessages - 50;
+                console.log(`🔧 [cleanupOldMessages] Found ${totalMessages} messages, deleting ${messagesToDelete} oldest messages`);
+
+                // Get the oldest messages to delete
+                const oldestMessages = messagesSnapshot.docs.slice(0, messagesToDelete);
+
+                // Delete oldest messages in batch
+                const deletePromises = oldestMessages.map(doc => {
+                    console.log(`🗑️ [cleanupOldMessages] Deleting message: ${doc.id}`);
+                    return deleteDoc(doc.ref);
+                });
+
+                await Promise.all(deletePromises);
+                console.log(`✅ [cleanupOldMessages] Successfully deleted ${messagesToDelete} old messages`);
+            } else {
+                console.log(`🔧 [cleanupOldMessages] No cleanup needed - only ${totalMessages} messages`);
+            }
+        } catch (error: any) {
+            console.error('❌ [cleanupOldMessages] Failed to cleanup old messages:', error);
+            // Don't throw error - cleanup failure shouldn't break chat functionality
+        }
     },
 
     // Mark conversation as read

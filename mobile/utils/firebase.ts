@@ -676,6 +676,14 @@ export const messageService = {
             });
             console.log('✅ [sendMessage] Conversation updated successfully');
 
+            // 🔒 Cleanup old messages after sending to maintain 50-message limit
+            try {
+                await this.cleanupOldMessages(conversationId);
+            } catch (cleanupError) {
+                console.warn('⚠️ [sendMessage] Message cleanup failed, but message was sent successfully:', cleanupError);
+                // Don't throw error - cleanup failure shouldn't break message sending
+            }
+
         } catch (error: any) {
             console.error('❌ Mobile: Failed to send message:', error);
             console.error('❌ Mobile: Error details:', {
@@ -759,6 +767,14 @@ export const messageService = {
                 ...unreadCountUpdates
             });
 
+            // 🔒 Cleanup old messages after sending to maintain 50-message limit
+            try {
+                await this.cleanupOldMessages(conversationId);
+            } catch (cleanupError) {
+                console.warn('⚠️ [sendHandoverRequest] Message cleanup failed, but handover request was sent successfully:', cleanupError);
+                // Don't throw error - cleanup failure shouldn't break handover request
+            }
+
         } catch (error: any) {
             console.error('❌ Mobile: Failed to send handover request:', error);
             throw new Error(error.message || 'Failed to send handover request');
@@ -841,6 +857,14 @@ export const messageService = {
                 },
                 ...unreadCountUpdates
             });
+
+            // 🔒 Cleanup old messages after sending to maintain 50-message limit
+            try {
+                await this.cleanupOldMessages(conversationId);
+            } catch (cleanupError) {
+                console.warn('⚠️ [sendClaimRequest] Message cleanup failed, but claim request was sent successfully:', cleanupError);
+                // Don't throw error - cleanup failure shouldn't break claim request
+            }
 
         } catch (error: any) {
             console.error('❌ Mobile: Failed to send claim request:', error);
@@ -1640,6 +1664,46 @@ export const messageService = {
         }
 
         throw new Error('Failed to get older messages after multiple attempts');
+    },
+
+    // 🔒 Cleanup old messages when conversation exceeds 50 messages
+    async cleanupOldMessages(conversationId: string): Promise<void> {
+        try {
+            console.log('🔧 [cleanupOldMessages] Starting cleanup for conversation:', conversationId);
+
+            // Get all messages ordered by timestamp (oldest first)
+            const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+            const messagesQuery = query(
+                messagesRef,
+                orderBy('timestamp', 'asc')
+            );
+
+            const messagesSnapshot = await getDocs(messagesQuery);
+            const totalMessages = messagesSnapshot.docs.length;
+
+            // If we have more than 50 messages, delete the oldest ones
+            if (totalMessages > 50) {
+                const messagesToDelete = totalMessages - 50;
+                console.log(`🔧 [cleanupOldMessages] Found ${totalMessages} messages, deleting ${messagesToDelete} oldest messages`);
+
+                // Get the oldest messages to delete
+                const oldestMessages = messagesSnapshot.docs.slice(0, messagesToDelete);
+
+                // Delete oldest messages in batch
+                const deletePromises = oldestMessages.map(doc => {
+                    console.log(`🗑️ [cleanupOldMessages] Deleting message: ${doc.id}`);
+                    return deleteDoc(doc.ref);
+                });
+
+                await Promise.all(deletePromises);
+                console.log(`✅ [cleanupOldMessages] Successfully deleted ${messagesToDelete} old messages`);
+            } else {
+                console.log(`🔧 [cleanupOldMessages] No cleanup needed - only ${totalMessages} messages`);
+            }
+        } catch (error: any) {
+            console.error('❌ [cleanupOldMessages] Failed to cleanup old messages:', error);
+            // Don't throw error - cleanup failure shouldn't break chat functionality
+        }
     },
 
     // Mark message as read

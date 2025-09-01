@@ -1724,6 +1724,52 @@ export default function Chat() {
           />
         )}
 
+        {/* Message Counter */}
+        <View className="border-t border-gray-200 bg-gray-50 px-4 py-3">
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-sm text-gray-600 font-medium">
+              Messages in conversation
+            </Text>
+            <View className="flex-row items-center gap-2">
+              <View className="flex-row items-center gap-1">
+                <View className={`w-3 h-3 rounded-full ${
+                  messages.length >= 45 ? 'bg-red-400' : 
+                  messages.length >= 40 ? 'bg-yellow-400' : 'bg-green-400'
+                }`} />
+                <Text className={`text-sm font-semibold ${
+                  messages.length >= 45 ? 'text-red-600' : 
+                  messages.length >= 40 ? 'text-yellow-600' : 'text-green-600'
+                }`}>
+                  {messages.length}/50
+                </Text>
+              </View>
+              {messages.length >= 45 && (
+                <Text className="text-xs text-red-500 font-medium">
+                  {50 - messages.length} left
+                </Text>
+              )}
+            </View>
+          </View>
+          
+          {/* Progress Bar */}
+          <View className="w-full bg-gray-200 rounded-full h-2">
+            <View 
+              className={`h-2 rounded-full transition-all duration-300 ${
+                messages.length >= 45 ? 'bg-red-400' : 
+                messages.length >= 40 ? 'bg-yellow-400' : 'bg-green-400'
+              }`}
+              style={{ width: `${(messages.length / 50) * 100}%` }}
+            />
+          </View>
+          
+          {/* Status Message */}
+          {messages.length >= 45 && (
+            <Text className="text-xs text-red-500 mt-1 text-center">
+              ⚠️ Oldest messages will be automatically removed when limit is reached
+            </Text>
+          )}
+        </View>
+
         {/* Message Input */}
         <View className="border-t border-gray-200 bg-white p-4">
           <View className="flex-row items-center gap-3">

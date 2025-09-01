@@ -841,6 +841,52 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         )}
       </div>
 
+      {/* Message Counter */}
+      <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm text-gray-600 font-medium">
+            Messages in conversation
+          </span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <div className={`w-3 h-3 rounded-full ${
+                messages.length >= 45 ? 'bg-red-400' : 
+                messages.length >= 40 ? 'bg-yellow-400' : 'bg-green-400'
+              }`} />
+              <span className={`text-sm font-semibold ${
+                messages.length >= 45 ? 'text-red-600' : 
+                messages.length >= 40 ? 'text-yellow-600' : 'text-green-600'
+              }`}>
+                {messages.length}/50
+              </span>
+            </div>
+            {messages.length >= 45 && (
+              <span className="text-xs text-red-500 font-medium">
+                {50 - messages.length} left
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+          <div 
+            className={`h-2 rounded-full transition-all duration-300 ${
+              messages.length >= 45 ? 'bg-red-400' : 
+              messages.length >= 40 ? 'bg-yellow-400' : 'bg-green-400'
+            }`}
+            style={{ width: `${(messages.length / 50) * 100}%` }}
+          />
+        </div>
+        
+        {/* Status Message */}
+        {messages.length >= 45 && (
+          <div className="text-xs text-red-500 text-center">
+            ⚠️ Oldest messages will be automatically removed when limit is reached
+          </div>
+        )}
+      </div>
+
       {/* Message Input - Sticky at bottom */}
       <div className="p-4 border-t border-gray-200 bg-white mt-auto relative">
         {/* Scroll to Bottom Button - Above Input */}
