@@ -228,10 +228,37 @@ export const messageService: MessageService = {
                 messageType: 'text'
             });
 
-            // Update conversation timestamp
-            await updateDoc(doc(db, 'conversations', conversationId), {
+            // Get conversation data to find other participants
+            const conversationRef = doc(db, 'conversations', conversationId);
+            const conversationDoc = await getDoc(conversationRef);
+
+            if (!conversationDoc.exists()) {
+                throw new Error('Conversation not found');
+            }
+
+            const conversationData = conversationDoc.data();
+            const participantIds = Object.keys(conversationData.participants || {});
+
+            // Increment unread count for all participants except the sender
+            const otherParticipantIds = participantIds.filter(id => id !== senderId);
+
+            // Prepare unread count updates for each receiver
+            const unreadCountUpdates: { [key: string]: any } = {};
+            otherParticipantIds.forEach(participantId => {
+                unreadCountUpdates[`unreadCounts.${participantId}`] = increment(1);
+            });
+
+            // Update conversation with last message and increment unread counts for other participants
+            // Use current timestamp for lastMessage to prevent jumping during sorting
+            const currentTimestamp = new Date();
+            await updateDoc(conversationRef, {
                 updatedAt: serverTimestamp(),
-                [`unreadCounts.${senderId}`]: increment(0)
+                lastMessage: {
+                    text,
+                    senderId,
+                    timestamp: currentTimestamp
+                },
+                ...unreadCountUpdates
             });
         } catch (error: any) {
             throw new Error(error.message || 'Failed to send message');
