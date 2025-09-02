@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   SafeAreaView,
   Text,
@@ -38,6 +38,7 @@ export default function Chat() {
     getConversationMessages,
     getConversation,
     markConversationAsRead,
+    markMessageAsRead,
     sendClaimRequest,
     sendHandoverRequest,
     updateHandoverResponse,
@@ -142,6 +143,27 @@ export default function Chat() {
       console.log('Failed to mark conversation as read');
     }
   }, [conversationId, userData, messages.length, markConversationAsRead]);
+
+  // Handle message visibility changes to mark messages as read
+  const handleViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: any[] }) => {
+    if (!conversationId || !userData?.uid) return;
+
+    // Get all visible message IDs
+    const visibleMessageIds = viewableItems
+      .filter(item => item.item.senderId !== userData?.uid) // Only mark other people's messages as read
+      .map(item => item.item.id);
+
+    // Mark each visible message as read
+    visibleMessageIds.forEach(messageId => {
+      markMessageAsRead(conversationId, messageId);
+    });
+  }, [conversationId, userData?.uid, markMessageAsRead]);
+
+  // Configuration for when items are considered visible
+  const viewabilityConfig = {
+    itemVisiblePercentThreshold: 50, // Item is visible when 50% is shown
+    minimumViewTime: 100, // Minimum time item must be visible (100ms)
+  };
 
   // Simple scroll to bottom
   const scrollToBottom = () => {
@@ -380,22 +402,23 @@ export default function Chat() {
             data={messages}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <MessageBubble
-                message={item}
-                isOwnMessage={item.senderId === user.uid}
-                conversationId={conversationId}
-                currentUserId={user?.uid || ""}
-                isCurrentUserPostOwner={postOwnerId === userData?.uid}
-                onHandoverResponse={handleHandoverResponse}
-                onClaimResponse={handleClaimResponse}
-                onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
-                onMessageSeen={() => {}}
-                onImageClick={() => {}}
-              />
+                             <MessageBubble
+                 message={item}
+                 isOwnMessage={item.senderId === user.uid}
+                 conversationId={conversationId}
+                 currentUserId={user?.uid || ""}
+                 isCurrentUserPostOwner={postOwnerId === userData?.uid}
+                 onHandoverResponse={handleHandoverResponse}
+                 onClaimResponse={handleClaimResponse}
+                 onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
+                 onImageClick={() => {}}
+               />
             )}
             contentContainerStyle={{ padding: 16 }}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={scrollToBottom}
+            onViewableItemsChanged={handleViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
           />
         )}
 
