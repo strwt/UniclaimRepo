@@ -1,0 +1,760 @@
+// Post service for Firebase - handles all post-related operations
+import {
+    doc,
+    setDoc,
+    getDoc,
+    collection,
+    query,
+    where,
+    onSnapshot,
+    getDocs,
+    updateDoc,
+    deleteDoc,
+    serverTimestamp,
+    writeBatch
+} from 'firebase/firestore';
+
+// Import Firebase instances and types
+import { db } from './config';
+import type { Post } from '../../types/Post';
+
+// Import ListenerManager for centralized listener management
+import { listenerManager } from '../../utils/ListenerManager';
+
+// Import Cloudinary service and utility functions
+import { cloudinaryService, extractMessageImages, deleteMessageImages } from '../../utils/cloudinary';
+
+// Import other services (will be added as we create them)
+// import { imageService } from './images';
+// import { ghostConversationService } from './conversations';
+
+// Post service functions
+export const postService = {
+    // Create a new post
+    async createPost(postData: Omit<Post, 'id' | 'createdAt' | 'creatorId'>, creatorId: string): Promise<string> {
+        try {
+            // Generate a unique post ID
+            const postId = `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            // Upload images if any
+            const imageUrls = postData.images.length > 0
+                ? await cloudinaryService.uploadImages(postData.images)
+                : [];
+
+            // Sanitize post data to ensure no undefined values are sent to Firestore
+            const sanitizedPostData = this.sanitizePostData(postData);
+
+            // Create post document
+            const post: Post = {
+                ...sanitizedPostData,
+                id: postId,
+                creatorId: creatorId, // Add the creator ID
+                images: imageUrls,
+                createdAt: serverTimestamp(),
+                status: 'pending',
+                // Initialize 30-day lifecycle fields
+                isExpired: false,
+                movedToUnclaimed: false,
+                originalStatus: 'pending'
+            };
+
+            // Debug: Log post data being sent to Firestore
+            console.log('Creating post with data:', {
+                ...post,
+                createdAt: 'serverTimestamp()' // Replace actual timestamp for logging
+            });
+
+            await setDoc(doc(db, 'posts', postId), post);
+
+            // Set expiry date (30 days from creation) after post is created
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + 30);
+
+            await updateDoc(doc(db, 'posts', postId), {
+                expiryDate: expiryDate
+            });
+
+            return postId;
+        } catch (error: any) {
+            console.error('Error creating post:', error);
+            throw new Error(error.message || 'Failed to create post');
+        }
+    },
+
+    // Get all posts with real-time updates (DEPRECATED - use getActivePosts for better performance)
+    getAllPosts(callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts')
+            // orderBy('createdAt', 'desc') // Temporarily commented out
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            // Sort posts by createdAt in JavaScript instead
+            const sortedPosts = posts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
+        }, (error) => {
+            console.error('PostService: Error fetching posts:', error);
+            callback([]);
+        });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
+    },
+
+    // Get only active (non-expired) posts with real-time updates - OPTIMIZED FOR PERFORMANCE
+    getActivePosts(callback: (posts: Post[]) => void) {
+        const now = new Date();
+
+        // Create query for active posts only
+        const q = query(
+            collection(db, 'posts'),
+            where('movedToUnclaimed', '==', false), // Only posts not moved to unclaimed
+            // Note: We can't use where('expiryDate', '>', now) in the same query with movedToUnclaimed
+            // due to Firestore limitations, so we'll filter expiryDate in the callback
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            // Filter out expired posts and resolved posts on the client side (this is fast since we're only processing ~20-50 posts)
+            const activePosts = posts.filter(post => {
+                if (post.movedToUnclaimed) return false;
+
+                // Exclude resolved posts from active sections
+                if (post.status === 'resolved') return false;
+
+                // Check if post has expired
+                if (post.expiryDate) {
+                    let expiryDate: Date;
+
+                    // Handle Firebase Timestamp
+                    if (post.expiryDate && typeof post.expiryDate === 'object' && 'seconds' in post.expiryDate) {
+                        expiryDate = new Date(post.expiryDate.seconds * 1000);
+                    } else if (post.expiryDate instanceof Date) {
+                        expiryDate = post.expiryDate;
+                    } else {
+                        expiryDate = new Date(post.expiryDate);
+                    }
+
+                    // Return false if post has expired
+                    if (expiryDate < now) return false;
+                }
+
+                return true;
+            });
+
+            // Sort posts by createdAt (most recent first)
+            const sortedPosts = activePosts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime();
+            });
+
+            callback(sortedPosts);
+        }, (error) => {
+            console.error('PostService: Error fetching active posts:', error);
+            callback([]);
+        });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
+    },
+
+    // Get posts by type (lost/found)
+    getPostsByType(type: 'lost' | 'found', callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts'),
+            where('type', '==', type)
+            // Removed orderBy to avoid composite index requirement
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            // Filter out resolved posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+
+            // Sort posts by createdAt in JavaScript instead
+            const sortedPosts = filteredPosts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
+        });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
+    },
+
+    // Get resolved posts for completed reports section
+    getResolvedPosts(callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts'),
+            where('status', '==', 'resolved')
+            // Removed orderBy to avoid composite index requirement
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            // Sort posts by createdAt in JavaScript instead (most recent first for completed reports)
+            const sortedPosts = posts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
+        }, (error) => {
+            console.error('PostService: Error fetching resolved posts:', error);
+            callback([]);
+        });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
+    },
+
+    // Get posts by category
+    getPostsByCategory(category: string, callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts'),
+            where('category', '==', category)
+            // Removed orderBy to avoid composite index requirement
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            // Filter out resolved posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+
+            // Sort posts by createdAt in JavaScript instead
+            const sortedPosts = filteredPosts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
+        });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
+    },
+
+    // Get posts by user email
+    getUserPosts(userEmail: string, callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts'),
+            where('user.email', '==', userEmail)
+            // Removed orderBy to avoid composite index requirement
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            // Sort posts by createdAt in JavaScript instead
+            const sortedPosts = posts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
+        });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
+    },
+
+    // Get a single post by ID
+    async getPostById(postId: string): Promise<Post | null> {
+        try {
+            const postDoc = await getDoc(doc(db, 'posts', postId));
+            if (postDoc.exists()) {
+                const data = postDoc.data();
+                return {
+                    id: postDoc.id,
+                    ...data,
+                    createdAt: data.createdAt?.toDate?.() || data.createdAt
+                } as Post;
+            }
+            return null;
+        } catch (error: any) {
+            console.error('Error fetching post:', error);
+            throw new Error(error.message || 'Failed to fetch post');
+        }
+    },
+
+    // Update post status
+    async updatePostStatus(postId: string, status: 'pending' | 'resolved' | 'unclaimed'): Promise<void> {
+        try {
+            await updateDoc(doc(db, 'posts', postId), {
+                status,
+                updatedAt: serverTimestamp()
+            });
+
+            // If status is changed to 'unclaimed', automatically delete all related conversations
+            if (status === 'unclaimed') {
+                console.log(`🗑️ Post marked as unclaimed, deleting all related conversations for post: ${postId}`);
+                await this.deleteConversationsByPostId(postId);
+                console.log(`✅ Successfully deleted conversations for unclaimed post: ${postId}`);
+            }
+        } catch (error: any) {
+            console.error('Error updating post status:', error);
+            throw new Error(error.message || 'Failed to update post status');
+        }
+    },
+
+    // Update post
+    async updatePost(postId: string, updates: Partial<Post>): Promise<void> {
+        try {
+            // Get the original post data first to compare images
+            const originalPost = await this.getPostById(postId);
+            if (!originalPost) {
+                throw new Error('Post not found');
+            }
+
+            const updateData = {
+                ...updates,
+                updatedAt: serverTimestamp()
+            };
+
+            // Handle image updates if needed
+            if (updates.images) {
+                // Compare original images with new images to find deleted ones
+                const originalImages = originalPost.images || [];
+                const newImages = updates.images;
+
+                // Find images that were deleted (exist in original but not in new)
+                const deletedImages: string[] = [];
+                originalImages.forEach((originalImg: string | File) => {
+                    // Only process string URLs (Cloudinary URLs) for deletion
+                    if (typeof originalImg === 'string') {
+                        // Check if this original image is still in the new list
+                        const stillExists = newImages.some((newImg: any) => {
+                            // If newImg is a string (URL), compare directly
+                            if (typeof newImg === 'string') {
+                                return newImg === originalImg;
+                            }
+                            // If newImg is a File, it's a new upload, so original was deleted
+                            return false;
+                        });
+
+                        if (!stillExists) {
+                            deletedImages.push(originalImg);
+                        }
+                    }
+                    // Skip File objects as they can't be deleted from Cloudinary
+                });
+
+                // Delete removed images from Cloudinary first
+                if (deletedImages.length > 0) {
+                    console.log(`Deleting ${deletedImages.length} removed images from Cloudinary:`, deletedImages);
+                    // Delete images one by one since cloudinaryService only has deleteImage method
+                    for (const imageUrl of deletedImages) {
+                        try {
+                            await cloudinaryService.deleteImage(imageUrl);
+                        } catch (error) {
+                            console.warn('Failed to delete image:', imageUrl, error);
+                        }
+                    }
+                }
+
+                // Upload new images and get URLs
+                const imageUrls = await cloudinaryService.uploadImages(newImages);
+                updateData.images = imageUrls;
+            }
+
+            await updateDoc(doc(db, 'posts', postId), updateData);
+        } catch (error: any) {
+            console.error('Error updating post:', error);
+            throw new Error(error.message || 'Failed to update post');
+        }
+    },
+
+    // Delete post
+    async deletePost(postId: string): Promise<void> {
+        try {
+            // Get post data to delete associated images
+            const post = await this.getPostById(postId);
+
+            // Collect all images that need to be deleted
+            const allImagesToDelete: string[] = [];
+
+            // 1. Add original post images
+            if (post && post.images && post.images.length > 0) {
+                allImagesToDelete.push(...post.images as string[]);
+            }
+
+            // Delete all collected images from Cloudinary if any exist
+            if (allImagesToDelete.length > 0) {
+                console.log(`🗑️ Deleting ${allImagesToDelete.length} total images from Cloudinary (post + handover photos)`);
+                // Delete images one by one since cloudinaryService only has deleteImage method
+                for (const imageUrl of allImagesToDelete) {
+                    try {
+                        await cloudinaryService.deleteImage(imageUrl);
+                    } catch (error) {
+                        console.warn('Failed to delete image:', imageUrl, error);
+                    }
+                }
+            } else {
+                console.log('🗑️ No images found to delete from this post');
+            }
+
+            // Delete the post first
+            await deleteDoc(doc(db, 'posts', postId));
+
+            // Delete all conversations related to this post after post is deleted
+            await this.deleteConversationsByPostId(postId);
+
+            // SAFETY NET: Automatic ghost detection and cleanup
+            try {
+                // TODO: Import ghostConversationService when created
+                // const ghostConversations = await ghostConversationService.detectGhostConversations();
+                // if (ghostConversations.length > 0) {
+                //     const cleanupResult = await ghostConversationService.cleanupGhostConversations(ghostConversations);
+                //     if (cleanupResult.errors.length > 0) {
+                //         console.warn('Safety net cleanup had some errors:', cleanupResult.errors);
+                //     }
+                // }
+            } catch (ghostError: any) {
+                // Don't fail the main deletion if ghost detection fails
+                console.warn('Safety net ghost detection failed (non-critical):', ghostError.message);
+            }
+        } catch (error: any) {
+            console.error('Post deletion failed:', error);
+            throw new Error(error.message || 'Failed to delete post');
+        }
+    },
+
+    // Delete all conversations related to a specific post
+    async deleteConversationsByPostId(postId: string): Promise<void> {
+        try {
+            // STEP 1: Query conversations by postId
+            const conversationsQuery = query(
+                collection(db, 'conversations'),
+                where('postId', '==', postId)
+            );
+
+            const conversationsSnapshot = await getDocs(conversationsQuery);
+
+            if (conversationsSnapshot.docs.length === 0) {
+                return;
+            }
+
+            // STEP 2: Extract all images from all messages before deletion
+            console.log(`🗑️ Starting image cleanup for ${conversationsSnapshot.docs.length} conversations`);
+            const allImageUrls: string[] = [];
+
+            for (const convDoc of conversationsSnapshot.docs) {
+                const conversationId = convDoc.id;
+
+                try {
+                    // Get all messages in this conversation
+                    const messagesQuery = query(collection(db, 'conversations', conversationId, 'messages'));
+                    const messagesSnapshot = await getDocs(messagesQuery);
+
+                    if (messagesSnapshot.docs.length > 0) {
+                        console.log(`🗑️ Processing ${messagesSnapshot.docs.length} messages in conversation ${conversationId}`);
+
+                        // Extract images from each message
+                        for (const messageDoc of messagesSnapshot.docs) {
+                            const messageData = messageDoc.data();
+
+                            try {
+                                const messageImages = extractMessageImages(messageData);
+
+                                if (messageImages.length > 0) {
+                                    console.log(`🗑️ Found ${messageImages.length} images in message ${messageDoc.id}`);
+                                    allImageUrls.push(...messageImages);
+                                }
+                            } catch (imageError: any) {
+                                console.warn(`Failed to extract images from message ${messageDoc.id}:`, imageError.message);
+                                // Continue with other messages even if one fails
+                            }
+                        }
+                    }
+                } catch (error: any) {
+                    console.warn(`Failed to process conversation ${conversationId} for image extraction:`, error.message);
+                    // Continue with other conversations even if one fails
+                }
+            }
+
+            // STEP 3: Delete all extracted images from Cloudinary
+            if (allImageUrls.length > 0) {
+                console.log(`🗑️ Attempting to delete ${allImageUrls.length} total images from Cloudinary`);
+
+                try {
+                    const imageDeletionResult = await deleteMessageImages(allImageUrls);
+
+                    if (imageDeletionResult.success) {
+                        console.log(`✅ Successfully deleted ${imageDeletionResult.deleted.length} images from Cloudinary`);
+                    } else {
+                        console.warn(`⚠️ Image deletion completed with some failures. Deleted: ${imageDeletionResult.deleted.length}, Failed: ${imageDeletionResult.failed.length}`);
+                    }
+                } catch (imageError: any) {
+                    console.warn('Failed to delete images from Cloudinary, but continuing with database cleanup:', imageError.message);
+                    // Continue with database cleanup even if image deletion fails
+                }
+            } else {
+                console.log('🗑️ No images found in conversations to delete');
+            }
+
+            // STEP 4: Create a batch operation for atomic deletion of database records
+            const batch = writeBatch(db);
+
+            // STEP 5: Delete messages and conversations in the correct order
+            for (const convDoc of conversationsSnapshot.docs) {
+                const conversationId = convDoc.id;
+
+                try {
+                    // STEP 5a: Delete all messages in the subcollection first
+                    const messagesQuery = query(collection(db, 'conversations', conversationId, 'messages'));
+                    const messagesSnapshot = await getDocs(messagesQuery);
+
+                    if (messagesSnapshot.docs.length > 0) {
+                        // Add all messages to the deletion batch
+                        messagesSnapshot.docs.forEach(messageDoc => {
+                            batch.delete(messageDoc.ref);
+                        });
+                    }
+
+                    // STEP 5b: Add conversation document to deletion batch
+                    batch.delete(convDoc.ref);
+
+                } catch (error: any) {
+                    throw new Error(`Failed to process conversation ${conversationId}: ${error.message}`);
+                }
+            }
+
+            // STEP 6: Execute the batch operation atomically
+            await batch.commit();
+
+            // STEP 7: Verify deletion was successful
+            const verifyQuery = query(
+                collection(db, 'conversations'),
+                where('postId', '==', postId)
+            );
+            const verifySnapshot = await getDocs(verifyQuery);
+
+            if (verifySnapshot.docs.length > 0) {
+                throw new Error('Conversation deletion verification failed');
+            }
+
+            console.log(`✅ Successfully deleted ${conversationsSnapshot.docs.length} conversations and their messages`);
+
+        } catch (error: any) {
+            console.error('Error deleting conversations for post:', error);
+            throw new Error(`Failed to delete conversations: ${error.message}`);
+        }
+    },
+
+    // Search posts by title or description
+    async searchPosts(searchTerm: string): Promise<Post[]> {
+        try {
+            // Note: This is a simple implementation. For better search,
+            // consider using Algolia or implement a more sophisticated search
+            const postsSnapshot = await getDocs(collection(db, 'posts'));
+            const posts = postsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            const searchTermLower = searchTerm.toLowerCase();
+            return posts.filter(post =>
+                post.title.toLowerCase().includes(searchTermLower) ||
+                post.description.toLowerCase().includes(searchTermLower) ||
+                post.category.toLowerCase().includes(searchTermLower) ||
+                post.location.toLowerCase().includes(searchTermLower)
+            );
+        } catch (error: any) {
+            console.error('Error searching posts:', error);
+            throw new Error(error.message || 'Failed to search posts');
+        }
+    },
+
+    // Get posts by location
+    getPostsByLocation(location: string, callback: (posts: Post[]) => void) {
+        const q = query(
+            collection(db, 'posts'),
+            where('location', '==', location)
+            // Removed orderBy to avoid composite index requirement
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            // Filter out resolved posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+
+            // Sort posts by createdAt in JavaScript instead
+            const sortedPosts = filteredPosts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime(); // Most recent first
+            });
+
+            callback(sortedPosts);
+        });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
+    },
+
+    // Move post to unclaimed status (expired posts)
+    async movePostToUnclaimed(postId: string): Promise<void> {
+        try {
+            const postRef = doc(db, 'posts', postId);
+            const postDoc = await getDoc(postRef);
+
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            const postData = postDoc.data();
+
+            await updateDoc(postRef, {
+                isExpired: true,
+                movedToUnclaimed: true,
+                originalStatus: postData.status || 'pending'
+            });
+
+            console.log(`Post ${postId} moved to unclaimed status`);
+        } catch (error: any) {
+            console.error('Error moving post to unclaimed:', error);
+            throw new Error(error.message || 'Failed to move post to unclaimed');
+        }
+    },
+
+    // Activate ticket (move back to active from unclaimed)
+    async activateTicket(postId: string): Promise<void> {
+        try {
+            const postRef = doc(db, 'posts', postId);
+            const postDoc = await getDoc(postRef);
+
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            const postData = postDoc.data();
+
+            // Check if post can actually be activated
+            if (!postData.movedToUnclaimed && postData.status !== 'unclaimed') {
+                throw new Error('Post is not in unclaimed status and cannot be activated');
+            }
+
+            // Calculate new expiry date (30 days from now)
+            const newExpiryDate = new Date();
+            newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+
+            // Determine the status to restore to
+            let statusToRestore = 'pending';
+            if (postData.originalStatus && postData.originalStatus !== 'unclaimed') {
+                statusToRestore = postData.originalStatus;
+            }
+
+            await updateDoc(postRef, {
+                isExpired: false,
+                movedToUnclaimed: false,
+                status: statusToRestore,
+                expiryDate: newExpiryDate,
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`Post ${postId} activated and moved back to active status with status: ${statusToRestore}`);
+        } catch (error: any) {
+            console.error('Error activating ticket:', error);
+            throw new Error(error.message || 'Failed to activate ticket');
+        }
+    },
+
+    // Helper function to sanitize post data (moved from utils)
+    sanitizePostData(postData: any): any {
+        if (!postData) return postData;
+
+        const sanitized = { ...postData };
+
+        // Remove undefined values
+        Object.keys(sanitized).forEach(key => {
+            if (sanitized[key] === undefined) {
+                delete sanitized[key];
+            }
+        });
+
+        return sanitized;
+    }
+};
