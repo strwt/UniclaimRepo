@@ -39,3 +39,20 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Backup and temporary files
+*.backup
+*_backup.*
+*_corrupted_backup.*
+*_backup_*
+*_corrupted_*
+
+# Development documentation
+README_*.md
+*_IMPLEMENTATION.md
+*_DEMO.md
+*_FEATURE.md
+*_FIX.md
+*_MONITORING.md
+*_SERVICE.md
+*_MANAGER.md

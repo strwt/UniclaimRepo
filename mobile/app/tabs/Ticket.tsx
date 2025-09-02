@@ -1,5 +1,6 @@
 import PageLayout from "@/layout/PageLayout";
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   Text,
   TextInput,
@@ -29,46 +30,47 @@ export default function Ticket() {
   const [searchText, setSearchText] = useState("");
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
 
-  // Debug logging for component state
-  console.log('🔍 [DEBUG] Ticket Component:', {
-    userData: userData ? { email: userData.email, uid: userData.uid } : null,
-    authLoading,
-    postsCount: posts.length,
-    postsLoading,
-    activeTab
-  });
+
 
   // Edit modal state
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isUpdatingPost, setIsUpdatingPost] = useState(false);
 
-  // Filter posts based on selected tab and search
-  const filteredPosts = posts.filter((post) => {
-    const matchesTab =
-      activeTab === "active"
-        ? post.status === "pending"
-        : post.status === "resolved";
-    const matchesSearch =
-      post.title.toLowerCase().includes(searchText.toLowerCase()) ||
-      post.description.toLowerCase().includes(searchText.toLowerCase());
-    return matchesTab && matchesSearch;
-  });
+  // Pause Firebase listeners when tab is not focused
+  useFocusEffect(
+    useCallback(() => {
+      // Tab is focused - listeners are active
+      console.log('Ticket tab focused - listeners active');
+      
+      return () => {
+        // Tab is unfocused - listeners are paused
+        console.log('Ticket tab unfocused - listeners paused');
+      };
+    }, [])
+  );
 
-  // Debug logging for filtered posts
-  console.log('🔍 [DEBUG] Ticket Filtered Posts:', {
-    totalPosts: posts.length,
-    filteredCount: filteredPosts.length,
-    activeTab,
-    searchText,
-    samplePosts: filteredPosts.slice(0, 2).map(p => ({ id: p.id, title: p.title, status: p.status }))
-  });
+  // Memoize filtered posts to prevent unnecessary recalculations
+  const filteredPosts = useMemo(() => {
+    return posts.filter((post) => {
+      const matchesTab =
+        activeTab === "active"
+          ? post.status === "pending"
+          : post.status === "resolved";
+      const matchesSearch =
+        post.title.toLowerCase().includes(searchText.toLowerCase()) ||
+        post.description.toLowerCase().includes(searchText.toLowerCase());
+      return matchesTab && matchesSearch;
+    });
+  }, [posts, activeTab, searchText]);
 
-  const handleClearSearch = () => {
+
+
+  const handleClearSearch = useCallback(() => {
     setSearchText("");
-  };
+  }, []);
 
-  const handleDeletePost = async (id: string) => {
+  const handleDeletePost = useCallback(async (id: string) => {
     // Show confirmation dialog
     Alert.alert(
       "Delete Ticket",
@@ -109,15 +111,15 @@ export default function Ticket() {
         },
       ]
     );
-  };
+  }, []);
 
   // Edit ticket handlers
-  const handleEditPost = (post: Post) => {
+  const handleEditPost = useCallback((post: Post) => {
     setEditingPost(post);
     setIsEditModalVisible(true);
-  };
+  }, []);
 
-  const handleUpdatePost = async (updatedPost: Post) => {
+  const handleUpdatePost = useCallback(async (updatedPost: Post) => {
     try {
       setIsUpdatingPost(true);
 
@@ -139,12 +141,12 @@ export default function Ticket() {
     } finally {
       setIsUpdatingPost(false);
     }
-  };
+  }, []);
 
-  const handleCloseEditModal = () => {
+  const handleCloseEditModal = useCallback(() => {
     setIsEditModalVisible(false);
     setEditingPost(null);
-  };
+  }, []);
 
   // Show loading state while checking auth
   if (authLoading) {

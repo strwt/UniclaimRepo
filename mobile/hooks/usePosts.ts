@@ -276,27 +276,25 @@ export const useUserPosts = (userEmail: string) => {
 
 // Custom hook for user's posts with setPosts functionality
 export const useUserPostsWithSet = (userEmail: string) => {
-    console.log('🔍 [DEBUG] useUserPostsWithSet: Hook created with email:', userEmail);
     const { isAuthenticated } = useAuth();
-    console.log('🔍 [DEBUG] useUserPostsWithSet: Auth context values:', { isAuthenticated, userEmail });
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const unsubscribeRef = useRef<(() => void) | null>(null);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
-        console.log('🔍 [DEBUG] useUserPostsWithSet: useEffect EXECUTED with:', { isAuthenticated, userEmail });
+        // Set mounted flag
+        isMountedRef.current = true;
 
         // If user is not authenticated, clear posts and don't set up listeners
         if (!isAuthenticated) {
-            console.log('User not authenticated - clearing user posts (with set) and listeners');
-
-            // Clear posts
-            setPosts([]);
-            setLoading(false);
+            if (isMountedRef.current) {
+                setPosts([]);
+                setLoading(false);
+            }
 
             // Clean up any existing listener
             if (unsubscribeRef.current) {
-                console.log('Cleaning up user posts (with set) listener');
                 unsubscribeRef.current();
                 unsubscribeRef.current = null;
             }
@@ -305,27 +303,34 @@ export const useUserPostsWithSet = (userEmail: string) => {
 
         // User is authenticated
         if (!userEmail) {
-            console.log('🔍 [DEBUG] useUserPostsWithSet: User authenticated but no email provided');
-            setPosts([]);
-            setLoading(false);
+            if (isMountedRef.current) {
+                setPosts([]);
+                setLoading(false);
+            }
             return;
         }
 
-        console.log('🔍 [DEBUG] useUserPostsWithSet: Setting up listener for user:', userEmail);
-        setLoading(true);
+        if (isMountedRef.current) {
+            setLoading(true);
+        }
 
         const unsubscribe = postService.getUserPosts(userEmail, (fetchedPosts) => {
-            console.log('🔍 [DEBUG] useUserPostsWithSet: Received posts from service:', fetchedPosts.length);
-            setPosts(fetchedPosts);
-            setLoading(false);
+            // Only update state if component is still mounted
+            if (isMountedRef.current) {
+                setPosts(fetchedPosts);
+                setLoading(false);
+            }
         });
 
         // Store unsubscribe function for cleanup
         unsubscribeRef.current = unsubscribe;
 
         return () => {
+            // Set mounted flag to false
+            isMountedRef.current = false;
+
+            // Clean up listener
             if (unsubscribe) {
-                console.log('Cleaning up user posts (with set) listener on unmount');
                 unsubscribe();
                 unsubscribeRef.current = null;
             }

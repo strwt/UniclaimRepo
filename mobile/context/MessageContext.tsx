@@ -14,6 +14,7 @@ interface MessageContextType {
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>;
   markMessageAsRead: (conversationId: string, messageId: string) => Promise<void>;
   markAllUnreadMessagesAsRead: (conversationId: string, userId: string) => Promise<void>;
+  sendHandoverRequest: (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string) => Promise<void>;
   updateHandoverResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>;
   confirmHandoverIdPhoto: (conversationId: string, messageId: string) => Promise<void>;
   sendClaimRequest: (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string, evidencePhotos?: { url: string; uploadedAt: any; description?: string }[]) => Promise<void>;
@@ -139,6 +140,14 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
       await messageService.updateHandoverResponse(conversationId, messageId, status, userId!);
     } catch (error: any) {
       throw new Error(error.message || 'Failed to update handover response');
+    }
+  };
+
+  const sendHandoverRequest = async (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string): Promise<void> => {
+    try {
+      await messageService.sendHandoverRequest(conversationId, senderId, senderName, senderProfilePicture, postId, postTitle);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to send handover request');
     }
   };
 
@@ -274,6 +283,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
         deleteMessage,
         markMessageAsRead,
         markAllUnreadMessagesAsRead,
+        sendHandoverRequest,
         updateHandoverResponse,
         confirmHandoverIdPhoto,
         sendClaimRequest,
