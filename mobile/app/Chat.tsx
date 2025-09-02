@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   SafeAreaView,
   Text,
@@ -383,13 +383,13 @@ const MessageBubble = ({
             {handoverData.status === "accepted" &&
               handoverData.idPhotoConfirmed && (
                 <Text className="ml-2 text-green-600">
-                  ✓ ID Photo Confirmed
+                  âœ“ ID Photo Confirmed
                 </Text>
               )}
             {handoverData.status === "accepted" &&
               handoverData.itemPhotosConfirmed && (
                 <Text className="ml-2 text-green-600">
-                  ✓ Item Photos Confirmed
+                  âœ“ Item Photos Confirmed
                 </Text>
               )}
           </Text>
@@ -406,7 +406,7 @@ const MessageBubble = ({
 
     const statusColor =
       handoverData.status === "accepted" ? "text-green-600" : "text-red-600";
-    const statusIcon = handoverData.status === "accepted" ? "✅" : "❌";
+    const statusIcon = handoverData.status === "accepted" ? "âœ…" : "âŒ";
 
     return (
       <View className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
@@ -665,26 +665,26 @@ const MessageBubble = ({
               </Text>
             )}
             {claimData.status === "accepted" && claimData.idPhotoConfirmed && (
-              <Text className="ml-2 text-green-600">✓ ID Photo Confirmed</Text>
+              <Text className="ml-2 text-green-600">âœ“ ID Photo Confirmed</Text>
             )}
             {claimData.status === "accepted" &&
               claimData.evidencePhotosConfirmed && (
                 <Text className="ml-2 text-green-600">
-                  ✓ Evidence Photos Confirmed
+                  âœ“ Evidence Photos Confirmed
                 </Text>
               )}
             {claimData.status === "accepted" &&
               claimData.idPhotoConfirmed &&
               !claimData.evidencePhotosConfirmed && (
                 <Text className="ml-2 text-green-600">
-                  ✓ ID Photo Confirmed
+                  âœ“ ID Photo Confirmed
                 </Text>
               )}
             {claimData.status === "accepted" &&
               claimData.photosConfirmed &&
               !claimData.evidencePhotosConfirmed && (
                 <Text className="ml-2 text-green-600">
-                  ✓ Verification Photos Confirmed
+                  âœ“ Verification Photos Confirmed
                 </Text>
               )}
           </Text>
@@ -701,7 +701,7 @@ const MessageBubble = ({
 
     const statusColor =
       claimData.status === "accepted" ? "text-green-600" : "text-red-600";
-    const statusIcon = claimData.status === "accepted" ? "✅" : "❌";
+    const statusIcon = claimData.status === "accepted" ? "âœ…" : "âŒ";
 
     return (
       <View className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
@@ -990,7 +990,7 @@ export default function Chat() {
   };
   
   // Enhanced parameter debugging with actual values (after validationUtils is declared)
-  console.log('🔍 Parameter Debug Details:', {
+  console.log('ðŸ” Parameter Debug Details:', {
     postTitle: {
       value: postTitle,
       type: typeof postTitle,
@@ -1023,8 +1023,8 @@ export default function Chat() {
 
   // Enhanced navigation parameter validation with detailed logging
   const validateNavigationParams = () => {
-    console.log('🔍 Starting parameter validation...');
-    console.log('📋 Parameters to validate:', {
+    console.log('ðŸ” Starting parameter validation...');
+    console.log('ðŸ“‹ Parameters to validate:', {
       postTitle: postTitle || 'MISSING',
       postId: postId || 'MISSING', 
       postOwnerId: postOwnerId || 'MISSING',
@@ -1038,14 +1038,14 @@ export default function Chat() {
     if (!postOwnerId) missingParams.push('postOwnerId');
     
     if (missingParams.length > 0) {
-      console.log('❌ Missing parameters:', missingParams);
+      console.log('âŒ Missing parameters:', missingParams);
       logError('validation', new Error(`Missing required navigation parameters: ${missingParams.join(', ')}`), userData);
       return false;
     }
-    console.log('✅ All required parameters present');
+    console.log('âœ… All required parameters present');
     
             // Validate parameter formats with detailed feedback
-        console.log('🔧 Validating parameter formats...');
+        console.log('ðŸ”§ Validating parameter formats...');
         
         // Check individual parameters
         const postIdValid = validationUtils.isValidFirebaseId(postId!);
@@ -1053,11 +1053,11 @@ export default function Chat() {
         const postOwnerIdValid = validationUtils.isValidUserId(postOwnerId!);
         const currentUserIdValid = validationUtils.isValidUserId(user?.uid || '');
         
-        console.log('🔍 Individual parameter checks:');
-        console.log('  - postId:', postIdValid ? '✅ Valid' : '❌ Invalid');
-        console.log('  - postTitle:', postTitleValid ? '✅ Valid' : '❌ Invalid');
-        console.log('  - postOwnerId:', postOwnerIdValid ? '✅ Valid' : '❌ Invalid');
-        console.log('  - currentUserId:', currentUserIdValid ? '✅ Valid' : '❌ Invalid');
+        console.log('ðŸ” Individual parameter checks:');
+        console.log('  - postId:', postIdValid ? 'âœ… Valid' : 'âŒ Invalid');
+        console.log('  - postTitle:', postTitleValid ? 'âœ… Valid' : 'âŒ Invalid');
+        console.log('  - postOwnerId:', postOwnerIdValid ? 'âœ… Valid' : 'âŒ Invalid');
+        console.log('  - currentUserId:', currentUserIdValid ? 'âœ… Valid' : 'âŒ Invalid');
         
         if (!postIdValid || !postTitleValid || !postOwnerIdValid || !currentUserIdValid) {
           const errors = [];
@@ -1070,11 +1070,11 @@ export default function Chat() {
           return false;
         }
         
-        console.log('✅ All parameter formats are valid');
+        console.log('âœ… All parameter formats are valid');
         
         // Final check: prevent self-conversation
         if (postOwnerId === user?.uid) {
-          console.log('❌ Self-conversation detected in validation');
+          console.log('âŒ Self-conversation detected in validation');
           logError('validation', new Error('Cannot start conversation with yourself'), userData);
           return false;
         }
@@ -1106,7 +1106,7 @@ export default function Chat() {
   useEffect(() => {
     // Skip validation if we already have a conversation ID (existing conversation)
     if (initialConversationId) {
-      console.log('✅ Existing conversation detected, skipping validation');
+      console.log('âœ… Existing conversation detected, skipping validation');
       return;
     }
     
@@ -1137,11 +1137,11 @@ export default function Chat() {
       return;
     }
 
-    console.log('📱 Loading messages for conversation:', conversationId);
+    console.log('ðŸ“± Loading messages for conversation:', conversationId);
     setIsInitialLoad(true);
     
     const unsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
-      console.log('📨 Messages loaded:', {
+      console.log('ðŸ“¨ Messages loaded:', {
         count: loadedMessages.length,
         conversationId
       });
@@ -1151,7 +1151,7 @@ export default function Chat() {
         .map(message => {
           const validation = validationUtils.validateMessage(message);
           if (!validation.isValid) {
-            console.log('⚠️ Invalid message found:', message.id, validation.error);
+            console.log('âš ï¸ Invalid message found:', message.id, validation.error);
             return null;
           }
           return {
@@ -1184,12 +1184,12 @@ export default function Chat() {
   useEffect(() => {
     if (!conversationId) return;
 
-    console.log('🔄 Getting conversation data...');
+    console.log('ðŸ”„ Getting conversation data...');
     getConversation(conversationId).then((data) => {
-      console.log('✅ Conversation data loaded:', data);
+      console.log('âœ… Conversation data loaded:', data);
       setConversationData(data);
     }).catch((error) => {
-      console.log('❌ Failed to get conversation data:', error);
+      console.log('âŒ Failed to get conversation data:', error);
       logError('conversation', error, userData);
     });
   }, [conversationId, getConversation, userData]);
@@ -1199,11 +1199,11 @@ export default function Chat() {
     if (!conversationId || !userData?.uid || messages.length === 0) return;
 
     try {
-      console.log('🔄 Marking conversation as read...');
+      console.log('ðŸ”„ Marking conversation as read...');
       markConversationAsRead(conversationId, userData.uid);
-      console.log('✅ Marked conversation as read');
+      console.log('âœ… Marked conversation as read');
     } catch (error) {
-      console.log('❌ Failed to mark conversation as read:', error);
+      console.log('âŒ Failed to mark conversation as read:', error);
     }
   }, [conversationId, userData, messages.length, markConversationAsRead]);
 
@@ -1400,7 +1400,7 @@ export default function Chat() {
 
     // Check for self-conversation
     if (postOwnerId === user.uid) {
-      console.log('❌ Self-conversation attempt detected');
+      console.log('âŒ Self-conversation attempt detected');
       showToast('Cannot start conversation with yourself', 'warning', 5000, {
         label: 'Go Back',
         onPress: () => navigation.goBack()
@@ -1408,7 +1408,7 @@ export default function Chat() {
       return;
     }
 
-    console.log('🚀 Creating new conversation...');
+    console.log('ðŸš€ Creating new conversation...');
     setLoading(true);
 
     const createNewConversation = async () => {
@@ -1430,12 +1430,12 @@ export default function Chat() {
           sanitizedPostOwnerData
         );
         
-        console.log('✅ Conversation created successfully:', newConversationId);
+        console.log('âœ… Conversation created successfully:', newConversationId);
         setConversationId(newConversationId);
         showToast('Conversation started successfully!', 'success', 3000);
         
       } catch (error: any) {
-        console.log('❌ Conversation creation failed:', error);
+        console.log('âŒ Conversation creation failed:', error);
         handleConversationCreationError(error);
       } finally {
         setLoading(false);
@@ -1448,7 +1448,7 @@ export default function Chat() {
         console.log('Conversation validation result:', conversationValidation);
         
         if (!conversationValidation.isValid) {
-          console.log('❌ Conversation validation failed:', conversationValidation.errors);
+          console.log('âŒ Conversation validation failed:', conversationValidation.errors);
           logError('validation', new Error(`Invalid conversation parameters: ${conversationValidation.errors.join(', ')}`), userData);
           return;
         }
@@ -1464,14 +1464,14 @@ export default function Chat() {
           });
           
           if (!sanitizedUserData) {
-            console.log('❌ Invalid current user data');
+            console.log('âŒ Invalid current user data');
             logError('validation', new Error('Invalid current user data'), userData);
             return;
           }
           
           // Create conversation
           try {
-            console.log('🔄 Calling createConversation...');
+            console.log('ðŸ”„ Calling createConversation...');
             const newConversationId = await createConversation(
               postId!,
               validationUtils.sanitizeText(postTitle!),
@@ -1481,10 +1481,10 @@ export default function Chat() {
               sanitizedPostOwnerData
             );
             
-            console.log('✅ Conversation created successfully:', newConversationId);
+            console.log('âœ… Conversation created successfully:', newConversationId);
             
             if (!isActive) {
-              console.log('⚠️ Component unmounted during creation');
+              console.log('âš ï¸ Component unmounted during creation');
               return;
             }
             
@@ -1493,10 +1493,10 @@ export default function Chat() {
             setConversationCreationFailed(false);
             showToast("Conversation started successfully!", "success");
             
-            console.log('🔄 Exiting early to let effect re-run with new conversationId');
+            console.log('ðŸ”„ Exiting early to let effect re-run with new conversationId');
             return; // Exit early, let the effect re-run with new conversationId
           } catch (error) {
-            console.log('❌ Conversation creation failed:', error);
+            console.log('âŒ Conversation creation failed:', error);
             if (!isActive) return;
             handleConversationCreationError(error);
             return;
@@ -1506,12 +1506,12 @@ export default function Chat() {
         // Step 3: Set up message listener for existing conversation
         console.log('Step 3: Setting up message listener...');
         if (conversationId && isConversationReady && isActive) {
-          console.log('✅ Setting up message listener for conversation:', conversationId);
+          console.log('âœ… Setting up message listener for conversation:', conversationId);
           logDebug('Setting up message listener for conversation', { conversationId });
           
           // Set up message listener
           messageUnsubscribe = getConversationMessages(conversationId, (loadedMessages) => {
-            console.log('📨 Messages loaded:', {
+            console.log('ðŸ“¨ Messages loaded:', {
               count: loadedMessages.length,
               firstMessage: loadedMessages[0]?.text || 'None',
               lastMessage: loadedMessages[loadedMessages.length - 1]?.text || 'None'
@@ -1524,7 +1524,7 @@ export default function Chat() {
               .map(message => {
                 const validation = validationUtils.validateMessage(message);
                 if (!validation.isValid) {
-                  console.log('⚠️ Invalid message found:', message.id, validation.error);
+                  console.log('âš ï¸ Invalid message found:', message.id, validation.error);
                   logError('validation', new Error(`Invalid message: ${validation.error}`), userData);
                   return null;
                 }
@@ -1537,7 +1537,7 @@ export default function Chat() {
               })
               .filter((message): message is Message => message !== null); // Remove invalid messages
             
-            console.log('✅ Validated messages:', validatedMessages.length);
+            console.log('âœ… Validated messages:', validatedMessages.length);
             setMessages(validatedMessages);
             setIsInitialLoad(false);
             
@@ -1556,15 +1556,15 @@ export default function Chat() {
           
           // Get conversation data for UI logic
           try {
-            console.log('🔄 Getting conversation data...');
+            console.log('ðŸ”„ Getting conversation data...');
             const data = await getConversation(conversationId);
             if (!isActive) return;
             
-            console.log('✅ Conversation data loaded:', data);
+            console.log('âœ… Conversation data loaded:', data);
             setConversationData(data);
             logDebug('Conversation data loaded', { data });
           } catch (error) {
-            console.log('❌ Failed to get conversation data:', error);
+            console.log('âŒ Failed to get conversation data:', error);
             if (!isActive) return;
             logError('conversation', error, userData);
           }
@@ -1572,11 +1572,11 @@ export default function Chat() {
           // Mark conversation as read
           if (userData?.uid) {
             try {
-              console.log('🔄 Marking conversation as read...');
+              console.log('ðŸ”„ Marking conversation as read...');
               await markConversationAsRead(conversationId, userData.uid);
-              console.log('✅ Conversation marked as read');
+              console.log('âœ… Conversation marked as read');
             } catch (error) {
-              console.log('❌ Failed to mark conversation as read:', error);
+              console.log('âŒ Failed to mark conversation as read:', error);
               if (!isActive) return;
               logError('conversation', error, userData);
             }
@@ -1586,7 +1586,7 @@ export default function Chat() {
           setHasMoreMessages(true);
           setIsInitialLoad(true);
         } else {
-          console.log('⚠️ Cannot set up message listener:', {
+          console.log('âš ï¸ Cannot set up message listener:', {
             hasConversationId: !!conversationId,
             conversationStatus: isConversationReady ? 'ready' : loading ? 'creating' : 'idle',
             isActive
@@ -1596,22 +1596,22 @@ export default function Chat() {
         // Step 4: Mark unread messages as read when they arrive
         if (conversationId && userData?.uid && messages.length > 0 && isActive) {
           try {
-            console.log('🔄 Checking unread count...');
+            console.log('ðŸ”„ Checking unread count...');
             const unreadCount = getConversationUnreadCount(conversationId, userData.uid);
             console.log('Unread count:', unreadCount);
             if (unreadCount > 0) {
               await markConversationAsRead(conversationId, userData.uid);
-              console.log('✅ Marked unread messages as read');
+              console.log('âœ… Marked unread messages as read');
             }
           } catch (error) {
-            console.log('❌ Failed to mark unread messages as read:', error);
+            console.log('âŒ Failed to mark unread messages as read:', error);
             if (!isActive) return;
             logError('conversation', error, userData);
           }
         }
 
               } catch (error) {
-          console.log('❌ Error in conversation lifecycle:', error);
+          console.log('âŒ Error in conversation lifecycle:', error);
           if (!isActive) return;
           logError('conversation', error, userData);
         }
@@ -1624,7 +1624,7 @@ export default function Chat() {
       
       // Cleanup function
       return () => {
-        console.log('🧹 Cleaning up conversation lifecycle');
+        console.log('ðŸ§¹ Cleaning up conversation lifecycle');
         isActive = false;
         if (messageUnsubscribe) {
           messageUnsubscribe();
@@ -1876,7 +1876,7 @@ export default function Chat() {
 
   const handleConfirmIdPhotoSuccess = (messageId: string) => {
     // Show success message and redirect to conversation list
-    Alert.alert("Success", "✅ ID photo confirmed successfully!", [
+    Alert.alert("Success", "âœ… ID photo confirmed successfully!", [
       {
         text: "OK",
         onPress: () => {
@@ -1963,16 +1963,16 @@ export default function Chat() {
             <View className="mb-2 p-2 bg-gray-700 rounded">
               <Text className="text-white text-xs font-bold mb-1">Validation Status:</Text>
               <Text className="text-green-400 text-xs">
-                ✓ Post ID: {validationUtils.isValidFirebaseId(postId || '') ? 'Valid' : 'Invalid'}
+                âœ“ Post ID: {validationUtils.isValidFirebaseId(postId || '') ? 'Valid' : 'Invalid'}
               </Text>
               <Text className="text-green-400 text-xs">
-                ✓ Post Owner ID: {validationUtils.isValidUserId(postOwnerId || '') ? 'Valid' : 'Invalid'}
+                âœ“ Post Owner ID: {validationUtils.isValidUserId(postOwnerId || '') ? 'Valid' : 'Invalid'}
               </Text>
               <Text className="text-green-400 text-xs">
-                ✓ Current User ID: {validationUtils.isValidUserId(user?.uid || '') ? 'Valid' : 'Invalid'}
+                âœ“ Current User ID: {validationUtils.isValidUserId(user?.uid || '') ? 'Valid' : 'Invalid'}
               </Text>
               <Text className="text-green-400 text-xs">
-                ✓ Conversation ID: {conversationId ? validationUtils.isValidFirebaseId(conversationId) ? 'Valid' : 'Invalid' : 'None'}
+                âœ“ Conversation ID: {conversationId ? validationUtils.isValidFirebaseId(conversationId) ? 'Valid' : 'Invalid' : 'None'}
               </Text>
             </View>
             
@@ -1989,7 +1989,7 @@ export default function Chat() {
       {/* Error Display - Show active errors */}
       {(errors.conversation || errors.messages || errors.sendMessage || errors.general) && (
         <View className="bg-red-50 border-b border-red-200 px-4 py-3">
-          <Text className="text-red-800 font-medium mb-2">⚠️ Errors Detected</Text>
+          <Text className="text-red-800 font-medium mb-2">âš ï¸ Errors Detected</Text>
           {errors.conversation && (
             <View className="flex-row items-center justify-between mb-1">
               <Text className="text-red-700 text-sm">Conversation: {errors.conversation}</Text>
@@ -2483,7 +2483,7 @@ export default function Chat() {
                   {/* Status Message */}
         {messages.length >= 45 && (
           <Text className="text-xs text-red-500 mt-1 text-center">
-            ⚠️ Oldest messages will be automatically removed when limit is reached
+            âš ï¸ Oldest messages will be automatically removed when limit is reached
           </Text>
         )}
 
@@ -2565,7 +2565,7 @@ export default function Chat() {
                     if (!validation.isValid) {
                       return (
                         <Text className="text-red-500 text-xs">
-                          ⚠️ {validation.error}
+                          âš ï¸ {validation.error}
                         </Text>
                       );
                     }
@@ -2614,3 +2614,4 @@ export default function Chat() {
     </SafeAreaView>
   );
 }
+
