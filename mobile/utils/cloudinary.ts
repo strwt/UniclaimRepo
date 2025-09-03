@@ -21,90 +21,20 @@ const CLOUDINARY_API_SECRET = process.env.EXPO_PUBLIC_CLOUDINARY_API_SECRET;
 
 
 
-// Import CryptoJS for proper HMAC-SHA1 signature generation - Using the full crypto-js library
-import CryptoJS from 'crypto-js';
+// NOTE: CryptoJS removed due to React Native compatibility issues
+// Image deletion functionality is temporarily disabled
+// import CryptoJS from 'crypto-js';
 
-// Generate Cloudinary API signature using plain SHA-1 of (params + api_secret)
+// Generate Cloudinary API signature - DISABLED due to React Native CryptoJS issues
 // Per Cloudinary docs: signature = sha1('public_id=...&timestamp=...'+api_secret)
 async function generateHMACSHA1Signature(params: string, secret: string): Promise<string> {
-    try {
-        // Verify CryptoJS is available
-        if (typeof CryptoJS === 'undefined') {
-            throw new Error('CryptoJS is undefined - import failed');
-        }
-
-        if (!CryptoJS.SHA1) {
-            throw new Error('CryptoJS.SHA1 method not found');
-        }
-
-        // Validate input parameters
-        if (!params || !secret) {
-            throw new Error('Missing required parameters: params and secret are required');
-        }
-
-        if (secret.length < 10) {
-            throw new Error('API secret appears too short - please check your configuration');
-        }
-
-        // Cloudinary expects a plain SHA-1 digest of the concatenated string (NOT HMAC)
-        const signature = CryptoJS.SHA1(params + secret).toString(CryptoJS.enc.Hex);
-
-        // Validate signature format
-        if (!signature || signature.length !== 40) {
-            throw new Error(`Invalid signature length: ${signature?.length || 0}. Expected 40 characters.`);
-        }
-
-        // Check for suspicious patterns (like all zeros)
-        if (signature.match(/^[0]+$/) || signature.includes('00000000000000000000000000000000')) {
-            throw new Error('Generated signature appears invalid (contains many zeros)');
-        }
-
-        // Additional validation: ensure it's a valid hex string
-        if (!/^[0-9a-f]{40}$/i.test(signature)) {
-            throw new Error('Generated signature is not a valid 40-character hex string');
-        }
-
-        return signature;
-
-    } catch (error: any) {
-        console.error('SHA-1 signature generation failed:', error);
-        throw new Error(`Failed to generate Cloudinary signature: ${error.message}`);
-    }
+    throw new Error('Signature generation disabled - CryptoJS not compatible with React Native. Image deletion temporarily unavailable.');
 }
 
-// Test function to verify CryptoJS is working properly
+// Test function - DISABLED due to React Native CryptoJS issues
 export const testCryptoJS = () => {
-    try {
-        // Test basic functionality
-        const testString = 'test';
-        const testSecret = 'secret';
-
-        // Verify CryptoJS is loaded
-        if (!CryptoJS || !CryptoJS.HmacSHA1) {
-            console.error('CryptoJS library not properly loaded');
-            return false;
-        }
-
-        // Test HMAC-SHA1
-        try {
-            const hash = CryptoJS.HmacSHA1(testString, testSecret);
-            const signature = hash.toString(CryptoJS.enc.Hex);
-
-            // Verify it's not all zeros
-            if (signature.includes('00000000000000000000000000000000')) {
-                return false;
-            } else {
-                return true;
-            }
-        } catch (e) {
-            console.error('HMAC-SHA1 test failed:', e);
-            return false;
-        }
-
-    } catch (error) {
-        console.error('CryptoJS test failed:', error);
-        return false;
-    }
+    console.warn('CryptoJS test disabled - not compatible with React Native');
+    return false;
 };
 
 // Test function to verify Cloudinary URL parsing (can be called from console)

@@ -4,6 +4,7 @@ import { auth, authService, UserData, db } from '../utils/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { credentialStorage } from '../utils/credentialStorage';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -31,6 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [banInfo, setBanInfo] = useState<any>(null);
   const [showBanNotification, setShowBanNotification] = useState(false);
+  const [isAutoLogging, setIsAutoLogging] = useState(false);
 
   // Track ban listener to clean up on logout
   const banListenerRef = useRef<(() => void) | null>(null);
@@ -44,8 +46,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return adminEmails.includes(email.toLowerCase());
   };
 
+  // Auto-login function
+  const attemptAutoLogin = async (): Promise<boolean> => {
+    try {
+      setIsAutoLogging(true);
+      console.log('Attempting auto-login...');
+      
+      const storedCredentials = await credentialStorage.getStoredCredentials();
+      
+      if (!storedCredentials) {
+        console.log('No stored credentials found');
+        return false;
+      }
+      
+      // Attempt login with stored credentials
+      const userCredential = await signInWithEmailAndPassword(
+        auth, 
+        storedCredentials.email, 
+        storedCredentials.password
+      );
+      
+      console.log('Auto-login successful');
+      return true;
+      
+    } catch (error: any) {
+      console.log('Auto-login failed:', error.message);
+      
+      // Clear invalid credentials
+      await credentialStorage.clearCredentials();
+      return false;
+    } finally {
+      setIsAutoLogging(false);
+    }
+  };
+
   // Listen for authentication state changes
   useEffect(() => {
+    let hasAttemptedAutoLogin = false;
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
@@ -68,6 +106,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIsBanned(false);
             setBanInfo(null);
           }
+          
+          // Set loading to false after successful authentication and data fetch
+          setLoading(false);
           
           // Start monitoring this specific user for ban status changes
           // Only set up listener if user is authenticated to prevent permission errors during logout
@@ -147,6 +188,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserData(null);
           setIsBanned(false);
           setBanInfo(null);
+          // Set loading to false even if there's an error fetching user data
+          setLoading(false);
         }
       } else {
         // User logged out - clean up all listeners
@@ -173,9 +216,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAdmin(false);
         setBanInfo(null);
         setShowBanNotification(false);
+        
+        // No authenticated user - try auto-login once
+        if (!hasAttemptedAutoLogin) {
+          hasAttemptedAutoLogin = true;
+          const autoLoginSuccess = await attemptAutoLogin();
+          
+          if (!autoLoginSuccess) {
+            // Auto-login failed or no credentials - user needs to login manually
+            setLoading(false);
+          }
+          // If auto-login succeeds, onAuthStateChanged will be called again with the user
+        } else {
+          // Already attempted auto-login, user is truly not authenticated
+          setLoading(false);
+        }
       }
-      
-      setLoading(false);
     });
 
     return () => {
@@ -225,6 +281,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setBanInfo(null);
       setShowBanNotification(false);
       
+      // Save credentials for auto-login (only for successful, non-banned logins)
+      try {
+        await credentialStorage.saveCredentials(email, password);
+        console.log('Credentials saved for auto-login');
+      } catch (saveError) {
+        console.warn('Failed to save credentials for auto-login:', saveError);
+        // Don't throw error - login was successful, credential saving is optional
+      }
+      
     } catch (error: any) {
       console.error('Login error:', error);
       throw error;
@@ -243,6 +308,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('Immediately cleaning up ban listener during logout');
         banListenerRef.current();
         banListenerRef.current = null;
+      }
+      
+      // Clear stored credentials for auto-login
+      try {
+        await credentialStorage.clearCredentials();
+        console.log('Stored credentials cleared during logout');
+      } catch (credentialError) {
+        console.warn('Error clearing stored credentials:', credentialError);
+        // Continue with logout even if clearing credentials fails
       }
       
       // Clear stored user preferences and data
@@ -305,6 +379,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         banListenerRef.current = null;
       }
 
+      // Clear stored credentials for auto-login (banned users shouldn't auto-login)
+      try {
+        await credentialStorage.clearCredentials();
+        console.log('Stored credentials cleared during ban logout');
+      } catch (credentialError) {
+        console.warn('Error clearing stored credentials during ban:', credentialError);
+        // Continue with logout even if clearing credentials fails
+      }
+
       // Logout user immediately
       await authService.logout();
 
@@ -330,6 +413,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (banListenerRef.current) {
         banListenerRef.current();
         banListenerRef.current = null;
+      }
+
+      // Clear credentials even if logout fails
+      try {
+        await credentialStorage.clearCredentials();
+      } catch (credentialError) {
+        console.warn('Error clearing credentials during ban logout error:', credentialError);
       }
 
       // Even if logout fails, reset the state to force redirect
