@@ -24,6 +24,56 @@ import { listenerManager } from '../../utils/ListenerManager';
 // Import Cloudinary service and utility functions
 import { cloudinaryService, extractMessageImages, deleteMessageImages } from '../../utils/cloudinary';
 
+// Helper function to extract Cloudinary public ID from URL
+function extractCloudinaryPublicId(url: string): string | null {
+    try {
+        // Handle different Cloudinary URL formats
+        if (url.includes('res.cloudinary.com')) {
+            // Format: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/image_name.jpg
+            const urlParts = url.split('/');
+            const uploadIndex = urlParts.findIndex(part => part === 'upload');
+
+            if (uploadIndex !== -1) {
+                // Get everything after 'upload' but before any version number
+                let publicIdParts = urlParts.slice(uploadIndex + 1);
+
+                // Remove version number if present (starts with 'v' followed by numbers)
+                const versionIndex = publicIdParts.findIndex(part => /^v\d+$/.test(part));
+                if (versionIndex !== -1) {
+                    publicIdParts = publicIdParts.slice(versionIndex + 1);
+                }
+
+                // Remove file extension from the last part
+                if (publicIdParts.length > 0) {
+                    const lastPart = publicIdParts[publicIdParts.length - 1];
+                    const extensionIndex = lastPart.lastIndexOf('.');
+                    if (extensionIndex !== -1) {
+                        publicIdParts[publicIdParts.length - 1] = lastPart.substring(0, extensionIndex);
+                    }
+                }
+
+                const publicId = publicIdParts.join('/');
+                return publicId;
+            }
+        } else if (url.includes('api.cloudinary.com')) {
+            // Format: https://api.cloudinary.com/v1_1/cloud_name/image/upload/...
+            const urlParts = url.split('/');
+            const uploadIndex = urlParts.findIndex(part => part === 'upload');
+
+            if (uploadIndex !== -1) {
+                const publicIdParts = urlParts.slice(uploadIndex + 1);
+                const publicId = publicIdParts.join('/');
+                return publicId;
+            }
+        }
+
+        return null;
+
+    } catch (error) {
+        return null;
+    }
+}
+
 // Import other services (will be added as we create them)
 // import { imageService } from './images';
 // import { ghostConversationService } from './conversations';
@@ -413,13 +463,24 @@ export const postService = {
 
                 // Delete removed images from Cloudinary first
                 if (deletedImages.length > 0) {
-                    console.log(`Deleting ${deletedImages.length} removed images from Cloudinary:`, deletedImages);
-                    // Delete images one by one since cloudinaryService only has deleteImage method
+                    console.log(`🗑️ Deleting ${deletedImages.length} removed images from Cloudinary:`, deletedImages);
+
+                    // Delete images one by one with proper public ID extraction
                     for (const imageUrl of deletedImages) {
                         try {
-                            await cloudinaryService.deleteImage(imageUrl);
+                            // Extract public ID from the full URL
+                            const publicId = extractCloudinaryPublicId(imageUrl);
+
+                            if (publicId) {
+                                console.log(`🗑️ Deleting removed image: ${imageUrl.split('/').pop()} (Public ID: ${publicId})`);
+                                await cloudinaryService.deleteImage(publicId);
+                                console.log(`✅ Successfully deleted removed image: ${imageUrl.split('/').pop()}`);
+                            } else {
+                                console.warn(`⚠️ Could not extract public ID from removed image URL: ${imageUrl}`);
+                            }
                         } catch (error) {
-                            console.warn('Failed to delete image:', imageUrl, error);
+                            console.error('❌ Failed to delete removed image:', imageUrl, error);
+                            // Continue with other images even if one fails
                         }
                     }
                 }
@@ -453,12 +514,23 @@ export const postService = {
             // Delete all collected images from Cloudinary if any exist
             if (allImagesToDelete.length > 0) {
                 console.log(`🗑️ Deleting ${allImagesToDelete.length} total images from Cloudinary (post + handover photos)`);
-                // Delete images one by one since cloudinaryService only has deleteImage method
+
+                // Delete images one by one with proper public ID extraction
                 for (const imageUrl of allImagesToDelete) {
                     try {
-                        await cloudinaryService.deleteImage(imageUrl);
+                        // Extract public ID from the full URL
+                        const publicId = extractCloudinaryPublicId(imageUrl);
+
+                        if (publicId) {
+                            console.log(`🗑️ Deleting image: ${imageUrl.split('/').pop()} (Public ID: ${publicId})`);
+                            await cloudinaryService.deleteImage(publicId);
+                            console.log(`✅ Successfully deleted image: ${imageUrl.split('/').pop()}`);
+                        } else {
+                            console.warn(`⚠️ Could not extract public ID from URL: ${imageUrl}`);
+                        }
                     } catch (error) {
-                        console.warn('Failed to delete image:', imageUrl, error);
+                        console.error('❌ Failed to delete image:', imageUrl, error);
+                        // Continue with other images even if one fails
                     }
                 }
             } else {
