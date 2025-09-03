@@ -185,6 +185,57 @@ export const authService = {
         }
     },
 
+    // Create campus security user (for campus security access)
+    async createCampusSecurityUser(
+        email: string,
+        password: string,
+        firstName: string,
+        lastName: string,
+        contactNum: string,
+        studentId: string
+    ): Promise<{ user: FirebaseUser; userData: UserData }> {
+        try {
+            // Create user with email and password
+            const userCredential: UserCredential = await createUserWithEmailAndPassword(
+                auth,
+                email,
+                password
+            );
+
+            const user = userCredential.user;
+
+            // Update user profile with display name
+            await updateProfile(user, {
+                displayName: `${firstName} ${lastName}`
+            });
+
+            // Create campus security user document in Firestore
+            const userData: UserData = {
+                uid: user.uid,
+                email: user.email!,
+                firstName,
+                lastName,
+                contactNum,
+                studentId,
+                role: 'campus_security', // Set as campus security
+                status: 'active', // Ensure campus security users also have active status
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
+
+            // Ensure the status field is explicitly set to prevent permission issues
+            if (!userData.status) {
+                userData.status = 'active';
+            }
+
+            await setDoc(doc(db, 'users', user.uid), userData);
+
+            return { user, userData };
+        } catch (error: any) {
+            throw new Error(error.message || 'Campus security user creation failed');
+        }
+    },
+
     // Force email verification (for development)
     async forceEmailVerification(email: string, password: string): Promise<void> {
         try {
