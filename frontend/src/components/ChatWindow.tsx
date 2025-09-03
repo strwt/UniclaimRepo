@@ -30,6 +30,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isClaimSubmitting, setIsClaimSubmitting] = useState(false);
   const [showHandoverModal, setShowHandoverModal] = useState(false);
   const [isHandoverSubmitting, setIsHandoverSubmitting] = useState(false);
+  
+  // New engagement tracking state variables
+  const [isUserTyping, setIsUserTyping] = useState(false);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  
   const navigate = useNavigate();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -70,11 +75,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
-  // Handle scroll events to show/hide scroll to bottom button
+  // Handle scroll events to show/hide scroll to bottom button and track engagement
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
-    const isScrolledUp =
-      target.scrollTop < target.scrollHeight - target.clientHeight - 100;
+    const scrollTop = target.scrollTop;
+    const scrollHeight = target.scrollHeight;
+    const clientHeight = target.clientHeight;
+    
+    // Check if user is near bottom (within 200px)
+    const isNearBottomNow = scrollTop >= scrollHeight - clientHeight - 200;
+    setIsNearBottom(isNearBottomNow);
+    
+    // Show/hide scroll to bottom button
+    const isScrolledUp = scrollTop < scrollHeight - clientHeight - 100;
     setShowScrollToBottom(isScrolledUp);
   };
 
@@ -84,6 +97,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       scrollToBottom();
     }
   }, [messages]);
+
+  // Note: 2-second timer logic removed as requested
 
 
 
@@ -98,6 +113,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const unsubscribe = getConversationMessages(
       conversation.id,
       (loadedMessages) => {
+        // Check if these are new messages (not just initial load)
+        const previousMessageCount = messages.length;
+        const hasNewMessages = loadedMessages.length > previousMessageCount;
+        
         setMessages(loadedMessages);
         setIsLoading(false);
 
@@ -111,6 +130,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           markAllUnreadMessagesAsRead(conversation.id);
         }
 
+        // Auto-read new messages if user is engaged
+        if (hasNewMessages && previousMessageCount > 0) {
+          const newMessages = loadedMessages.slice(previousMessageCount);
+          // Only auto-read if there are actually new messages and user is engaged
+          if (newMessages.length > 0) {
+            autoReadNewMessages(newMessages);
+          }
+        }
+
         // Scroll to bottom when conversation is opened and messages are loaded
         // Use requestAnimationFrame to ensure DOM is fully rendered
         requestAnimationFrame(() => {
@@ -122,16 +150,34 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return () => unsubscribe();
   }, [conversation, getConversationMessages, markConversationAsRead, userData, markAllUnreadMessagesAsRead]);
 
+  // Function to check if new messages should be auto-read based on user engagement
+  const shouldAutoReadMessage = (): boolean => {
+    // Auto-read if user is typing
+    if (isUserTyping) return true;
+    
+    // Auto-read if user is near bottom (within 200px)
+    if (isNearBottom) return true;
+    
+    return false;
+  };
+
   // Mark conversation as read when new messages arrive while user is viewing
   useEffect(() => {
     if (!conversation?.id || !userData?.uid || !messages.length) return;
 
     // Check if there are unread messages in this conversation
     if (conversation?.unreadCounts?.[userData.uid] > 0) {
-      // Mark conversation as read since user is actively viewing it
-      markConversationAsRead(conversation.id);
+      // Check if user is engaged enough to auto-read new messages
+      if (shouldAutoReadMessage()) {
+        // User is engaged - mark conversation as read
+        markConversationAsRead(conversation.id);
+        
+        // Also mark all unread messages as read for better UX
+        markAllUnreadMessagesAsRead(conversation.id);
+      }
+      // If user is not engaged, don't mark as read - let them do it manually
     }
-  }, [messages, conversation, userData, markConversationAsRead]);
+  }, [messages, conversation, userData, markConversationAsRead, markAllUnreadMessagesAsRead, shouldAutoReadMessage]);
 
   // Check if conversation still exists (wasn't deleted)
   useEffect(() => {
@@ -146,6 +192,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return;
     }
   }, [conversation, conversations, navigate]);
+
+  // Function to auto-read new messages based on user engagement
+  const autoReadNewMessages = async (newMessages: Message[]) => {
+    if (!conversation?.id || !userData?.uid || !shouldAutoReadMessage()) {
+      return; // Don't auto-read if user is not engaged
+    }
+
+    try {
+      // Mark conversation as read
+      await markConversationAsRead(conversation.id);
+      
+      // Mark all new messages as read
+      for (const message of newMessages) {
+        // Only mark messages that haven't been read by this user
+        if (!message.readBy?.includes(userData.uid)) {
+          await markMessageAsRead(conversation.id, message.id);
+        }
+      }
+      
+      console.log(`✅ Auto-read ${newMessages.length} new messages due to user engagement`);
+    } catch (error) {
+      console.warn('Failed to auto-read new messages:', error);
+    }
+  };
 
   // Function to mark message as read when it comes into view
   const handleMessageSeen = async (messageId: string) => {
@@ -806,6 +876,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           scrollBehavior: "auto",
         }}
         onScroll={handleScroll}
+        onClick={() => {
+          // User clicked in chat area - this indicates engagement
+          // No timer needed - just track the interaction
+        }}
       >
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
@@ -924,6 +998,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
+                onFocus={() => setIsUserTyping(true)}
+                onBlur={() => setIsUserTyping(false)}
                 placeholder="Type your message..."
                 maxLength={200}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-navyblue focus:border-transparent ${
