@@ -137,7 +137,7 @@ service cloud.firestore {
     
     function isAdmin() {
       // Add more admin emails as needed
-      return request.auth.token.email in ['admin@ustp.edu.ph', 'superadmin@ustp.edu.ph','admin@uniclaim.com'];
+      return request.auth.token.email in ['admin@ustp.edu.ph', 'superadmin@ustp.edu.ph','admin@uniclaim.com', 'cs@uniclaim.com'];
     }
     
     // NEW: Check if current user is banned

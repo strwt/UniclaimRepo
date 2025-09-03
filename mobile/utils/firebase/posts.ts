@@ -111,11 +111,26 @@ export const postService = {
     // Create new post
     async createPost(postData: any): Promise<string> {
         try {
-            const postRef = await addDoc(collection(db, 'posts'), {
+            // Calculate expiry date (30 days from creation)
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + 30);
+
+            // Ensure all required fields are present for web compatibility
+            const enhancedPostData = {
                 ...postData,
+                // Ensure status is set to pending for new posts
+                status: postData.status || 'pending',
+                // Add lifecycle management fields that web expects
+                isExpired: false,
+                movedToUnclaimed: false,
+                originalStatus: postData.status || 'pending',
+                // Set expiry date for 30-day lifecycle system
+                expiryDate: expiryDate,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
-            });
+            };
+
+            const postRef = await addDoc(collection(db, 'posts'), enhancedPostData);
             return postRef.id;
         } catch (error: any) {
             throw new Error(error.message || 'Failed to create post');
