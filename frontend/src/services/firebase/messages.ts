@@ -423,5 +423,319 @@ export const messageService = {
             });
             throw new Error(error.message || 'Failed to update post status');
         }
+    },
+
+    // Update conversation post data
+    async updateConversationPostData(conversationId: string): Promise<void> {
+        try {
+            const conversationRef = doc(db, 'conversations', conversationId);
+            const conversationDoc = await getDoc(conversationRef);
+
+            if (!conversationDoc.exists()) {
+                throw new Error('Conversation not found');
+            }
+
+            const conversationData = conversationDoc.data();
+            const postId = conversationData.postId;
+
+            if (!postId) {
+                throw new Error('No post ID found in conversation');
+            }
+
+            // Get the post data
+            const postRef = doc(db, 'posts', postId);
+            const postDoc = await getDoc(postRef);
+
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            const postData = postDoc.data();
+
+            // Update conversation with current post data
+            await updateDoc(conversationRef, {
+                postTitle: postData.title,
+                postStatus: postData.status,
+                postType: postData.type,
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`✅ Updated conversation ${conversationId} with current post data`);
+        } catch (error: any) {
+            console.error('❌ Failed to update conversation post data:', error);
+            throw new Error(error.message || 'Failed to update conversation post data');
+        }
+    },
+
+    // Send handover request
+    async sendHandoverRequest(conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, handoverReason?: string, idPhotoUrl?: string, itemPhotos?: { url: string; uploadedAt: any; description?: string }[]): Promise<void> {
+        try {
+            console.log('🔄 Firebase: sendHandoverRequest called with:', { conversationId, senderId, senderName, postId, postTitle, handoverReason, idPhotoUrl, itemPhotos });
+
+            // Validate ID photo URL
+            if (idPhotoUrl && !idPhotoUrl.startsWith('http')) {
+                console.error('❌ Invalid ID photo URL in sendHandoverRequest:', { idPhotoUrl });
+                throw new Error('Invalid ID photo URL provided to sendHandoverRequest');
+            }
+
+            // Validate item photos array
+            if (itemPhotos && (!Array.isArray(itemPhotos) || itemPhotos.some(photo => !photo.url || !photo.url.startsWith('http')))) {
+                console.error('❌ Invalid item photos array in sendHandoverRequest:', { itemPhotos });
+                throw new Error('Invalid item photos array provided to sendHandoverRequest');
+            }
+
+            const messageData = {
+                text: `Handover Request: ${handoverReason || 'No reason provided'}`,
+                senderId,
+                senderName,
+                senderProfilePicture,
+                timestamp: serverTimestamp(),
+                type: 'handover-request',
+                handoverRequest: {
+                    postId,
+                    postTitle,
+                    handoverReason: handoverReason || 'No reason provided',
+                    idPhotoUrl: idPhotoUrl || '',
+                    itemPhotos: itemPhotos || [],
+                    requestedAt: serverTimestamp(),
+                    status: 'pending'
+                }
+            };
+
+            // Add message to conversation
+            const messageRef = await addDoc(collection(db, 'conversations', conversationId, 'messages'), messageData);
+
+            // Update conversation with handover request info
+            await updateDoc(doc(db, 'conversations', conversationId), {
+                hasHandoverRequest: true,
+                handoverRequestId: messageRef.id,
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`✅ Handover request sent successfully: ${messageRef.id}`);
+        } catch (error: any) {
+            console.error('❌ Firebase sendHandoverRequest failed:', error);
+            throw new Error(error.message || 'Failed to send handover request');
+        }
+    },
+
+    // Update handover response
+    async updateHandoverResponse(conversationId: string, messageId: string, status: 'accepted' | 'rejected', userId: string, idPhotoUrl?: string): Promise<void> {
+        try {
+            console.log('🔄 Firebase: updateHandoverResponse called with:', { conversationId, messageId, status, userId, idPhotoUrl });
+
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+            const messageDoc = await getDoc(messageRef);
+
+            if (!messageDoc.exists()) {
+                throw new Error('Message not found');
+            }
+
+            const messageData = messageDoc.data();
+            if (messageData.type !== 'handover-request') {
+                throw new Error('Message is not a handover request');
+            }
+
+            // Update the handover request status
+            await updateDoc(messageRef, {
+                'handoverRequest.status': status,
+                'handoverRequest.respondedAt': serverTimestamp(),
+                'handoverRequest.responderId': userId,
+                'handoverRequest.responderIdPhoto': idPhotoUrl || ''
+            });
+
+            // Update conversation status
+            await updateDoc(doc(db, 'conversations', conversationId), {
+                handoverRequestStatus: status,
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`✅ Handover response updated: ${status}`);
+        } catch (error: any) {
+            console.error('❌ Firebase updateHandoverResponse failed:', error);
+            throw new Error(error.message || 'Failed to update handover response');
+        }
+    },
+
+    // Send claim request
+    async sendClaimRequest(conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string, evidencePhotos?: { url: string; uploadedAt: any; description?: string }[]): Promise<void> {
+        try {
+            console.log('🔄 Firebase: sendClaimRequest called with:', { conversationId, senderId, senderName, postId, postTitle, claimReason, idPhotoUrl, evidencePhotos });
+
+            // Validate ID photo URL
+            if (idPhotoUrl && !idPhotoUrl.startsWith('http')) {
+                console.error('❌ Invalid ID photo URL in sendClaimRequest:', { idPhotoUrl });
+                throw new Error('Invalid ID photo URL provided to sendClaimRequest');
+            }
+
+            // Validate evidence photos array
+            if (evidencePhotos && (!Array.isArray(evidencePhotos) || evidencePhotos.some(photo => !photo.url || !photo.url.startsWith('http')))) {
+                console.error('❌ Invalid evidence photos array in sendClaimRequest:', { evidencePhotos });
+                throw new Error('Invalid evidence photos array provided to sendClaimRequest');
+            }
+
+            const messageData = {
+                text: `Claim Request: ${claimReason || 'No reason provided'}`,
+                senderId,
+                senderName,
+                senderProfilePicture,
+                timestamp: serverTimestamp(),
+                type: 'claim-request',
+                claimRequest: {
+                    postId,
+                    postTitle,
+                    claimReason: claimReason || 'No reason provided',
+                    idPhotoUrl: idPhotoUrl || '',
+                    evidencePhotos: evidencePhotos || [],
+                    requestedAt: serverTimestamp(),
+                    status: 'pending'
+                }
+            };
+
+            // Add message to conversation
+            const messageRef = await addDoc(collection(db, 'conversations', conversationId, 'messages'), messageData);
+
+            // Update conversation with claim request info
+            await updateDoc(doc(db, 'conversations', conversationId), {
+                hasClaimRequest: true,
+                claimRequestId: messageRef.id,
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`✅ Claim request sent successfully: ${messageRef.id}`);
+        } catch (error: any) {
+            console.error('❌ Firebase sendClaimRequest failed:', error);
+            throw new Error(error.message || 'Failed to send claim request');
+        }
+    },
+
+    // Update claim response
+    async updateClaimResponse(conversationId: string, messageId: string, status: 'accepted' | 'rejected', userId: string, idPhotoUrl?: string): Promise<void> {
+        try {
+            console.log('🔄 Firebase: updateClaimResponse called with:', { conversationId, messageId, status, userId, idPhotoUrl });
+
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+            const messageDoc = await getDoc(messageRef);
+
+            if (!messageDoc.exists()) {
+                throw new Error('Message not found');
+            }
+
+            const messageData = messageDoc.data();
+            if (messageData.type !== 'claim-request') {
+                throw new Error('Message is not a claim request');
+            }
+
+            // Update the claim request status
+            await updateDoc(messageRef, {
+                'claimRequest.status': status,
+                'claimRequest.respondedAt': serverTimestamp(),
+                'claimRequest.responderId': userId,
+                'claimRequest.responderIdPhoto': idPhotoUrl || ''
+            });
+
+            // Update conversation status
+            await updateDoc(doc(db, 'conversations', conversationId), {
+                claimRequestStatus: status,
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`✅ Claim response updated: ${status}`);
+        } catch (error: any) {
+            console.error('❌ Firebase updateClaimResponse failed:', error);
+            throw new Error(error.message || 'Failed to update claim response');
+        }
+    },
+
+    // Confirm handover ID photo
+    async confirmHandoverIdPhoto(conversationId: string, messageId: string, confirmBy: string): Promise<{ success: boolean; conversationDeleted: boolean; postId?: string; error?: string }> {
+        try {
+            console.log('🔄 Firebase: confirmHandoverIdPhoto called with:', { conversationId, messageId, confirmBy });
+
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+            const messageDoc = await getDoc(messageRef);
+
+            if (!messageDoc.exists()) {
+                throw new Error('Message not found');
+            }
+
+            const messageData = messageDoc.data();
+            if (messageData.type !== 'handover-request') {
+                throw new Error('Message is not a handover request');
+            }
+
+            // Update the handover request with confirmation
+            await updateDoc(messageRef, {
+                'handoverRequest.idPhotoConfirmed': true,
+                'handoverRequest.idPhotoConfirmedAt': serverTimestamp(),
+                'handoverRequest.idPhotoConfirmedBy': confirmBy
+            });
+
+            console.log(`✅ Handover ID photo confirmed by ${confirmBy}`);
+            return { success: true, conversationDeleted: false };
+        } catch (error: any) {
+            console.error('❌ Firebase confirmHandoverIdPhoto failed:', error);
+            return { success: false, conversationDeleted: false, error: error.message };
+        }
+    },
+
+    // Confirm claim ID photo
+    async confirmClaimIdPhoto(conversationId: string, messageId: string, confirmBy: string): Promise<void> {
+        try {
+            console.log('🔄 Firebase: confirmClaimIdPhoto called with:', { conversationId, messageId, confirmBy });
+
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+            const messageDoc = await getDoc(messageRef);
+
+            if (!messageDoc.exists()) {
+                throw new Error('Message not found');
+            }
+
+            const messageData = messageDoc.data();
+            if (messageData.type !== 'claim-request') {
+                throw new Error('Message is not a claim request');
+            }
+
+            // Update the claim request with confirmation
+            await updateDoc(messageRef, {
+                'claimRequest.idPhotoConfirmed': true,
+                'claimRequest.idPhotoConfirmedAt': serverTimestamp(),
+                'claimRequest.idPhotoConfirmedBy': confirmBy
+            });
+
+            console.log(`✅ Claim ID photo confirmed by ${confirmBy}`);
+        } catch (error: any) {
+            console.error('❌ Firebase confirmClaimIdPhoto failed:', error);
+            throw new Error(error.message || 'Failed to confirm claim ID photo');
+        }
+    },
+
+    // Delete message
+    async deleteMessage(conversationId: string, messageId: string, currentUserId: string): Promise<void> {
+        try {
+            console.log('🔄 Firebase: deleteMessage called with:', { conversationId, messageId, currentUserId });
+
+            const messageRef = doc(db, 'conversations', conversationId, 'messages', messageId);
+            const messageDoc = await getDoc(messageRef);
+
+            if (!messageDoc.exists()) {
+                throw new Error('Message not found');
+            }
+
+            const messageData = messageDoc.data();
+
+            // Check if user has permission to delete this message
+            if (messageData.senderId !== currentUserId) {
+                throw new Error('You can only delete your own messages');
+            }
+
+            // Delete the message
+            await deleteDoc(messageRef);
+
+            console.log(`✅ Message deleted successfully: ${messageId}`);
+        } catch (error: any) {
+            console.error('❌ Firebase deleteMessage failed:', error);
+            throw new Error(error.message || 'Failed to delete message');
+        }
     }
 };
