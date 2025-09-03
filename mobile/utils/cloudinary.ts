@@ -2,10 +2,24 @@
 // Using fetch-only approach for better React Native compatibility
 
 // Configuration values from environment variables (Expo format)
+// 
+// SETUP REQUIRED: For mobile app to work, you need to create a .env file in the mobile directory
+// with these variables, or the upload will fail with configuration errors.
+//
+// Required variables:
+// - EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name_here
+// - EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=uniclaim_uploads
+//
+// Optional variables (for image deletion):
+// - EXPO_PUBLIC_CLOUDINARY_API_KEY=your_api_key_here  
+// - EXPO_PUBLIC_CLOUDINARY_API_SECRET=your_api_secret_here
+//
 const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'your-cloud-name';
 const UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'uniclaim_uploads';
 const CLOUDINARY_API_KEY = process.env.EXPO_PUBLIC_CLOUDINARY_API_KEY;
 const CLOUDINARY_API_SECRET = process.env.EXPO_PUBLIC_CLOUDINARY_API_SECRET;
+
+
 
 // Import CryptoJS for proper HMAC-SHA1 signature generation - Using the full crypto-js library
 import CryptoJS from 'crypto-js';
@@ -710,5 +724,7 @@ export const deleteMessageImages = async (imageUrls: string[]): Promise<{ delete
         return { deleted: [], failed: [], success: false };
     }
 };
+
+
 
 export default cloudinaryService;

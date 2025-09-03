@@ -82,6 +82,7 @@ export default function Report() {
     if (!userData || !reportType || !user) return;
 
     setIsSubmitting(true);
+    
 
     try {
       // Build post data conditionally to avoid undefined values in Firebase
@@ -119,8 +120,10 @@ export default function Report() {
         postData.foundAction = foundAction;
       }
 
-      const postId = await postService.createPost(postData, user.uid);
+      await postService.createPost(postData);
 
+
+      
       Alert.alert(
         "Success",
         "Your report has been submitted successfully!",
@@ -139,12 +142,14 @@ export default function Report() {
               setCoordinates({ latitude: 0, longitude: 0 });
               setImages([]);
               setActiveTab("item");
+
             },
           },
         ]
       );
     } catch (error: any) {
       console.error('Error creating post:', error);
+
       Alert.alert(
         "Error",
         error.message || "Failed to submit report. Please try again.",
@@ -245,6 +250,8 @@ export default function Report() {
 
         {/* Submit Button */}
         <View className="absolute bg-teal-50 bottom-0 left-0 w-full p-4">
+
+          
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={isSubmitting}

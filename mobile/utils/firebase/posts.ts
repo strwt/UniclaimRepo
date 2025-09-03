@@ -111,6 +111,25 @@ export const postService = {
     // Create new post
     async createPost(postData: any): Promise<string> {
         try {
+            // Upload images to Cloudinary if any (matching web app pattern)
+            let imageUrls: string[] = [];
+            if (postData.images && postData.images.length > 0) {
+                try {
+                    const { cloudinaryService } = await import('../cloudinary');
+                    imageUrls = await cloudinaryService.uploadImages(postData.images, 'posts');
+                } catch (uploadError: any) {
+                    console.error('❌ Failed to upload images to Cloudinary:', uploadError);
+
+                    // Provide more helpful error message for configuration issues
+                    if (uploadError.message.includes('Cloudinary cloud name not configured') ||
+                        uploadError.message.includes('Cloudinary upload preset not configured')) {
+                        throw new Error(`Cloudinary not configured. Please create a .env file in the mobile directory with EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME and EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET. Error: ${uploadError.message}`);
+                    }
+
+                    throw new Error(`Failed to upload images: ${uploadError.message}`);
+                }
+            }
+
             // Calculate expiry date (30 days from creation)
             const expiryDate = new Date();
             expiryDate.setDate(expiryDate.getDate() + 30);
@@ -118,6 +137,8 @@ export const postService = {
             // Ensure all required fields are present for web compatibility
             const enhancedPostData = {
                 ...postData,
+                // Replace local image URIs with Cloudinary URLs
+                images: imageUrls,
                 // Ensure status is set to pending for new posts
                 status: postData.status || 'pending',
                 // Add lifecycle management fields that web expects
@@ -129,6 +150,8 @@ export const postService = {
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             };
+
+
 
             const postRef = await addDoc(collection(db, 'posts'), enhancedPostData);
             return postRef.id;
