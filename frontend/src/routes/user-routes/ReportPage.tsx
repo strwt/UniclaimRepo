@@ -175,6 +175,19 @@ export default function ReportPage() {
         throw new Error("User data not available");
       }
 
+      // Check if this should be transferred to Campus Security
+      const shouldTransferToCampusSecurity = selectedReport === "found" && selectedFoundAction === "turnover to Campus Security";
+      
+      // Campus Security user data
+      const campusSecurityData = {
+        firstName: "Campus",
+        lastName: "Security",
+        email: "cs@uniclaim.com",
+        contactNum: "",
+        studentId: "",
+        profilePicture: null
+      };
+
       // Build post data conditionally to avoid undefined values in Firebase
       const createdPost: Omit<Post, "id" | "createdAt"> = {
         title: title.trim(),
@@ -184,8 +197,8 @@ export default function ReportPage() {
         type: selectedReport,
         images: selectedFiles,
         dateTime: selectedDateTime,
-        creatorId: userData.uid, // Add creator ID
-        user: {
+        creatorId: shouldTransferToCampusSecurity ? "hedUWuv96VWQek5OucPzXTCkpQU2" : userData.uid, // Transfer ownership if needed
+        user: shouldTransferToCampusSecurity ? campusSecurityData : {
           firstName: userData?.firstName || "",
           lastName: userData?.lastName || "",
           email: userData?.email || "",
@@ -209,7 +222,7 @@ export default function ReportPage() {
 
       // Use Firebase service to create post
       const { postService } = await import("../../utils/firebase");
-      const postId = await postService.createPost(createdPost, userData.uid);
+      const postId = await postService.createPost(createdPost, shouldTransferToCampusSecurity ? "hedUWuv96VWQek5OucPzXTCkpQU2" : userData.uid);
 
       console.log("Post created successfully with ID:", postId);
 

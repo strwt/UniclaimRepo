@@ -85,6 +85,19 @@ export default function Report() {
     
 
     try {
+      // Check if this should be transferred to Campus Security
+      const shouldTransferToCampusSecurity = reportType === "found" && foundAction === "turnover to Campus Security";
+      
+      // Campus Security user data
+      const campusSecurityData = {
+        firstName: "Campus",
+        lastName: "Security",
+        email: "cs@uniclaim.com",
+        contactNum: "",
+        studentId: "",
+        profilePicture: null
+      };
+
       // Build post data conditionally to avoid undefined values in Firebase
       const postData: Omit<Post, 'id' | 'createdAt'> = {
         title: title.trim(),
@@ -94,7 +107,7 @@ export default function Report() {
         type: reportType,
         images: images,
         dateTime: selectedDate!.toISOString(),
-        user: {
+        user: shouldTransferToCampusSecurity ? campusSecurityData : {
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: userData.email,
@@ -102,8 +115,8 @@ export default function Report() {
           studentId: userData.studentId,
           profilePicture: userData.profilePicture || null, // Ensure it's never undefined
         },
-        creatorId: user.uid, // Add creator ID
-        postedById: user.uid, // Use Firebase user ID for messaging
+        creatorId: shouldTransferToCampusSecurity ? "hedUWuv96VWQek5OucPzXTCkpQU2" : user.uid, // Transfer ownership if needed
+        postedById: shouldTransferToCampusSecurity ? "hedUWuv96VWQek5OucPzXTCkpQU2" : user.uid, // Use Firebase user ID for messaging
         status: "pending",
       };
 

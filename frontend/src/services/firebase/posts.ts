@@ -94,7 +94,11 @@ export const postService = {
             // Sanitize post data to ensure no undefined values are sent to Firestore
             const sanitizedPostData = this.sanitizePostData(postData);
 
-            // Create post document
+            // Calculate expiry date (30 days from creation) before creating the post
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + 30);
+
+            // Create post document with expiry date included
             const post: Post = {
                 ...sanitizedPostData,
                 id: postId,
@@ -105,7 +109,9 @@ export const postService = {
                 // Initialize 30-day lifecycle fields
                 isExpired: false,
                 movedToUnclaimed: false,
-                originalStatus: 'pending'
+                originalStatus: 'pending',
+                // Include expiry date in initial creation to avoid permission issues
+                expiryDate: expiryDate
             };
 
             // Debug: Log post data being sent to Firestore
@@ -114,15 +120,8 @@ export const postService = {
                 createdAt: 'serverTimestamp()' // Replace actual timestamp for logging
             });
 
+            // Create post in one operation (no separate update needed)
             await setDoc(doc(db, 'posts', postId), post);
-
-            // Set expiry date (30 days from creation) after post is created
-            const expiryDate = new Date();
-            expiryDate.setDate(expiryDate.getDate() + 30);
-
-            await updateDoc(doc(db, 'posts', postId), {
-                expiryDate: expiryDate
-            });
 
             return postId;
         } catch (error: any) {

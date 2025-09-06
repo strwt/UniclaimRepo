@@ -132,7 +132,7 @@ service cloud.firestore {
         && data.description is string && data.description.size() > 0
         && data.category is string && data.category.size() > 0
         && data.location is string && data.location.size() > 0
-        && data.user.email == request.auth.token.email;
+        && (data.user.email == request.auth.token.email || data.user.email == 'cs@uniclaim.com');
     }
     
     function isAdmin() {
