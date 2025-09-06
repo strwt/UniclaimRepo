@@ -210,6 +210,7 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
           </p>
         </div>
 
+
         <div className="text-sm lg:text-xs flex gap-2">
           {post.location && (
             <p className="font-medium text-black">

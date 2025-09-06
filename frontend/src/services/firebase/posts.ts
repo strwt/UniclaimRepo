@@ -94,6 +94,11 @@ export const postService = {
             // Sanitize post data to ensure no undefined values are sent to Firestore
             const sanitizedPostData = this.sanitizePostData(postData);
 
+            // Convert turnoverDecisionAt to Firebase timestamp if it exists
+            if (sanitizedPostData.turnoverDetails?.turnoverDecisionAt) {
+                sanitizedPostData.turnoverDetails.turnoverDecisionAt = serverTimestamp();
+            }
+
             // Calculate expiry date (30 days from creation) before creating the post
             const expiryDate = new Date();
             expiryDate.setDate(expiryDate.getDate() + 30);

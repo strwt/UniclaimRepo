@@ -215,6 +215,25 @@ export default function ReportPage() {
         createdPost.foundAction = selectedFoundAction;
       }
 
+      // Add turnover details if this is a turnover action
+      if (selectedReport === "found" && selectedFoundAction && 
+          (selectedFoundAction === "turnover to OSA" || selectedFoundAction === "turnover to Campus Security")) {
+        createdPost.turnoverDetails = {
+          originalFinder: {
+            uid: userData.uid,
+            firstName: userData?.firstName || "",
+            lastName: userData?.lastName || "",
+            email: userData?.email || "",
+            contactNum: userData?.contactNum || "",
+            studentId: userData?.studentId || "",
+            profilePicture: userData?.profilePicture || userData?.profileImageUrl || null,
+          },
+          turnoverAction: selectedFoundAction,
+          turnoverDecisionAt: new Date(), // Will be converted to Firebase timestamp
+          // Note: turnoverReason is optional and not included if undefined
+        };
+      }
+
       // Only add optional fields if they have valid values
       if (coordinates) {
         createdPost.coordinates = coordinates;

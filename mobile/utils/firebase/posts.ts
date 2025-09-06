@@ -134,6 +134,11 @@ export const postService = {
             const expiryDate = new Date();
             expiryDate.setDate(expiryDate.getDate() + 30);
 
+            // Convert turnoverDecisionAt to Firebase timestamp if it exists
+            if (postData.turnoverDetails?.turnoverDecisionAt) {
+                postData.turnoverDetails.turnoverDecisionAt = serverTimestamp();
+            }
+
             // Ensure all required fields are present for web compatibility
             const enhancedPostData = {
                 ...postData,

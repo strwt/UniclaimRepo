@@ -151,6 +151,22 @@ export interface Post {
       ownerIdPhotoConfirmedBy?: string;
     };
   };
+
+  // New field for turnover details (when item is turned over to OSA or Campus Security)
+  turnoverDetails?: {
+    originalFinder: {
+      uid: string;                    // Original finder's user ID
+      firstName: string;              // Original finder's first name
+      lastName: string;               // Original finder's last name
+      email: string;                  // Original finder's email
+      contactNum: string;             // Original finder's contact number
+      studentId: string;              // Original finder's student ID
+      profilePicture?: string | null; // Original finder's profile picture
+    };
+    turnoverAction: "turnover to OSA" | "turnover to Campus Security";
+    turnoverDecisionAt: any;          // When the turnover decision was made (Firebase timestamp)
+    turnoverReason?: string;          // Optional reason for turnover
+  };
 }
 
 // Message Types

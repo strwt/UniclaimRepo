@@ -210,6 +210,35 @@ function AdminPostCard({
           </div>
         </div>
 
+        {/* Turnover Information for Admin */}
+        {post.turnoverDetails && (
+          <div className="bg-blue-50 p-2 rounded mb-3 border border-blue-200">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-blue-600 text-sm">🔄</span>
+              <h4 className="text-xs font-semibold text-blue-800">Turnover Details</h4>
+            </div>
+            <div className="text-xs text-blue-700 space-y-1">
+              <p>
+                <span className="font-medium">Original Finder:</span>{" "}
+                {post.turnoverDetails.originalFinder.firstName} {post.turnoverDetails.originalFinder.lastName}
+              </p>
+              <p>
+                <span className="font-medium">Student ID:</span> {post.turnoverDetails.originalFinder.studentId || 'N/A'}
+              </p>
+              <p>
+                <span className="font-medium">Email:</span> {post.turnoverDetails.originalFinder.email}
+              </p>
+              <p>
+                <span className="font-medium">Contact:</span> {post.turnoverDetails.originalFinder.contactNum || 'N/A'}
+              </p>
+              <p>
+                <span className="font-medium">Turned over to:</span>{" "}
+                {post.turnoverDetails.turnoverAction === "turnover to OSA" ? "OSA" : "Campus Security"}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Status Management - Show dropdown only for pending posts, hide for unclaimed and resolved */}
         {post.status === 'pending' && (
           <div className="mb-3">

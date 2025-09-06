@@ -396,6 +396,37 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
           />
         )}
 
+        {/* Show turnover information if this post was turned over */}
+        {post.turnoverDetails && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-blue-600 text-lg">🔄</span>
+              <h4 className="text-sm font-semibold text-blue-800">Turnover Information</h4>
+            </div>
+            <div className="text-sm text-blue-700 space-y-2">
+              <div>
+                <span className="font-medium">Originally found by:</span>{" "}
+                {post.turnoverDetails.originalFinder.firstName} {post.turnoverDetails.originalFinder.lastName}
+              </div>
+              <div>
+                <span className="font-medium">Student ID:</span> {post.turnoverDetails.originalFinder.studentId || 'N/A'}
+              </div>
+              <div>
+                <span className="font-medium">Email:</span> {post.turnoverDetails.originalFinder.email}
+              </div>
+              {post.turnoverDetails.originalFinder.contactNum && (
+                <div>
+                  <span className="font-medium">Contact:</span> {post.turnoverDetails.originalFinder.contactNum}
+                </div>
+              )}
+              <div>
+                <span className="font-medium">Turned over to:</span>{" "}
+                {post.turnoverDetails.turnoverAction === "turnover to OSA" ? "OSA" : "Campus Security"}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

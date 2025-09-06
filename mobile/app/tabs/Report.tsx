@@ -133,6 +133,25 @@ export default function Report() {
         postData.foundAction = foundAction;
       }
 
+      // Add turnover details if this is a turnover action
+      if (reportType === "found" && foundAction && 
+          (foundAction === "turnover to OSA" || foundAction === "turnover to Campus Security")) {
+        postData.turnoverDetails = {
+          originalFinder: {
+            uid: user.uid,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            email: userData.email,
+            contactNum: userData.contactNum,
+            studentId: userData.studentId,
+            profilePicture: userData.profilePicture || null,
+          },
+          turnoverAction: foundAction,
+          turnoverDecisionAt: new Date(), // Will be converted to Firebase timestamp
+          // Note: turnoverReason is optional and not included if undefined
+        };
+      }
+
       await postService.createPost(postData);
 
 

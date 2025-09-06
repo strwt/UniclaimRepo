@@ -209,6 +209,7 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
           </Text>
         </View>
 
+
         <View className="flex-row flex-wrap items-center gap-2">
           <View className="flex-row items-center gap-1">
             <Ionicons name="location-outline" size={16} color="#4B5563" />
