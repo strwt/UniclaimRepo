@@ -32,6 +32,9 @@ const AdminProfile = () => {
   // State for local file storage (deferred upload approach)
   const [selectedProfileFile, setSelectedProfileFile] = useState<File | null>(null);
   const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] = useState<string | null>(null);
+  
+  // State to track if profile picture is marked for deletion
+  const [isProfilePictureMarkedForDeletion, setIsProfilePictureMarkedForDeletion] = useState(false);
 
   // Update local state when Firebase data loads
   useEffect(() => {
@@ -42,7 +45,7 @@ const AdminProfile = () => {
         email: userData.email || "",
         contact: userData.contactNum || "",
         studentId: userData.studentId || "",
-        profilePicture: userData.profilePicture || userData.profileImageUrl || "",
+        profilePicture: userData.profilePicture || "",
       };
       setUserInfo(updatedInfo);
       setInitialUserInfo(updatedInfo);
@@ -74,6 +77,7 @@ const AdminProfile = () => {
     // Reset local file state when canceling
     setSelectedProfileFile(null);
     cleanupPreviewUrl();
+    setIsProfilePictureMarkedForDeletion(false);
     setIsEdit(false);
   };
 
@@ -118,15 +122,29 @@ const AdminProfile = () => {
 
   const handleRemoveProfilePicture = async () => {
     try {
-      // Clear the local file selection
-      setSelectedProfileFile(null);
-      cleanupPreviewUrl();
-      
-      showToast("success", "Profile Picture Removed", "Profile picture will be removed when you save changes.");
-      
+      // Check if there's a current profile picture to mark for deletion
+      const hasCurrentPicture = userInfo.profilePicture && userInfo.profilePicture.trim() !== '';
+
+      if (hasCurrentPicture) {
+        // Mark the current profile picture for deletion on save
+        setIsProfilePictureMarkedForDeletion(true);
+
+        // Clear any local file selection that might override the deletion
+        setSelectedProfileFile(null);
+        cleanupPreviewUrl();
+
+        // Update the displayed profile picture to show default immediately
+        setUserInfo(prev => ({ ...prev, profilePicture: '' }));
+
+        showToast("success", "Profile Picture Marked for Removal", "Your profile picture will be removed when you save changes.");
+      } else {
+        // No current picture to remove
+        showToast("info", "No Profile Picture", "You don't have a profile picture to remove.");
+      }
+
     } catch (error: any) {
-      console.error("Error removing profile picture:", error);
-      showToast("error", "Removal Failed", "Failed to remove profile picture. Please try again.");
+      console.error("Error marking profile picture for removal:", error);
+      showToast("error", "Removal Failed", "Failed to mark profile picture for removal. Please try again.");
     }
   };
 
@@ -149,7 +167,7 @@ const AdminProfile = () => {
     }
 
     // Check if values actually changed (including profile picture)
-    const hasProfilePictureChanged = selectedProfileFile !== null || profilePicturePreviewUrl !== null;
+    const hasProfilePictureChanged = selectedProfileFile !== null || profilePicturePreviewUrl !== null || isProfilePictureMarkedForDeletion;
     const isChanged =
       firstName !== initialUserInfo.firstName ||
       lastName !== initialUserInfo.lastName ||
@@ -216,8 +234,8 @@ const AdminProfile = () => {
           } finally {
     
           }
-        } else if (profilePicturePreviewUrl === null && userInfo.profilePicture === "") {
-          // Profile picture was removed
+        } else if (isProfilePictureMarkedForDeletion) {
+          // Profile picture was marked for deletion
           if (oldProfilePicture && oldProfilePicture !== "") {
             if (isCloudinaryImage(oldProfilePicture)) {
               try {
@@ -228,6 +246,8 @@ const AdminProfile = () => {
               }
             }
           }
+          // Set final profile picture to empty string for deletion
+          finalProfilePicture = "";
         }
 
         // Use the new profile update service to update everything
@@ -254,6 +274,7 @@ const AdminProfile = () => {
         setInitialUserInfo(prev => ({ ...prev, profilePicture: finalProfilePicture }));
         setSelectedProfileFile(null);
         cleanupPreviewUrl();
+        setIsProfilePictureMarkedForDeletion(false);
         
         // Refresh user data to ensure UI shows updated profile picture
         await refreshUserData();

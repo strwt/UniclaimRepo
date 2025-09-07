@@ -4,6 +4,7 @@ import type { Post } from "@/types/Post";
 // components
 import AdminPostCard from "@/components/AdminPostCard";
 import PostModal from "@/components/PostModal";
+import TicketModal from "@/components/TicketModal";
 import TurnoverConfirmationModal from "@/components/TurnoverConfirmationModal";
 import MobileNavText from "@/components/NavHeadComp";
 import SearchBar from "../../components/SearchBar";
@@ -12,6 +13,7 @@ import SearchBar from "../../components/SearchBar";
 import { useAdminPosts, useResolvedPosts } from "@/hooks/usePosts";
 import { useToast } from "@/context/ToastContext";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { useAuth } from "@/context/AuthContext";
 
 function fuzzyMatch(text: string, query: string): boolean {
   const cleanedText = text.toLowerCase();
@@ -26,6 +28,7 @@ export default function AdminHomePage() {
   const { posts, loading, error } = useAdminPosts();
   const { posts: resolvedPosts, loading: resolvedLoading, error: resolvedError } = useResolvedPosts();
   const { showToast } = useToast();
+  const { userData } = useAuth();
 
 
 
@@ -45,6 +48,10 @@ export default function AdminHomePage() {
   const [showTurnoverModal, setShowTurnoverModal] = useState(false);
   const [postToConfirm, setPostToConfirm] = useState<Post | null>(null);
   const [confirmationType, setConfirmationType] = useState<"confirmed" | "not_received" | null>(null);
+
+  // Edit modal state
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [isUpdatingPost, setIsUpdatingPost] = useState(false);
 
   // Admin statistics state
   const [adminStats, setAdminStats] = useState({
@@ -293,8 +300,14 @@ export default function AdminHomePage() {
 
     try {
       const { postService } = await import('../../services/firebase/posts');
-      // Get current user ID (assuming admin is logged in)
-      const currentUserId = "admin"; // This should be replaced with actual admin user ID
+      // Get current admin user ID from auth context
+      const currentUserId = userData?.uid;
+      
+      if (!currentUserId) {
+        throw new Error("Admin user ID not found. Please log in again.");
+      }
+      
+      console.log(`🔑 Using admin user ID for turnover confirmation: ${currentUserId}`);
       
       if (status === "not_received") {
         // Total deletion when OSA marks item as not received
@@ -326,7 +339,52 @@ export default function AdminHomePage() {
     }
   };
 
+  // Handle edit post
+  const handleEditPost = (post: Post) => {
+    setEditingPost(post);
+  };
 
+  // Handle update post (for TicketModal)
+  const handleUpdatePost = async (updatedPost: Post) => {
+    try {
+      setIsUpdatingPost(true);
+      
+      // Import postService
+      const { postService } = await import('../../services/firebase/posts');
+      
+      // Update the post in Firebase
+      await postService.updatePost(updatedPost.id, {
+        title: updatedPost.title,
+        description: updatedPost.description,
+        location: updatedPost.location,
+        status: updatedPost.status,
+        category: updatedPost.category,
+        type: updatedPost.type,
+        createdAt: updatedPost.createdAt,
+        images: updatedPost.images,
+      });
+
+      // Close edit modal
+      setEditingPost(null);
+      
+      // Show success message
+      showToast(
+        "success",
+        "Post Updated",
+        "The post has been successfully updated!"
+      );
+      
+    } catch (error: any) {
+      console.error("Error updating post:", error);
+      showToast(
+        "error",
+        "Update Failed",
+        error.message || "Failed to update post. Please try again."
+      );
+    } finally {
+      setIsUpdatingPost(false);
+    }
+  };
 
   const handleSearch = async (query: string, filters: any) => {
     setLastDescriptionKeyword(filters.description || "");
@@ -637,6 +695,7 @@ export default function AdminHomePage() {
                 onClick={() => setSelectedPost(post)}
                 highlightText={lastDescriptionKeyword}
                 onDelete={handleDeletePost}
+                onEdit={handleEditPost}
                 onStatusChange={handleStatusChange}
                 onActivateTicket={handleActivateTicket}
                 onRevertResolution={handleRevertResolution}
@@ -785,6 +844,19 @@ export default function AdminHomePage() {
         post={postToConfirm}
         confirmationType={confirmationType}
       />
+
+      {/* Edit Modal */}
+      {editingPost && (
+        <TicketModal
+          key={editingPost.id}
+          post={editingPost}
+          onClose={() => setEditingPost(null)}
+          onDelete={handleDeletePost}
+          onUpdatePost={handleUpdatePost}
+          isDeleting={isUpdatingPost}
+          isAdmin={true}
+        />
+      )}
 
     </div>
   );

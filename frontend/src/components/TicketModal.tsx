@@ -33,6 +33,7 @@ interface TicketModalProps {
   onDelete: (id: string) => void;
   onUpdatePost: (updatedPost: Post) => void;
   isDeleting?: boolean;
+  isAdmin?: boolean; // Allow admin to edit status, category, type
 }
 
 const TicketModal = ({
@@ -41,6 +42,7 @@ const TicketModal = ({
   onDelete,
   onUpdatePost,
   isDeleting,
+  isAdmin = false,
 }: TicketModalProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showImgModal, setShowImgModal] = useState(false);
@@ -67,10 +69,15 @@ const TicketModal = ({
       : new Date(post.createdAt || "").toISOString().slice(0, 16)
   );
 
-  // Prevent editing resolved posts
+  // Admin-editable fields
+  const [editedStatus, setEditedStatus] = useState(post.status);
+  const [editedCategory, setEditedCategory] = useState(post.category);
+  const [editedType, setEditedType] = useState(post.type);
+
+  // Prevent editing resolved posts (unless admin)
   const handleEditClick = () => {
-    if (post.status === "resolved") {
-      return; // Do nothing for resolved posts
+    if (post.status === "resolved" && !isAdmin) {
+      return; // Do nothing for resolved posts (unless admin)
     }
     setIsEditing(true);
   };
@@ -85,11 +92,16 @@ const TicketModal = ({
     setEditedImages(post.images);
     setNewImageFiles([]);
 
-    // Prevent editing state for resolved posts
-    if (post.status === "resolved") {
+    // Reset admin fields
+    setEditedStatus(post.status);
+    setEditedCategory(post.category);
+    setEditedType(post.type);
+
+    // Prevent editing state for resolved posts (unless admin)
+    if (post.status === "resolved" && !isAdmin) {
       setIsEditing(false);
     }
-  }, [post]);
+  }, [post, isAdmin]);
 
   // Show the overlay after a couple of seconds if user doesn't click
   useEffect(() => {
@@ -168,7 +180,9 @@ const TicketModal = ({
       title: editedTitle,
       description: editedDescription,
       location: editedLocation || "",
-      status: post.status, // Keep original status - users cannot change it
+      status: isAdmin ? editedStatus : post.status, // Admin can change status, users cannot
+      category: isAdmin ? editedCategory : post.category, // Admin can change category, users cannot
+      type: isAdmin ? editedType : post.type, // Admin can change type, users cannot
       createdAt: editedDateTime,
       images: editedImages,
     };
@@ -194,7 +208,44 @@ const TicketModal = ({
     },
   ];
 
-  // Status field removed - users cannot change ticket status
+  // Admin-only fields
+  const adminFields = isAdmin ? [
+    {
+      type: "select",
+      value: editedStatus,
+      placeholder: "Status",
+      options: [
+        { value: "pending", label: "Pending" },
+        { value: "resolved", label: "Resolved" },
+        { value: "unclaimed", label: "Unclaimed" },
+      ],
+      onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+        setEditedStatus(e.target.value as "pending" | "resolved" | "unclaimed"),
+    },
+    {
+      type: "select",
+      value: editedCategory,
+      placeholder: "Category",
+      options: [
+        { value: "Student Essentials", label: "Student Essentials" },
+        { value: "Gadgets", label: "Gadgets" },
+        { value: "Personal Belongings", label: "Personal Belongings" },
+      ],
+      onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+        setEditedCategory(e.target.value),
+    },
+    {
+      type: "select",
+      value: editedType,
+      placeholder: "Type",
+      options: [
+        { value: "lost", label: "Lost" },
+        { value: "found", label: "Found" },
+      ],
+      onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+        setEditedType(e.target.value as "lost" | "found"),
+    },
+  ] : [];
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
@@ -333,6 +384,23 @@ const TicketModal = ({
                     onChange={field.onChange}
                     className="w-full border px-3 py-1 rounded"
                   />
+                ))}
+
+                {/* Admin-only fields */}
+                {adminFields.map((field, idx) => (
+                  <select
+                    key={`admin-${idx}`}
+                    value={field.value}
+                    onChange={field.onChange}
+                    className="w-full border px-3 py-1 rounded"
+                  >
+                    <option value="">{field.placeholder}</option>
+                    {field.options?.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 ))}
 
                 {/* Location Dropdown */}

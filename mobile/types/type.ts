@@ -36,6 +36,7 @@ export interface Post {
     contactNum: string;
     studentId: string;
     profilePicture?: string | null; // Standardized profile picture field name
+    role?: 'user' | 'admin' | 'campus_security';
   };
   createdAt?: string | Date | any; // Firebase timestamp or Date
   updatedAt?: string | Date | any; // Firebase timestamp or Date

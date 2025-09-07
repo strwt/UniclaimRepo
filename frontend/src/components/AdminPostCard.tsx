@@ -7,6 +7,7 @@ interface AdminPostCardProps {
   onClick: () => void;
   highlightText: string;
   onDelete?: (post: Post) => void;
+  onEdit?: (post: Post) => void;
   onStatusChange?: (post: Post, status: string) => void;
   onActivateTicket?: (post: Post) => void;
   onRevertResolution?: (post: Post) => void;
@@ -49,6 +50,7 @@ function AdminPostCard({
   onClick,
   highlightText,
   onDelete,
+  onEdit,
   onStatusChange,
   onActivateTicket,
   onRevertResolution,
@@ -156,6 +158,21 @@ function AdminPostCard({
                   Activate
                 </button>
               )}
+             
+             {/* Edit button - only show for confirmed turnover items */}
+             {post.turnoverDetails?.turnoverStatus === "confirmed" && onEdit && (
+               <button
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   onEdit(post);
+                 }}
+                 className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                 title="Edit Post - Modify title, description, or images"
+               >
+                 Edit
+               </button>
+             )}
+             
              <button
                onClick={handleDelete}
                disabled={isDeleting}
@@ -189,7 +206,7 @@ function AdminPostCard({
         <div className="bg-gray-50 p-2 rounded mb-3">
           <div className="flex items-center gap-2 mb-2">
             <ProfilePicture
-              src={post.user?.profilePicture || post.user?.profileImageUrl}
+              src={post.user?.profilePicture}
               alt="user profile"
               size="xs"
               priority={false}

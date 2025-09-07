@@ -13,6 +13,7 @@ import {
     serverTimestamp,
     writeBatch
 } from 'firebase/firestore';
+import { DEFAULT_PROFILE_PICTURE } from '../../types/User';
 
 // Import Firebase instances and types
 import { db } from './config';
@@ -510,9 +511,60 @@ export const postService = {
                 updateData['turnoverDetails.confirmationNotes'] = notes;
             }
 
+            // When OSA admin confirms receipt, change the creator to the admin
+            if (status === 'confirmed') {
+                // Fetch real admin user data using the confirmedBy parameter (actual admin user ID)
+                const adminUserId = confirmedBy;
+                console.log(`🔍 Fetching admin data for user ID: ${adminUserId}`);
+
+                const adminDocRef = doc(db, 'users', adminUserId);
+                const adminDoc = await getDoc(adminDocRef);
+
+                let osaAdminData;
+                if (adminDoc.exists()) {
+                    const adminData = adminDoc.data();
+                    console.log(`✅ Admin data found:`, {
+                        firstName: adminData.firstName,
+                        lastName: adminData.lastName,
+                        email: adminData.email,
+                        profilePicture: adminData.profilePicture,
+                        profileImageUrl: adminData.profileImageUrl
+                    });
+
+                    osaAdminData = {
+                        firstName: adminData.firstName || "System",
+                        lastName: adminData.lastName || "Administrator",
+                        email: adminData.email || "admin@uniclaim.com",
+                        contactNum: "", // Don't show admin contact
+                        studentId: "", // Don't show admin ID
+                        profilePicture: adminData.profilePicture || adminData.profileImageUrl || DEFAULT_PROFILE_PICTURE
+                    };
+
+                    console.log(`📸 Final profile picture URL: ${osaAdminData.profilePicture}`);
+                } else {
+                    console.warn(`⚠️ Admin document not found for user ID: ${adminUserId}`);
+                    // Fallback if admin data not found
+                    osaAdminData = {
+                        firstName: "System",
+                        lastName: "Administrator",
+                        email: "admin@uniclaim.com",
+                        contactNum: "",
+                        studentId: "",
+                        profilePicture: DEFAULT_PROFILE_PICTURE
+                    };
+                }
+
+                updateData.creatorId = confirmedBy;
+                updateData.user = osaAdminData;
+            }
+
             await updateDoc(doc(db, 'posts', postId), updateData);
 
             console.log(`✅ Turnover status updated for post ${postId}: ${status}`);
+            if (status === 'confirmed') {
+                console.log(`✅ Creator changed to admin: ${confirmedBy}`);
+                console.log(`✅ User field updated to OSA admin data`);
+            }
         } catch (error: any) {
             console.error('Error updating turnover status:', error);
             throw new Error(error.message || 'Failed to update turnover status');

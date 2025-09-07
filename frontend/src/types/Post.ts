@@ -17,6 +17,7 @@ export interface Post {
     studentId: string;
     profilePicture?: string | null;
     profileImageUrl?: string;
+    role?: 'user' | 'admin' | 'campus_security';
   };
   createdAt?: string | Date | any; // Firebase timestamp or Date
   updatedAt?: string | Date | any; // Firebase timestamp or Date

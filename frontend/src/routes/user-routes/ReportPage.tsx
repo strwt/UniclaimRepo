@@ -204,8 +204,8 @@ export default function ReportPage() {
           email: userData?.email || "",
           contactNum: userData?.contactNum || "",
           studentId: userData?.studentId || "",
-          profilePicture:
-            userData?.profilePicture || userData?.profileImageUrl || null, // Ensure it's never undefined
+          profilePicture: userData?.profilePicture || null, // Ensure it's never undefined
+          role: userData?.role || 'user', // Include user role
         },
         status: "pending",
       };
@@ -226,7 +226,7 @@ export default function ReportPage() {
             email: userData?.email || "",
             contactNum: userData?.contactNum || "",
             studentId: userData?.studentId || "",
-            profilePicture: userData?.profilePicture || userData?.profileImageUrl || null,
+            profilePicture: userData?.profilePicture || null,
           },
           turnoverAction: selectedFoundAction,
           turnoverDecisionAt: new Date(), // Will be converted to Firebase timestamp

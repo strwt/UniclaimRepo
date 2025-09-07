@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import type { Post } from "../types/type";
 import ProfilePicture from "./ProfilePicture";
+import { useAdminStatus } from "../hooks/useAdminStatus";
 
 type RootStackParamList = {
   PostDetails: { post: Post };
@@ -19,11 +20,16 @@ type RootStackParamList = {
 type Props = {
   post: Post;
   descriptionSearch?: string;
+  adminStatuses?: Map<string, boolean>;
 };
 
-export default function PostCard({ post, descriptionSearch = "" }: Props) {
+export default function PostCard({ post, descriptionSearch = "", adminStatuses }: Props) {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    
+  // Fallback to individual admin status fetch if not provided
+  const fallbackAdminStatuses = useAdminStatus(adminStatuses ? [] : [post]);
+  const effectiveAdminStatuses = adminStatuses || fallbackAdminStatuses;
     
   const getCategoryBadgeStyle = (category: string) => {
     switch (category.toLowerCase()) {
@@ -193,20 +199,28 @@ export default function PostCard({ post, descriptionSearch = "" }: Props) {
             src={post.user?.profilePicture}
             size="xs"
           />
-          <Text className="text-xs text-blue-800 font-manrope-bold">
-            Posted by {(() => {
-              // ✅ Handle multiple data structure scenarios
-              if (post.user?.firstName && post.user?.lastName) {
-                return `${post.user.firstName} ${post.user.lastName}`;
-              } else if (post.postedBy) {
-                return post.postedBy;
-              } else if (post.user?.email) {
-                return post.user.email.split('@')[0]; // Show username part of email
-              } else {
-                return 'Unknown User';
-              }
-            })()}
-          </Text>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-xs text-blue-800 font-manrope-bold">
+              Posted by {(() => {
+                // ✅ Handle multiple data structure scenarios
+                if (post.user?.firstName && post.user?.lastName) {
+                  return `${post.user.firstName} ${post.user.lastName}`;
+                } else if (post.postedBy) {
+                  return post.postedBy;
+                } else if (post.user?.email) {
+                  return post.user.email.split('@')[0]; // Show username part of email
+                } else {
+                  return 'Unknown User';
+                }
+              })()}
+            </Text>
+            {/* Admin Badge */}
+            {(post.user?.role === 'admin' || (post.user?.email && effectiveAdminStatuses.get(post.user.email))) && (
+              <Text className="bg-amber-500 text-white text-xs px-2 py-1 rounded-full font-manrope-bold">
+                ADMIN
+              </Text>
+            )}
+          </View>
         </View>
 
 

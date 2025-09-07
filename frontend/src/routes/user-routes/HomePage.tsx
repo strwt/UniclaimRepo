@@ -10,6 +10,7 @@ import SearchBar from "../../components/SearchBar";
 // hooks
 import { usePosts, useResolvedPosts } from "@/hooks/usePosts";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { useAdminStatus } from "@/hooks/useAdminStatus";
 
 function fuzzyMatch(text: string, query: string): boolean {
   const cleanedText = text.toLowerCase();
@@ -23,6 +24,10 @@ export default function HomePage() {
   // ✅ Use the custom hooks for real-time posts
   const { posts, loading, error } = usePosts();
   const { posts: resolvedPosts, loading: resolvedLoading, error: resolvedError } = useResolvedPosts();
+  
+  // Get admin statuses for all posts
+  const allPosts = [...posts, ...resolvedPosts];
+  const adminStatuses = useAdminStatus(allPosts);
   const [viewType, setViewType] = useState<"all" | "lost" | "found" | "completed">("all");
   const [lastDescriptionKeyword, setLastDescriptionKeyword] = useState("");
   const [rawResults, setRawResults] = useState<Post[] | null>(null); // store-search-result-without-viewType-filter
@@ -236,6 +241,7 @@ export default function HomePage() {
                 post={post}
                 onClick={() => setSelectedPost(post)}
                 highlightText={lastDescriptionKeyword}
+                adminStatuses={adminStatuses}
               />
             ))
         )}

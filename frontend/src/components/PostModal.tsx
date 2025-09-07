@@ -172,7 +172,7 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
         <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
               <ProfilePicture
-                src={post.user?.profilePicture || post.user?.profileImageUrl}
+                src={post.user?.profilePicture}
                 alt="user profile"
                 size="md"
               />

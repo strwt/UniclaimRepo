@@ -1,11 +1,13 @@
 import { useEffect, useMemo, memo } from "react";
 import type { Post } from "@/types/Post";
 import ProfilePicture from "./ProfilePicture";
+import { useAdminStatus } from "@/hooks/useAdminStatus";
 
 interface PostCardProps {
   post: Post;
   onClick: () => void;
   highlightText: string;
+  adminStatuses?: Map<string, boolean>;
 }
 
 function formatDateTime(datetime: string | Date) {
@@ -38,7 +40,11 @@ function highlightAndTruncate(text: string, keyword: string, maxLength = 90) {
   return result;
 }
 
-function PostCard({ post, onClick, highlightText }: PostCardProps) {
+function PostCard({ post, onClick, highlightText, adminStatuses }: PostCardProps) {
+  // Fallback to individual admin status fetch if not provided
+  const fallbackAdminStatuses = useAdminStatus(adminStatuses ? [] : [post]);
+  const effectiveAdminStatuses = adminStatuses || fallbackAdminStatuses;
+  
   const previewUrl = useMemo(() => {
     if (post.images && post.images.length > 0) {
       const firstImage = post.images[0];
@@ -195,19 +201,27 @@ function PostCard({ post, onClick, highlightText }: PostCardProps) {
         {/* Display the user who created the post */}
         <div className="flex items-center gap-2 mb-2">
           <ProfilePicture
-            src={post.user?.profilePicture || post.user?.profileImageUrl}
+            src={post.user?.profilePicture}
             alt="user profile"
             size="xs"
             priority={false} // Don't prioritize profile pictures
           />
-          <p className="text-xs text-blue-800 font-medium">
-            Posted by{" "}
-            {post.user?.firstName && post.user?.lastName
-              ? `${post.user.firstName} ${post.user.lastName}`
-              : post.user?.email
-              ? post.user.email.split("@")[0]
-              : "Unknown User"}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-blue-800 font-medium">
+              Posted by{" "}
+              {post.user?.firstName && post.user?.lastName
+                ? `${post.user.firstName} ${post.user.lastName}`
+                : post.user?.email
+                ? post.user.email.split("@")[0]
+                : "Unknown User"}
+            </p>
+            {/* Admin Badge */}
+            {(post.user?.role === 'admin' || (post.user?.email && effectiveAdminStatuses.get(post.user.email))) && (
+              <span className="bg-amber-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                ADMIN
+              </span>
+            )}
+          </div>
         </div>
 
 

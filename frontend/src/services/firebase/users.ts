@@ -69,8 +69,8 @@ export const profilePictureRecoveryService = {
                         if (userDoc.exists()) {
                             const userData = userDoc.data();
 
-                            // Check both field names since mobile uses profileImageUrl and web uses profilePicture
-                            const profilePicture = userData.profilePicture || userData.profileImageUrl;
+                            // Use only profilePicture field
+                            const profilePicture = userData.profilePicture;
 
                             if (profilePicture) {
                                 updates[`participants.${userId}.profilePicture`] = profilePicture;

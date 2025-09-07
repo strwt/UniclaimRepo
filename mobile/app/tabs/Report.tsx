@@ -114,6 +114,7 @@ export default function Report() {
           contactNum: userData.contactNum,
           studentId: userData.studentId,
           profilePicture: userData.profilePicture || null, // Ensure it's never undefined
+          role: userData.role || 'user', // Include user role
         },
         creatorId: shouldTransferToCampusSecurity ? "hedUWuv96VWQek5OucPzXTCkpQU2" : user.uid, // Transfer ownership if needed
         postedById: shouldTransferToCampusSecurity ? "hedUWuv96VWQek5OucPzXTCkpQU2" : user.uid, // Use Firebase user ID for messaging
