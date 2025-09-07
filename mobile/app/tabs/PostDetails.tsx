@@ -1,4 +1,5 @@
 import ImageCarousel from "@/components/ImageCarousel";
+import ProfilePicture from "@/components/ProfilePicture";
 import {
   Ionicons,
   MaterialCommunityIcons,
@@ -321,9 +322,13 @@ export default function PostDetailsScreen() {
               <Text className="text-sm font-semibold text-blue-800">Turnover Information</Text>
             </View>
             <View className="space-y-2">
-              <View>
+              <View className="flex-row items-center gap-2">
+                <Text className="text-sm text-blue-700 font-medium">Originally found by:</Text>
+                <ProfilePicture
+                  src={post.turnoverDetails.originalFinder.profilePicture}
+                  size="sm"
+                />
                 <Text className="text-sm text-blue-700">
-                  <Text className="font-medium">Originally found by:</Text>{" "}
                   {post.turnoverDetails.originalFinder.firstName} {post.turnoverDetails.originalFinder.lastName}
                 </Text>
               </View>

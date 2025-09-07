@@ -218,10 +218,18 @@ function AdminPostCard({
               <h4 className="text-xs font-semibold text-blue-800">Turnover Details</h4>
             </div>
             <div className="text-xs text-blue-700 space-y-1">
-              <p>
-                <span className="font-medium">Original Finder:</span>{" "}
-                {post.turnoverDetails.originalFinder.firstName} {post.turnoverDetails.originalFinder.lastName}
-              </p>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Original Finder:</span>
+                <ProfilePicture
+                  src={post.turnoverDetails.originalFinder.profilePicture}
+                  alt={`${post.turnoverDetails.originalFinder.firstName} ${post.turnoverDetails.originalFinder.lastName}`}
+                  size="xs"
+                  className="border-blue-300"
+                />
+                <span>
+                  {post.turnoverDetails.originalFinder.firstName} {post.turnoverDetails.originalFinder.lastName}
+                </span>
+              </div>
               <p>
                 <span className="font-medium">Student ID:</span> {post.turnoverDetails.originalFinder.studentId || 'N/A'}
               </p>

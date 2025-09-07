@@ -404,9 +404,17 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
               <h4 className="text-sm font-semibold text-blue-800">Turnover Information</h4>
             </div>
             <div className="text-sm text-blue-700 space-y-2">
-              <div>
-                <span className="font-medium">Originally found by:</span>{" "}
-                {post.turnoverDetails.originalFinder.firstName} {post.turnoverDetails.originalFinder.lastName}
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Originally found by:</span>
+                <ProfilePicture
+                  src={post.turnoverDetails.originalFinder.profilePicture}
+                  alt={`${post.turnoverDetails.originalFinder.firstName} ${post.turnoverDetails.originalFinder.lastName}`}
+                  size="sm"
+                  className="border-blue-300"
+                />
+                <span>
+                  {post.turnoverDetails.originalFinder.firstName} {post.turnoverDetails.originalFinder.lastName}
+                </span>
               </div>
               <div>
                 <span className="font-medium">Student ID:</span> {post.turnoverDetails.originalFinder.studentId || 'N/A'}
