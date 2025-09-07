@@ -210,7 +210,13 @@ export default function Chat() {
     if (postOwnerId === userData.uid) return false;
     if (conversationData?.postType !== "found") return false;
     if (conversationData?.postStatus !== "pending") return false;
-    if (conversationData?.foundAction !== undefined && conversationData?.foundAction !== "keep") return false;
+    
+    // Allow claiming for "keep" and "turnover to Campus Security" posts
+    // Only exclude posts that are disposed or donated
+    if (conversationData?.foundAction === "disposed" || conversationData?.foundAction === "donated") {
+      return false;
+    }
+    
     return true;
   };
 

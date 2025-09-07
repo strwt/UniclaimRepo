@@ -779,8 +779,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return false;
     }
 
-    // Only show if found action is "keep" (Found and Keep posts)
-    if (conversation.foundAction !== "keep") {
+    // Allow claiming for "keep" and "turnover to Campus Security" posts
+    // Only exclude posts that are disposed or donated
+    if (conversation.foundAction === "disposed" || conversation.foundAction === "donated") {
       return false;
     }
 
