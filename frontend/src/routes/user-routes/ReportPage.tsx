@@ -230,6 +230,7 @@ export default function ReportPage() {
           },
           turnoverAction: selectedFoundAction,
           turnoverDecisionAt: new Date(), // Will be converted to Firebase timestamp
+          turnoverStatus: "declared", // Initial status when user declares turnover intent
           // Note: turnoverReason is optional and not included if undefined
         };
       }

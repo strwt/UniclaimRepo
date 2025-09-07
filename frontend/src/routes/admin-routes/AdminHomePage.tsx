@@ -4,11 +4,12 @@ import type { Post } from "@/types/Post";
 // components
 import AdminPostCard from "@/components/AdminPostCard";
 import PostModal from "@/components/PostModal";
+import TurnoverConfirmationModal from "@/components/TurnoverConfirmationModal";
 import MobileNavText from "@/components/NavHeadComp";
 import SearchBar from "../../components/SearchBar";
 
 // hooks
-import { usePosts, useResolvedPosts } from "@/hooks/usePosts";
+import { useAdminPosts, useResolvedPosts } from "@/hooks/usePosts";
 import { useToast } from "@/context/ToastContext";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
@@ -21,15 +22,15 @@ function fuzzyMatch(text: string, query: string): boolean {
 }
 
 export default function AdminHomePage() {
-  // ✅ Use the custom hooks for real-time posts
-  const { posts, loading, error } = usePosts();
+  // ✅ Use the custom hooks for real-time posts (admin version includes turnover items)
+  const { posts, loading, error } = useAdminPosts();
   const { posts: resolvedPosts, loading: resolvedLoading, error: resolvedError } = useResolvedPosts();
   const { showToast } = useToast();
 
 
 
 
-  const [viewType, setViewType] = useState<"all" | "lost" | "found" | "unclaimed" | "completed">("all");
+  const [viewType, setViewType] = useState<"all" | "lost" | "found" | "unclaimed" | "completed" | "turnover">("all");
   const [lastDescriptionKeyword, setLastDescriptionKeyword] = useState("");
   const [rawResults, setRawResults] = useState<Post[] | null>(null); // store-search-result-without-viewType-filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,6 +40,11 @@ export default function AdminHomePage() {
   // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [postToDelete, setPostToDelete] = useState<Post | null>(null);
+
+  // Turnover confirmation modal state
+  const [showTurnoverModal, setShowTurnoverModal] = useState(false);
+  const [postToConfirm, setPostToConfirm] = useState<Post | null>(null);
+  const [confirmationType, setConfirmationType] = useState<"confirmed" | "not_received" | null>(null);
 
   // Admin statistics state
   const [adminStats, setAdminStats] = useState({
@@ -275,6 +281,51 @@ export default function AdminHomePage() {
     }
   };
 
+  // Handle turnover confirmation
+  const handleConfirmTurnover = (post: Post, status: "confirmed" | "not_received") => {
+    setPostToConfirm(post);
+    setConfirmationType(status);
+    setShowTurnoverModal(true);
+  };
+
+  const handleTurnoverConfirmation = async (status: "confirmed" | "not_received", notes?: string) => {
+    if (!postToConfirm) return;
+
+    try {
+      const { postService } = await import('../../services/firebase/posts');
+      // Get current user ID (assuming admin is logged in)
+      const currentUserId = "admin"; // This should be replaced with actual admin user ID
+      
+      if (status === "not_received") {
+        // Total deletion when OSA marks item as not received
+        await postService.deletePost(postToConfirm.id);
+        
+        const statusMessage = `Item "${postToConfirm.title}" has been completely deleted from the system as it was not received by OSA.`;
+        showToast("success", "Item Deleted", statusMessage);
+        console.log('Item completely deleted:', postToConfirm.title, 'Reason: Not received by OSA');
+        
+      } else {
+        // Normal status update for confirmed items
+        await postService.updateTurnoverStatus(postToConfirm.id, status, currentUserId, notes);
+        
+        const statusMessage = `Item receipt confirmed for "${postToConfirm.title}"`;
+        showToast("success", "Turnover Status Updated", statusMessage);
+        console.log('Turnover status updated successfully:', postToConfirm.title, 'Status:', status);
+      }
+      
+    } catch (error: any) {
+      console.error('Failed to process turnover confirmation:', error);
+      const errorMessage = status === "not_received" 
+        ? 'Failed to delete item from system'
+        : 'Failed to update turnover status';
+      showToast("error", "Operation Failed", error.message || errorMessage);
+    } finally {
+      setShowTurnoverModal(false);
+      setPostToConfirm(null);
+      setConfirmationType(null);
+    }
+  };
+
 
 
   const handleSearch = async (query: string, filters: any) => {
@@ -325,6 +376,11 @@ export default function AdminHomePage() {
       shouldShow = post.status === 'unclaimed' || post.movedToUnclaimed;
     } else if (viewType === "completed") {
       shouldShow = true; // resolvedPosts already filtered
+    } else if (viewType === "turnover") {
+      // Show only Found items marked for turnover to OSA (OSA-specific management)
+      shouldShow = post.type === "found" && 
+                   post.turnoverDetails && 
+                   post.turnoverDetails.turnoverAction === "turnover to OSA";
     } else {
       shouldShow = post.type.toLowerCase() === viewType && post.status !== 'unclaimed' && !post.movedToUnclaimed;
     }
@@ -384,7 +440,7 @@ export default function AdminHomePage() {
 
 
         
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-blue-600">{posts?.length || 0}</div>
             <div className="text-sm text-gray-600">Total Posts</div>
@@ -419,6 +475,14 @@ export default function AdminHomePage() {
             </div>
             <div className="text-sm text-gray-600">Completed</div>
           </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-indigo-600">
+              {posts?.filter(p => p.type === "found" && 
+                p.turnoverDetails && 
+                p.turnoverDetails.turnoverAction === "turnover to OSA").length || 0}
+            </div>
+            <div className="text-sm text-gray-600">OSA Turnover Items</div>
+          </div>
         </div>
       </div>
 
@@ -431,6 +495,7 @@ export default function AdminHomePage() {
           <span className="text-sm font-semibold text-blue-600 capitalize">
             {viewType === "unclaimed" ? "Unclaimed Items" :
              viewType === "completed" ? "Completed Reports" :
+             viewType === "turnover" ? "Turnover Management" :
              `${viewType} Item Reports`}
           </span>
         </div>
@@ -514,6 +579,22 @@ export default function AdminHomePage() {
           Completed Reports
         </button>
 
+        <button
+          className={`px-4 py-2 cursor-pointer lg:px-8 rounded text-[14px] lg:text-base font-medium transition-colors duration-300 ${
+            viewType === "turnover"
+              ? "bg-navyblue text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-blue-200 border-gray-300"
+          }`}
+          onClick={() => {
+            setIsLoading(true);
+            setViewType("turnover");
+            setCurrentPage(1); // Reset pagination when switching views
+            setTimeout(() => setIsLoading(false), 200);
+          }}
+        >
+          Turnover Management
+        </button>
+
         
 
 
@@ -526,6 +607,7 @@ export default function AdminHomePage() {
             <span className="text-gray-400">
               Loading {viewType === "unclaimed" ? "unclaimed" :
                        viewType === "completed" ? "completed" :
+                       viewType === "turnover" ? "turnover management" :
                        viewType} report items...
             </span>
           </div>
@@ -558,6 +640,7 @@ export default function AdminHomePage() {
                 onStatusChange={handleStatusChange}
                 onActivateTicket={handleActivateTicket}
                 onRevertResolution={handleRevertResolution}
+                onConfirmTurnover={handleConfirmTurnover}
                 isDeleting={deletingPostId === post.id}
               />
             ))
@@ -690,6 +773,18 @@ export default function AdminHomePage() {
         </>
       )}
 
+      {/* Turnover Confirmation Modal */}
+      <TurnoverConfirmationModal
+        isOpen={showTurnoverModal}
+        onClose={() => {
+          setShowTurnoverModal(false);
+          setPostToConfirm(null);
+          setConfirmationType(null);
+        }}
+        onConfirm={handleTurnoverConfirmation}
+        post={postToConfirm}
+        confirmationType={confirmationType}
+      />
 
     </div>
   );

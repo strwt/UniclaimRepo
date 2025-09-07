@@ -187,6 +187,12 @@ export interface Post {
     turnoverAction: "turnover to OSA" | "turnover to Campus Security";
     turnoverDecisionAt: any;          // When the turnover decision was made (Firebase timestamp)
     turnoverReason?: string;          // Optional reason for turnover
+
+    // New fields for turnover confirmation system
+    turnoverStatus: "declared" | "confirmed" | "not_received"; // Status of the turnover process
+    confirmedBy?: string;             // OSA admin user ID who confirmed receipt
+    confirmedAt?: any;                // When OSA confirmed receipt (Firebase timestamp)
+    confirmationNotes?: string;       // Optional notes from OSA about the item condition
   };
 }
 

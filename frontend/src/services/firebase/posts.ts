@@ -197,6 +197,11 @@ export const postService = {
                 // Exclude resolved posts from active sections
                 if (post.status === 'resolved') return false;
 
+                // Exclude items with turnoverStatus: "declared" (awaiting OSA confirmation)
+                if (post.turnoverDetails && post.turnoverDetails.turnoverStatus === "declared") {
+                    return false;
+                }
+
                 // Check if post has expired
                 if (post.expiryDate) {
                     let expiryDate: Date;
@@ -227,6 +232,73 @@ export const postService = {
             callback(sortedPosts);
         }, (error) => {
             console.error('PostService: Error fetching active posts:', error);
+            callback([]);
+        });
+
+        // Register with ListenerManager for tracking
+        const listenerId = listenerManager.addListener(unsubscribe, 'PostService');
+
+        // Return a wrapped unsubscribe function that also removes from ListenerManager
+        return () => {
+            listenerManager.removeListener(listenerId);
+        };
+    },
+
+    // Get all posts for admin use (includes items awaiting turnover confirmation)
+    getAllPostsForAdmin(callback: (posts: Post[]) => void) {
+        const now = new Date();
+
+        // Create query for all posts (no filtering at database level)
+        const q = query(
+            collection(db, 'posts'),
+            where('movedToUnclaimed', '==', false) // Only posts not moved to unclaimed
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+            })) as Post[];
+
+            // Filter out expired posts and resolved posts on the client side
+            // BUT include items with turnoverStatus: "declared" for admin use
+            const adminPosts = posts.filter(post => {
+                if (post.movedToUnclaimed) return false;
+
+                // Exclude resolved posts from active sections
+                if (post.status === 'resolved') return false;
+
+                // Check if post has expired
+                if (post.expiryDate) {
+                    let expiryDate: Date;
+
+                    // Handle Firebase Timestamp
+                    if (post.expiryDate && typeof post.expiryDate === 'object' && 'seconds' in post.expiryDate) {
+                        expiryDate = new Date(post.expiryDate.seconds * 1000);
+                    } else if (post.expiryDate instanceof Date) {
+                        expiryDate = post.expiryDate;
+                    } else {
+                        expiryDate = new Date(post.expiryDate);
+                    }
+
+                    // Return false if post has expired
+                    if (expiryDate < now) return false;
+                }
+
+                return true;
+            });
+
+            // Sort posts by createdAt (most recent first)
+            const sortedPosts = adminPosts.sort((a, b) => {
+                const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+                const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+                return dateB.getTime() - dateA.getTime();
+            });
+
+            callback(sortedPosts);
+        }, (error) => {
+            console.error('PostService: Error fetching admin posts:', error);
             callback([]);
         });
 
@@ -420,6 +492,30 @@ export const postService = {
         } catch (error: any) {
             console.error('Error updating post status:', error);
             throw new Error(error.message || 'Failed to update post status');
+        }
+    },
+
+    // Update turnover confirmation status
+    async updateTurnoverStatus(postId: string, status: 'confirmed' | 'not_received', confirmedBy: string, notes?: string): Promise<void> {
+        try {
+            const updateData: any = {
+                'turnoverDetails.turnoverStatus': status,
+                'turnoverDetails.confirmedBy': confirmedBy,
+                'turnoverDetails.confirmedAt': serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
+
+            // Add notes if provided
+            if (notes) {
+                updateData['turnoverDetails.confirmationNotes'] = notes;
+            }
+
+            await updateDoc(doc(db, 'posts', postId), updateData);
+
+            console.log(`✅ Turnover status updated for post ${postId}: ${status}`);
+        } catch (error: any) {
+            console.error('Error updating turnover status:', error);
+            throw new Error(error.message || 'Failed to update turnover status');
         }
     },
 

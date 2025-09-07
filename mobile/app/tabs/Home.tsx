@@ -34,8 +34,18 @@ export default function Home() {
       basePosts = posts || [];
     }
     
-    // Filter out unclaimed posts from all views
-    return basePosts.filter((post) => !post.movedToUnclaimed);
+    // Filter out unclaimed posts and items awaiting turnover confirmation from all views
+    return basePosts.filter((post) => {
+      // Filter out unclaimed posts
+      if (post.movedToUnclaimed) return false;
+      
+      // Filter out items with turnoverStatus: "declared" (awaiting OSA confirmation)
+      if (post.turnoverDetails && post.turnoverDetails.turnoverStatus === "declared") {
+        return false;
+      }
+      
+      return true;
+    });
   };
 
   const postsToDisplay = getPostsToDisplay();

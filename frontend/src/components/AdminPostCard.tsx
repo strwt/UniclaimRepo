@@ -10,6 +10,7 @@ interface AdminPostCardProps {
   onStatusChange?: (post: Post, status: string) => void;
   onActivateTicket?: (post: Post) => void;
   onRevertResolution?: (post: Post) => void;
+  onConfirmTurnover?: (post: Post, status: "confirmed" | "not_received") => void;
   isDeleting?: boolean;
 }
 
@@ -51,6 +52,7 @@ function AdminPostCard({
   onStatusChange,
   onActivateTicket,
   onRevertResolution,
+  onConfirmTurnover,
   isDeleting = false
 }: AdminPostCardProps) {
   const previewUrl = useMemo(() => {
@@ -243,12 +245,59 @@ function AdminPostCard({
                 <span className="font-medium">Turned over to:</span>{" "}
                 {post.turnoverDetails.turnoverAction === "turnover to OSA" ? "OSA" : "Campus Security"}
               </p>
+              <p>
+                <span className="font-medium">Status:</span>{" "}
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  post.turnoverDetails.turnoverStatus === "declared" ? "bg-yellow-100 text-yellow-800" :
+                  post.turnoverDetails.turnoverStatus === "confirmed" ? "bg-green-100 text-green-800" :
+                  "bg-red-100 text-red-800"
+                }`}>
+                  {post.turnoverDetails.turnoverStatus === "declared" ? "Awaiting Confirmation" :
+                   post.turnoverDetails.turnoverStatus === "confirmed" ? "Confirmed Received" :
+                   "Not Received"}
+                </span>
+              </p>
+              {post.turnoverDetails.confirmedAt && (
+                <p>
+                  <span className="font-medium">Confirmed:</span>{" "}
+                  {new Date(post.turnoverDetails.confirmedAt.seconds * 1000).toLocaleDateString()}
+                </p>
+              )}
+              {post.turnoverDetails.confirmationNotes && (
+                <p>
+                  <span className="font-medium">Notes:</span> {post.turnoverDetails.confirmationNotes}
+                </p>
+              )}
             </div>
+            
+            {/* Turnover Confirmation Buttons */}
+            {post.turnoverDetails.turnoverStatus === "declared" && (
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onConfirmTurnover?.(post, "confirmed");
+                  }}
+                  className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                >
+                  ✓ Confirm Receipt
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onConfirmTurnover?.(post, "not_received");
+                  }}
+                  className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                >
+                  ✗ Not Received
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Status Management - Show dropdown only for pending posts, hide for unclaimed and resolved */}
-        {post.status === 'pending' && (
+        {/* Status Management - Show dropdown only for pending posts, hide for unclaimed, resolved, and items awaiting turnover confirmation */}
+        {post.status === 'pending' && !(post.turnoverDetails && post.turnoverDetails.turnoverStatus === "declared") && (
           <div className="mb-3">
             <label className="text-xs text-gray-600 block mb-1">Status:</label>
             <select

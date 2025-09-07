@@ -75,8 +75,18 @@ export default function HomePage() {
   const getPostsToDisplay = () => {
     const basePosts = rawResults ?? (viewType === "completed" ? resolvedPosts : posts) ?? [];
 
-    // Filter out unclaimed posts from all views
-    const filteredPosts = basePosts.filter((post) => post.status !== 'unclaimed');
+    // Filter out unclaimed posts and items awaiting turnover confirmation from all views
+    const filteredPosts = basePosts.filter((post) => {
+      // Filter out unclaimed posts
+      if (post.status === 'unclaimed') return false;
+      
+      // Filter out items with turnoverStatus: "declared" (awaiting OSA confirmation)
+      if (post.turnoverDetails && post.turnoverDetails.turnoverStatus === "declared") {
+        return false;
+      }
+      
+      return true;
+    });
 
     if (viewType === "all") return filteredPosts;
     if (viewType === "completed") return filteredPosts; // resolvedPosts already filtered
