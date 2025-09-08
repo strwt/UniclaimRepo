@@ -5,6 +5,7 @@ import {
     signOut,
     updateProfile,
     sendEmailVerification,
+    sendPasswordResetEmail,
     type User as FirebaseUser,
     type UserCredential
 } from 'firebase/auth';
@@ -97,6 +98,15 @@ export const authService = {
             await signOut(auth);
         } catch (error: any) {
             throw new Error(error.message || 'Logout failed');
+        }
+    },
+
+    // Send password reset email
+    async sendPasswordResetEmail(email: string): Promise<void> {
+        try {
+            await sendPasswordResetEmail(auth, email);
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to send password reset email');
         }
     },
 
