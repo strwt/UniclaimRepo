@@ -93,8 +93,8 @@ export default function Report() {
       let campusSecurityUserId = null;
       
       if (shouldTransferToCampusSecurity) {
-        const { authService } = await import("../../utils/firebase/auth");
-        const campusSecurityUser = await authService.getCampusSecurityUser();
+        const { userService } = await import("../../utils/firebase/auth");
+        const campusSecurityUser = await userService.getCampusSecurityUser();
         
         if (campusSecurityUser) {
           campusSecurityData = {
