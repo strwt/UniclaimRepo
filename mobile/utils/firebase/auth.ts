@@ -21,6 +21,7 @@ import {
     limit,
     getDocs
 } from 'firebase/firestore';
+import { notificationSubscriptionService } from './notificationSubscriptions';
 
 // User data interface for Firestore
 export interface UserData {
@@ -191,6 +192,18 @@ export const userService = {
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
+
+            // Create notification subscription for the new user
+            try {
+                await notificationSubscriptionService.createSubscription({
+                    userId: userId,
+                    isActive: true
+                });
+                console.log('✅ Created notification subscription for new mobile user:', userId);
+            } catch (subscriptionError) {
+                console.error('❌ Failed to create notification subscription for mobile user:', subscriptionError);
+                // Don't fail user creation if subscription creation fails
+            }
         } catch (error: any) {
             throw new Error(error.message || 'Failed to create user document');
         }

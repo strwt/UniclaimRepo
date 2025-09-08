@@ -36,6 +36,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       
       return () => clearTimeout(timer);
     } else {
+      // User logged out - reset state
       setNotifications([]);
       setUnreadCount(0);
     }
@@ -45,12 +46,53 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isAuthenticated || !userData?.uid) return;
 
-    // Set up periodic refresh every 30 seconds
-    const interval = setInterval(() => {
-      loadNotifications();
-    }, 30000);
+    // Set up real-time Firestore listener instead of polling
+    const unsubscribe = notificationService.setupRealtimeListener(
+      userData.uid,
+      (newNotifications) => {
+        // Update notifications when they change
+        setNotifications(prevNotifications => {
+          const newNotificationsList = newNotifications.filter(newNotif => 
+            !prevNotifications.some(prevNotif => prevNotif.id === newNotif.id)
+          );
+          
+          // Play sound for new notifications
+          if (newNotificationsList.length > 0) {
+            newNotificationsList.forEach(async (notification) => {
+              try {
+                await notificationService.sendLocalNotification(
+                  notification.title,
+                  notification.body,
+                  {
+                    type: notification.type,
+                    postId: notification.postId,
+                    conversationId: notification.conversationId
+                  }
+                );
+              } catch (error) {
+                console.error('Error playing notification sound:', error);
+              }
+            });
+          }
+          
+          return newNotifications;
+        });
+        
+        // Update unread count
+        const unread = newNotifications.filter(notif => !notif.read).length;
+        setUnreadCount(unread);
+      },
+      (error) => {
+        console.error('Notification listener error:', error);
+        setError('Failed to load notifications');
+      }
+    );
 
-    return () => clearInterval(interval);
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [isAuthenticated, userData?.uid]);
 
   const loadNotifications = async () => {

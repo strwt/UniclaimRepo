@@ -1,6 +1,7 @@
 // Service for sending notifications to users when posts are created
 import { db } from './config';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { notificationSubscriptionService } from './notificationSubscriptions';
 
 // Notification data structure
 export interface PostNotificationData {
@@ -40,25 +41,23 @@ export class NotificationSender {
             console.log('🚀 Starting to send new post notification for:', postData.title);
             console.log('📊 Post data:', postData);
 
-            // Get all active users (excluding the post creator)
-            const usersSnapshot = await getDocs(
-                query(
-                    collection(db, 'users'),
-                    where('status', '==', 'active')
-                )
-            );
+            // Get users with optimal filtering (category + location + time awareness)
+            const interestedSubscriptions = await notificationSubscriptionService.getOptimalUsersForPost({
+                category: postData.category,
+                location: postData.location,
+                type: postData.type
+            });
 
-            console.log('👥 Found', usersSnapshot.size, 'active users');
+            console.log('🎯 Optimal filtering found', interestedSubscriptions.length, 'users for post:', postData.title);
 
             const notifications = [];
             const currentTime = new Date();
 
-            // Create notification for each user (except the creator)
-            for (const userDoc of usersSnapshot.docs) {
-                const userData = userDoc.data();
-                const userId = userDoc.id;
+            // Create notification for each interested user (except the creator)
+            for (const subscription of interestedSubscriptions) {
+                const userId = subscription.userId;
 
-                console.log('👤 Processing user:', userId, 'Name:', userData.name);
+                console.log('👤 Processing subscription for user:', userId);
 
                 // Skip the post creator
                 if (userId === postData.creatorId) {
@@ -66,12 +65,7 @@ export class NotificationSender {
                     continue;
                 }
 
-                // Check if user should receive this notification
-                const shouldNotify = await this.shouldNotifyUser(userId, postData);
-                console.log('🔔 Should notify user', userId, ':', shouldNotify);
-                if (!shouldNotify) {
-                    continue;
-                }
+                // Note: shouldReceiveNotification check removed - getOptimalUsersForPost already filters by quiet hours
 
                 // Create notification data
                 const notificationData = {
@@ -115,63 +109,7 @@ export class NotificationSender {
         }
     }
 
-    // Check if a user should receive a notification based on their preferences
-    private async shouldNotifyUser(userId: string, postData: any): Promise<boolean> {
-        try {
-            const userDoc = await getDoc(doc(db, 'users', userId));
-            if (!userDoc.exists()) {
-                return false;
-            }
-
-            const userData = userDoc.data();
-            const preferences = userData.notificationPreferences;
-
-            // If no preferences set, default to true
-            if (!preferences) {
-                return true;
-            }
-
-            // Check if new post notifications are enabled
-            if (!preferences.newPosts) {
-                return false;
-            }
-
-            // Check quiet hours
-            if (preferences.quietHours?.enabled) {
-                const now = new Date();
-                const currentTime = now.getHours() * 60 + now.getMinutes();
-                const startTime = this.timeToMinutes(preferences.quietHours.start);
-                const endTime = this.timeToMinutes(preferences.quietHours.end);
-
-                if (startTime > endTime) {
-                    // Quiet hours span midnight
-                    if (currentTime >= startTime || currentTime <= endTime) {
-                        return false;
-                    }
-                } else {
-                    // Normal quiet hours
-                    if (currentTime >= startTime && currentTime <= endTime) {
-                        return false;
-                    }
-                }
-            }
-
-            // Check category filter
-            if (preferences.categoryFilter && preferences.categoryFilter.length > 0) {
-                if (!preferences.categoryFilter.includes(postData.category)) {
-                    return false;
-                }
-            }
-
-            // TODO: Add location-based filtering
-            // This would require user location data and post location matching
-
-            return true;
-        } catch (error) {
-            console.error('Error checking user notification preferences:', error);
-            return true; // Default to sending if there's an error
-        }
-    }
+    // Note: shouldNotifyUser method removed - now using notificationSubscriptionService.shouldReceiveNotification()
 
     // Generate notification title based on post data
     private generateNotificationTitle(postData: any): string {
@@ -194,11 +132,7 @@ export class NotificationSender {
         }
     }
 
-    // Helper function to convert time string to minutes
-    private timeToMinutes(timeString: string): number {
-        const [hours, minutes] = timeString.split(':').map(Number);
-        return hours * 60 + minutes;
-    }
+    // Note: timeToMinutes method removed - now handled by notificationSubscriptionService
 
     // Send notification to specific users (for admin alerts, etc.)
     async sendNotificationToUsers(userIds: string[], notificationData: {

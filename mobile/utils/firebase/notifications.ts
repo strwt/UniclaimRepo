@@ -4,8 +4,9 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { db } from './config';
-import { doc, setDoc, getDoc, updateDoc, collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, limit, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, limit, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { NotificationData, NotificationPreferences } from '../../types/Notification';
+import { notificationSubscriptionService } from './notificationSubscriptions';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -104,7 +105,14 @@ export class NotificationService {
             const userDoc = await getDoc(doc(db, 'users', userId));
             if (userDoc.exists()) {
                 const userData = userDoc.data();
-                return userData.notificationPreferences || this.getDefaultPreferences();
+                const preferences = userData.notificationPreferences || this.getDefaultPreferences();
+
+                // Ensure user has a subscription record (background operation)
+                this.ensureUserHasSubscription(userId).catch(error => {
+                    console.error('Background subscription check failed for mobile user:', error);
+                });
+
+                return preferences;
             }
             return this.getDefaultPreferences();
         } catch (error) {
@@ -119,12 +127,66 @@ export class NotificationService {
             const currentPrefs = await this.getNotificationPreferences(userId);
             const updatedPrefs = { ...currentPrefs, ...preferences };
 
+            // Update the user's notification preferences in the users collection
             await updateDoc(doc(db, 'users', userId), {
                 notificationPreferences: updatedPrefs,
                 updatedAt: serverTimestamp()
             });
+
+            // Also update the subscription record for optimized queries
+            try {
+                const subscriptionPreferences = this.convertToSubscriptionPreferences(updatedPrefs);
+                await notificationSubscriptionService.updateSubscription(userId, {
+                    preferences: subscriptionPreferences
+                });
+                console.log('✅ Updated notification subscription for mobile user:', userId);
+            } catch (subscriptionError) {
+                console.error('❌ Failed to update notification subscription for mobile user:', subscriptionError);
+                // Don't fail the main operation if subscription update fails
+            }
         } catch (error) {
             console.error('Error updating notification preferences:', error);
+            throw error;
+        }
+    }
+
+    // Convert old notification preferences format to new subscription format
+    private convertToSubscriptionPreferences(preferences: NotificationPreferences): any {
+        return {
+            newPosts: preferences.newPosts,
+            messages: preferences.messages,
+            claimUpdates: preferences.claimUpdates,
+            adminAlerts: preferences.adminAlerts,
+            categories: preferences.categoryFilter || [], // Map categoryFilter to categories
+            locations: [], // TODO: Add location mapping when location preferences are implemented
+            quietHours: preferences.quietHours,
+            soundEnabled: true // Mobile doesn't have soundEnabled in preferences, default to true
+        };
+    }
+
+    // Ensure user has a subscription record (for existing users)
+    async ensureUserHasSubscription(userId: string): Promise<void> {
+        try {
+            // Check if subscription exists
+            const existingSubscription = await notificationSubscriptionService.getSubscription(userId);
+
+            if (!existingSubscription) {
+                // Get user's current preferences
+                const userPreferences = await this.getNotificationPreferences(userId);
+
+                // Create subscription with current preferences
+                const subscriptionPreferences = this.convertToSubscriptionPreferences(userPreferences);
+                await notificationSubscriptionService.createSubscription({
+                    userId: userId,
+                    preferences: subscriptionPreferences,
+                    isActive: true
+                });
+
+                console.log('✅ Created missing subscription for existing mobile user:', userId);
+            }
+        } catch (error) {
+            console.error('❌ Error ensuring mobile user has subscription:', error);
+            // Don't throw - this is a background operation
         }
     }
 
@@ -360,6 +422,49 @@ export class NotificationService {
         } catch (error) {
             console.error('Error deleting all notifications:', error);
             throw error;
+        }
+    }
+
+    // Set up real-time listener for notifications
+    setupRealtimeListener(
+        userId: string,
+        onUpdate: (notifications: NotificationData[]) => void,
+        onError: (error: any) => void
+    ): () => void {
+        if (!userId) {
+            console.warn('setupRealtimeListener: userId is required');
+            return () => { };
+        }
+
+        try {
+            const notificationsRef = collection(db, 'notifications');
+            const q = query(
+                notificationsRef,
+                where('userId', '==', userId),
+                orderBy('createdAt', 'desc'),
+                limit(50) // Limit to 50 most recent notifications
+            );
+
+            const unsubscribe = onSnapshot(q,
+                (snapshot) => {
+                    const notifications = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    } as NotificationData));
+
+                    onUpdate(notifications);
+                },
+                (error) => {
+                    console.error('Real-time notification listener error:', error);
+                    onError(error);
+                }
+            );
+
+            return unsubscribe;
+        } catch (error) {
+            console.error('Error setting up real-time notification listener:', error);
+            onError(error);
+            return () => { };
         }
     }
 }
