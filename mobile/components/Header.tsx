@@ -11,8 +11,12 @@ import {
   View,
   ScrollView,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNotifications } from "../context/NotificationContext";
 import NotificationPreferencesModal from "./NotificationPreferences";
+import { postService } from "../utils/firebase/posts";
+import type { RootStackParamList } from "../types/type";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -22,6 +26,7 @@ export default function Header() {
   const slideAnim = useState(new Animated.Value(SCREEN_WIDTH))[0];
   
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const openPanel = () => {
     setIsVisible(true);
@@ -40,6 +45,30 @@ export default function Header() {
       useNativeDriver: false,
       easing: Easing.out(Easing.ease),
     }).start(() => setIsVisible(false));
+  };
+
+  const handleNotificationPress = async (notification: any) => {
+    try {
+      // Mark notification as read if it's not already read
+      if (!notification.read) {
+        await markAsRead(notification.id);
+      }
+
+      // Close the notification panel
+      closePanel();
+
+      // Navigate to the post if postId exists
+      if (notification.postId) {
+        const post = await postService.getPostById(notification.postId);
+        if (post) {
+          navigation.navigate("PostDetails", { post });
+        }
+      }
+    } catch (error) {
+      console.error("Error handling notification press:", error);
+      // Still close the panel even if navigation fails
+      closePanel();
+    }
   };
 
   return (
@@ -131,13 +160,7 @@ export default function Header() {
                     {notifications.map((notification) => (
                       <TouchableOpacity
                         key={notification.id}
-                        onPress={() => {
-                          if (!notification.read) {
-                            markAsRead(notification.id);
-                          }
-                          // TODO: Navigate to relevant post
-                          closePanel();
-                        }}
+                        onPress={() => handleNotificationPress(notification)}
                         className={`p-3 rounded-lg border-l-4 ${
                           notification.read 
                             ? 'bg-gray-50 border-gray-200' 

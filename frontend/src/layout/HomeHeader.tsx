@@ -13,6 +13,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
 import ProfilePicture from "@/components/ProfilePicture";
 import NotificationPreferencesModal from "@/components/NotificationPreferences";
+import PostModal from "@/components/PostModal";
+import { postService } from "@/services/firebase/posts";
+import type { Post } from "@/types/Post";
 
 interface HomeHeaderProps {
   sideNavClick: () => void;
@@ -26,6 +29,7 @@ export default function HomeHeader({
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   const toggleProfileMenu = () => setShowProfileMenu((prev) => !prev);
   const toggleNotif = () => setShowNotif((prev) => !prev);
@@ -34,6 +38,28 @@ export default function HomeHeader({
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications();
 
   const navigate = useNavigate();
+
+  // Handle notification clicks to open post modal
+  const handleNotificationClick = async (notification: any) => {
+    if (!notification.read) {
+      markAsRead(notification.id);
+    }
+    
+    // If notification has a postId, fetch the post and open modal
+    if (notification.postId) {
+      try {
+        const post = await postService.getPostById(notification.postId);
+        if (post) {
+          setSelectedPost(post);
+          toggleNotif(); // Close the notification dropdown
+        } else {
+          console.error('Post not found:', notification.postId);
+        }
+      } catch (error) {
+        console.error('Error fetching post:', error);
+      }
+    }
+  };
 
   const handleProfileClick = () => {
     setShowProfileMenu(false); // Hide dropdown
@@ -165,16 +191,7 @@ export default function HomeHeader({
                         ? 'bg-gray-50 border-gray-200' 
                         : 'bg-blue-50 border-blue-500'
                     }`}
-                    onClick={() => {
-                      if (!notification.read) {
-                        markAsRead(notification.id);
-                      }
-                      // Navigate to relevant page based on notification type
-                      if (notification.postId) {
-                        navigate(`/post/${notification.postId}`);
-                        toggleNotif();
-                      }
-                    }}
+                    onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -240,6 +257,15 @@ export default function HomeHeader({
           <NotificationPreferencesModal onClose={() => setShowPreferences(false)} />
         )}
       </div>
+
+      {/* PostModal for notifications */}
+      {selectedPost && (
+        <PostModal 
+          post={selectedPost} 
+          onClose={() => setSelectedPost(null)} 
+          hideSendMessage={false}
+        />
+      )}
     </>
   );
 }
