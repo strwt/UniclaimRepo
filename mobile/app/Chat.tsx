@@ -329,7 +329,7 @@ export default function Chat() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
-      <View className="bg-white border-b border-gray-200 pt-3 pb-4 px-4 flex-row items-center">
+      <View className="bg-white border-b border-gray-200 pt-3 pb-4 px-4 mt-6 flex-row items-center">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
           <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
@@ -429,7 +429,7 @@ export default function Chat() {
         )}
 
         {/* Message Input */}
-        <View className="border-t border-gray-200 bg-white p-4">
+        <View className="border-t border-gray-200 bg-white p-4 mb-10">
           <View className="flex-row items-center gap-3">
             <View className="flex-1">
               <TextInput
