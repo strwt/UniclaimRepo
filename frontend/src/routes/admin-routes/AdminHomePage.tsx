@@ -435,10 +435,11 @@ export default function AdminHomePage() {
     } else if (viewType === "completed") {
       shouldShow = true; // resolvedPosts already filtered
     } else if (viewType === "turnover") {
-      // Show only Found items marked for turnover to OSA (OSA-specific management)
+      // Show only Found items marked for turnover to OSA that need confirmation
       shouldShow = post.type === "found" && 
                    post.turnoverDetails && 
-                   post.turnoverDetails.turnoverAction === "turnover to OSA";
+                   post.turnoverDetails.turnoverAction === "turnover to OSA" &&
+                   post.turnoverDetails.turnoverStatus === "declared";
     } else {
       shouldShow = post.type.toLowerCase() === viewType && post.status !== 'unclaimed' && !post.movedToUnclaimed;
     }

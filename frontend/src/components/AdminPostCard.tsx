@@ -267,10 +267,12 @@ function AdminPostCard({
                 <span className={`px-2 py-1 rounded text-xs font-medium ${
                   post.turnoverDetails.turnoverStatus === "declared" ? "bg-yellow-100 text-yellow-800" :
                   post.turnoverDetails.turnoverStatus === "confirmed" ? "bg-green-100 text-green-800" :
+                  post.turnoverDetails.turnoverStatus === "transferred" ? "bg-blue-100 text-blue-800" :
                   "bg-red-100 text-red-800"
                 }`}>
                   {post.turnoverDetails.turnoverStatus === "declared" ? "Awaiting Confirmation" :
                    post.turnoverDetails.turnoverStatus === "confirmed" ? "Confirmed Received" :
+                   post.turnoverDetails.turnoverStatus === "transferred" ? "Transferred" :
                    "Not Received"}
                 </span>
               </p>
@@ -287,8 +289,9 @@ function AdminPostCard({
               )}
             </div>
             
-            {/* Turnover Confirmation Buttons */}
-            {post.turnoverDetails.turnoverStatus === "declared" && (
+            {/* Turnover Confirmation Buttons - Only for OSA items awaiting confirmation */}
+            {post.turnoverDetails.turnoverStatus === "declared" && 
+             post.turnoverDetails.turnoverAction === "turnover to OSA" && (
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={(e) => {

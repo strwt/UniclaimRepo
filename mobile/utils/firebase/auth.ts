@@ -12,7 +12,12 @@ import {
     setDoc,
     getDoc,
     updateDoc,
-    serverTimestamp
+    serverTimestamp,
+    collection,
+    query,
+    where,
+    limit,
+    getDocs
 } from 'firebase/firestore';
 
 // User data interface for Firestore
@@ -25,7 +30,7 @@ export interface UserData {
     studentId: string;
     profilePicture?: string;
     profileImageUrl?: string;
-    role?: 'user' | 'admin';
+    role?: 'user' | 'admin' | 'campus_security';
     status?: 'active' | 'banned';
     banInfo?: any;
     createdAt: any;
@@ -121,6 +126,25 @@ export const userService = {
             });
         } catch (error: any) {
             throw new Error(error.message || 'Failed to update user data');
+        }
+    },
+
+    // Get Campus Security user from database
+    async getCampusSecurityUser(): Promise<UserData | null> {
+        try {
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('role', '==', 'campus_security'), limit(1));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                const doc = querySnapshot.docs[0];
+                return { uid: doc.id, ...doc.data() } as UserData;
+            }
+
+            return null;
+        } catch (error: any) {
+            console.error('Error getting Campus Security user:', error);
+            return null;
         }
     }
 };

@@ -190,7 +190,7 @@ export interface Post {
     turnoverReason?: string;          // Optional reason for turnover
 
     // New fields for turnover confirmation system
-    turnoverStatus: "declared" | "confirmed" | "not_received"; // Status of the turnover process
+    turnoverStatus: "declared" | "confirmed" | "not_received" | "transferred"; // Status of the turnover process
     confirmedBy?: string;             // OSA admin user ID who confirmed receipt
     confirmedAt?: any;                // When OSA confirmed receipt (Firebase timestamp)
     confirmationNotes?: string;       // Optional notes from OSA about the item condition

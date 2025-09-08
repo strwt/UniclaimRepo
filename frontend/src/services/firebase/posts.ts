@@ -198,8 +198,11 @@ export const postService = {
                 // Exclude resolved posts from active sections
                 if (post.status === 'resolved') return false;
 
-                // Exclude items with turnoverStatus: "declared" (awaiting OSA confirmation)
-                if (post.turnoverDetails && post.turnoverDetails.turnoverStatus === "declared") {
+                // Exclude items with turnoverStatus: "declared" ONLY for OSA turnover (awaiting OSA confirmation)
+                // Campus Security items with "transferred" status should be visible
+                if (post.turnoverDetails &&
+                    post.turnoverDetails.turnoverStatus === "declared" &&
+                    post.turnoverDetails.turnoverAction === "turnover to OSA") {
                     return false;
                 }
 

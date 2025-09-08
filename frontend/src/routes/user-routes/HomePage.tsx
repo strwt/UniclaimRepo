@@ -85,8 +85,11 @@ export default function HomePage() {
       // Filter out unclaimed posts
       if (post.status === 'unclaimed') return false;
       
-      // Filter out items with turnoverStatus: "declared" (awaiting OSA confirmation)
-      if (post.turnoverDetails && post.turnoverDetails.turnoverStatus === "declared") {
+      // Filter out items with turnoverStatus: "declared" ONLY for OSA turnover (awaiting OSA confirmation)
+      // Campus Security items with "transferred" status should be visible
+      if (post.turnoverDetails && 
+          post.turnoverDetails.turnoverStatus === "declared" && 
+          post.turnoverDetails.turnoverAction === "turnover to OSA") {
         return false;
       }
       
