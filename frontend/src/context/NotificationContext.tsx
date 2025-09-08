@@ -67,6 +67,32 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [isAuthenticated, userData?.uid]);
 
+  // Handle playing notification sounds asynchronously
+  const playNotificationSounds = async (newNotifications: any[], userId: string) => {
+    try {
+      const userPreferences = await notificationService.getNotificationPreferences(userId);
+      if (userPreferences.soundEnabled) {
+        newNotifications.forEach(async (notification) => {
+          try {
+            await SoundUtils.playNotificationSoundByType(notification.type);
+          } catch (error) {
+            console.error('Error playing notification sound:', error);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error checking sound preferences:', error);
+      // Fallback: play sound if we can't check preferences
+      newNotifications.forEach(async (notification) => {
+        try {
+          await SoundUtils.playNotificationSoundByType(notification.type);
+        } catch (error) {
+          console.error('Error playing notification sound:', error);
+        }
+      });
+    }
+  };
+
   const loadNotifications = async () => {
     if (!userData?.uid) return;
 
@@ -82,15 +108,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           !prevNotifications.some(prevNotif => prevNotif.id === newNotif.id)
         );
         
-        // Play sound for new notifications
+        // Play sound for new notifications (if enabled in preferences)
         if (newNotifications.length > 0) {
-          newNotifications.forEach(async (notification) => {
-            try {
-              await SoundUtils.playNotificationSoundByType(notification.type);
-            } catch (error) {
-              console.error('Error playing notification sound:', error);
-            }
-          });
+          // Handle sound playing asynchronously outside of setState
+          playNotificationSounds(newNotifications, userData.uid);
         }
         
         return userNotifications;

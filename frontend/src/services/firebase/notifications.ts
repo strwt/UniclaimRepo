@@ -31,6 +31,7 @@ export interface NotificationPreferences {
     start: string; // "22:00"
     end: string;   // "08:00"
   };
+  soundEnabled: boolean;
 }
 
 export class NotificationService {
@@ -109,10 +110,20 @@ export class NotificationService {
         notification.close();
       };
 
-      // Play notification sound
+      // Play notification sound (if enabled in user preferences)
       try {
-        const notificationType = data?.type || 'new_post';
-        await SoundUtils.playNotificationSoundByType(notificationType);
+        const userId = data?.userId;
+        if (userId) {
+          const userPreferences = await this.getNotificationPreferences(userId);
+          if (userPreferences.soundEnabled) {
+            const notificationType = data?.type || 'new_post';
+            await SoundUtils.playNotificationSoundByType(notificationType);
+          }
+        } else {
+          // Fallback: play sound if no userId provided
+          const notificationType = data?.type || 'new_post';
+          await SoundUtils.playNotificationSoundByType(notificationType);
+        }
       } catch (error) {
         console.error('Error playing notification sound:', error);
       }

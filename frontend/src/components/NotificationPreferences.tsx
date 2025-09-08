@@ -16,9 +16,11 @@ interface NotificationPreferences {
     start: string;
     end: string;
   };
+  soundEnabled: boolean;
 }
-import { HiBell, HiClock, HiLocationMarker, HiTag } from 'react-icons/hi';
+import { HiBell, HiClock, HiLocationMarker, HiTag, HiVolumeUp, HiVolumeOff } from 'react-icons/hi';
 import { FiX } from 'react-icons/fi';
+import { SoundUtils } from '../utils/soundUtils';
 
 interface NotificationPreferencesComponentProps {
   onClose: () => void;
@@ -37,11 +39,14 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
       enabled: false,
       start: "22:00",
       end: "08:00"
-    }
+    },
+    soundEnabled: true
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [audioStatus, setAudioStatus] = useState<any>(null);
+  const [testingSound, setTestingSound] = useState(false);
 
   // Available categories for filtering
   const availableCategories = [
@@ -51,7 +56,35 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
 
   useEffect(() => {
     loadPreferences();
+    updateAudioStatus();
   }, [userData?.uid]);
+
+  // Update audio status periodically
+  useEffect(() => {
+    const interval = setInterval(updateAudioStatus, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const updateAudioStatus = () => {
+    const status = SoundUtils.getAudioStatus();
+    setAudioStatus(status);
+  };
+
+  const testNotificationSound = async () => {
+    setTestingSound(true);
+    try {
+      const success = await SoundUtils.testNotificationSound();
+      if (success) {
+        setError(null);
+      } else {
+        setError('Test sound failed - check your browser audio settings');
+      }
+    } catch (err: any) {
+      setError('Test sound failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setTestingSound(false);
+    }
+  };
 
   const loadPreferences = async () => {
     if (!userData?.uid) return;
@@ -235,6 +268,72 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
                   <span className="text-sm text-gray-700">{category}</span>
                 </label>
               ))}
+            </div>
+          </div>
+
+          {/* Sound Settings */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Sound Settings</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  {preferences.soundEnabled ? (
+                    <HiVolumeUp className="mr-2 text-green-600" />
+                  ) : (
+                    <HiVolumeOff className="mr-2 text-gray-400" />
+                  )}
+                  <span className="text-gray-700">Notification Sounds</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={preferences.soundEnabled}
+                    onChange={() => handleToggle('soundEnabled')}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              {/* Audio Status */}
+              {audioStatus && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Audio System Status</span>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      audioStatus.isReady ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {audioStatus.isReady ? 'Ready' : 'Not Ready'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">{audioStatus.message}</p>
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <div>Browser: {audioStatus.browserInfo?.name} {audioStatus.browserInfo?.version}</div>
+                    <div>Web Audio API: {audioStatus.browserInfo?.supportsWebAudio ? 'Supported' : 'Not Supported'}</div>
+                    <div>Autoplay Policy: {audioStatus.browserInfo?.autoplayPolicy}</div>
+                    <div>Requires User Gesture: {audioStatus.browserInfo?.requiresUserGesture ? 'Yes' : 'No'}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Test Sound Button */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-gray-700">Test Notification Sound</span>
+                  <p className="text-sm text-gray-500">Click to test if notification sounds are working</p>
+                </div>
+                <button
+                  onClick={testNotificationSound}
+                  disabled={testingSound || !preferences.soundEnabled}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    testingSound || !preferences.soundEnabled
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {testingSound ? 'Testing...' : 'Test Sound'}
+                </button>
+              </div>
             </div>
           </div>
 
