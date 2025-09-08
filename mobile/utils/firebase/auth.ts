@@ -4,6 +4,7 @@ import {
     signInWithEmailAndPassword,
     signOut,
     updateProfile,
+    sendPasswordResetEmail,
     UserCredential
 } from 'firebase/auth';
 import { auth, db } from './config';
@@ -72,6 +73,38 @@ export const authService = {
             await signOut(auth);
         } catch (error: any) {
             throw new Error(error.message || 'Failed to sign out');
+        }
+    },
+
+    // Send password reset email
+    async sendPasswordResetEmail(email: string): Promise<void> {
+        try {
+            await sendPasswordResetEmail(auth, email);
+        } catch (error: any) {
+            // Handle specific Firebase auth errors
+            let errorMessage = 'Failed to send password reset email';
+
+            switch (error.code) {
+                case 'auth/user-not-found':
+                    errorMessage = 'No account found with this email address';
+                    break;
+                case 'auth/invalid-email':
+                    errorMessage = 'Invalid email address format';
+                    break;
+                case 'auth/too-many-requests':
+                    errorMessage = 'Too many requests. Please try again later';
+                    break;
+                case 'auth/network-request-failed':
+                    errorMessage = 'Network error. Please check your internet connection';
+                    break;
+                case 'auth/invalid-credential':
+                    errorMessage = 'Invalid credentials provided';
+                    break;
+                default:
+                    errorMessage = error.message || errorMessage;
+            }
+
+            throw new Error(errorMessage);
         }
     },
 
