@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useMessage } from "@/context/MessageContext";
 import ProfilePicture from "./ProfilePicture";
 import HandoverDetailsDisplay from "./HandoverDetailsDisplay";
+import ClaimDetailsDisplay from "./ClaimDetailsDisplay";
 
 interface PostModalProps {
   post: Post;
@@ -171,7 +172,7 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
         <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
               <ProfilePicture
-                src={post.user?.profilePicture || post.user?.profileImageUrl}
+                src={post.user?.profilePicture}
                 alt="user profile"
                 size="md"
               />
@@ -290,10 +291,15 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
               </span>
             )}
             
-            {/* Status Badge - show when post is resolved */}
+            {/* Status Badge - show when post is resolved or unclaimed */}
             {post.status === 'resolved' && (
               <span className="px-2 py-1 rounded-[3px] font-medium bg-green-100 text-green-700">
                 ✅ RESOLVED
+              </span>
+            )}
+            {post.status === 'unclaimed' && (
+              <span className="px-2 py-1 rounded-[3px] font-medium bg-orange-100 text-orange-700">
+                ⏰ UNCLAIMED
               </span>
             )}
           </div>
@@ -374,12 +380,59 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
           </div>
         </div>
 
-        {/* Show handover details if post is resolved */}
-        {post.status === 'resolved' && post.handoverDetails && (
+        {/* Show claim details if post is resolved and has claim details */}
+        {post.status === 'resolved' && post.claimDetails && (
+          <ClaimDetailsDisplay 
+            claimDetails={post.claimDetails} 
+            conversationData={post.conversationData}
+          />
+        )}
+
+        {/* Show handover details if post is resolved and no claim details */}
+        {post.status === 'resolved' && post.handoverDetails && !post.claimDetails && (
           <HandoverDetailsDisplay 
             handoverDetails={post.handoverDetails} 
             conversationData={post.conversationData}
           />
+        )}
+
+        {/* Show turnover information if this post was turned over */}
+        {post.turnoverDetails && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-blue-600 text-lg">🔄</span>
+              <h4 className="text-sm font-semibold text-blue-800">Turnover Information</h4>
+            </div>
+            <div className="text-sm text-blue-700 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Originally found by:</span>
+                <ProfilePicture
+                  src={post.turnoverDetails.originalFinder.profilePicture}
+                  alt={`${post.turnoverDetails.originalFinder.firstName} ${post.turnoverDetails.originalFinder.lastName}`}
+                  size="sm"
+                  className="border-blue-300"
+                />
+                <span>
+                  {post.turnoverDetails.originalFinder.firstName} {post.turnoverDetails.originalFinder.lastName}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium">Student ID:</span> {post.turnoverDetails.originalFinder.studentId || 'N/A'}
+              </div>
+              <div>
+                <span className="font-medium">Email:</span> {post.turnoverDetails.originalFinder.email}
+              </div>
+              {post.turnoverDetails.originalFinder.contactNum && (
+                <div>
+                  <span className="font-medium">Contact:</span> {post.turnoverDetails.originalFinder.contactNum}
+                </div>
+              )}
+              <div>
+                <span className="font-medium">Turned over to:</span>{" "}
+                {post.turnoverDetails.turnoverAction === "turnover to OSA" ? "OSA" : "Campus Security"}
+              </div>
+            </div>
+          </div>
         )}
 
       </div>

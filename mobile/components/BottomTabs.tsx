@@ -98,14 +98,47 @@ export default function CustomTabs() {
           setCurrentTab(savedTab);
         }
       } catch (error) {
-        console.log('Error loading saved tab:', error);
-      } finally {
-        setIsInitialized(true);
+        console.log('Failed to load saved tab:', error);
       }
     };
-    
+
     loadSavedTab();
+    setIsInitialized(true);
   }, []);
+
+  // Save tab state when it changes
+  useEffect(() => {
+    if (isInitialized && currentTab !== previousTabRef.current) {
+      AsyncStorage.setItem('lastActiveTab', currentTab);
+      previousTabRef.current = currentTab;
+    }
+  }, [currentTab, isInitialized]);
+
+  // Handle tab press
+  const handleTabPress = (tabKey: string) => {
+    setCurrentTab(tabKey);
+  };
+
+  // Get current tab component
+  const CurrentTabComponent = tabs.find(tab => tab.key === currentTab)?.component || HomeScreen;
+
+  // Render only the active tab component to prevent background processing
+  const renderActiveTab = () => {
+    switch (currentTab) {
+      case "MyTickets":
+        return <HomeScreen />;
+      case "Ticket":
+        return <MyTicket />;
+      case "CreateReport":
+        return <CreateReportScreen />;
+      case "Messages":
+        return <Message />;
+      case "Profile":
+        return <ProfileScreen />;
+      default:
+        return <HomeScreen />;
+    }
+  };
 
   useEffect(() => {
     const keyboardShow = Keyboard.addListener("keyboardDidShow", () =>
@@ -120,21 +153,6 @@ export default function CustomTabs() {
       keyboardHide.remove();
     };
   }, []);
-
-  // Handle tab change with smooth transition
-  const handleTabChange = async (newTab: string) => {
-    if (newTab !== currentTab) {
-      previousTabRef.current = currentTab;
-      setCurrentTab(newTab);
-      
-      // Save the new tab state to AsyncStorage
-      try {
-        await AsyncStorage.setItem('lastActiveTab', newTab);
-      } catch (error) {
-        console.log('Error saving tab state:', error);
-      }
-    }
-  };
 
   // Don't render content until tab state is loaded
   if (!isInitialized) {
@@ -151,19 +169,7 @@ export default function CustomTabs() {
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
       {/* Main Content - All tabs mounted but only current one visible */}
       <View className="flex-1">
-        {tabs.map((tab) => (
-          <View
-            key={tab.key}
-            className="flex-1"
-            style={{ 
-              display: currentTab === tab.key ? "flex" : "none",
-              // Add smooth opacity transition for better UX
-              opacity: currentTab === tab.key ? 1 : 0,
-            }}
-          >
-            <tab.component />
-          </View>
-        ))}
+        {renderActiveTab()}
       </View>
 
       {/* Bottom Tabs — hidden when keyboard is visible */}
@@ -191,7 +197,7 @@ export default function CustomTabs() {
               return (
                 <TouchableOpacity
                   key={tab.key}
-                  onPress={() => handleTabChange(tab.key)}
+                  onPress={() => handleTabPress(tab.key)}
                   className="items-center justify-center flex flex-col space-y-1"
                 >
                   <View className="relative">

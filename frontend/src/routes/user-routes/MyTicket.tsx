@@ -114,7 +114,7 @@ export default function MyTicket() {
   // Filter posts based on selected tab
   const tabFilteredPosts = rawUserPosts.filter((post) => {
     if (activeTab === "all_tickets") return true;
-    if (activeTab === "active_tickets") return post.status === "pending";
+    if (activeTab === "active_tickets") return post.status === "pending" || post.status === "unclaimed";
     if (activeTab === "completed_tickets") return post.status === "resolved";
     return false;
   });

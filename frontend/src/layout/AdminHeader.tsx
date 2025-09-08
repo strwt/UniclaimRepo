@@ -83,7 +83,7 @@ export default function AdminHeader({
               {/* profile picture */}
               <div className="">
                 <ProfilePicture
-                  src={userData?.profilePicture || userData?.profileImageUrl}
+                  src={userData?.profilePicture}
                   alt="admin-profile"
                   size="md"
                   className="cursor-pointer"

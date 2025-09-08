@@ -71,25 +71,34 @@ debug-*.jsx
 *.swp
 *~
 
-# Development documentation (exclude specific development docs, keep README)
-CLOUDINARY_*.md
-DELETE_*.md
-DEPENDENCIES.md
-FIREBASE_*.md
-HANDOVER_*.md
-INFINITE_*.md
-LOGIN_*.md
-MESSAGING_*.md
-MOBILE_*.md
-PROFILE_*.md
-TAB_*.md
-TEST_*.md
-VALIDATION_*.md
-CRYPTOJS_*.md
-FIRESTORE_*.md
-DUPLICATE_*.md
-CENTRALIZED_*.md
-README_HANDOVER_CLEANUP_FEATURE.md
+# Git and version control temporary files
+tash*
+stash*
+*WIP*
+*merge*
+*conflict*
+
+# Development documentation (exclude all development docs, keep main README)
+README_*.md
+*_IMPLEMENTATION.md
+*_DEMO.md
+*_FEATURE.md
+*_FIX.md
+*_MONITORING.md
+*_SERVICE.md
+*_MANAGER.md
+
+# Project-specific dev docs and test components
+mobile/README_*.md
+mobile/components/ListenerTest.tsx
+mobile/components/OptimizedMessageTest.tsx
+
+# Backup and temporary files
+*.backup
+*_backup.*
+*_corrupted_backup.*
+*_backup_*
+*_corrupted_*
 
 # Sensitive data
 secrets/

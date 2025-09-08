@@ -30,36 +30,77 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isClaimSubmitting, setIsClaimSubmitting] = useState(false);
   const [showHandoverModal, setShowHandoverModal] = useState(false);
   const [isHandoverSubmitting, setIsHandoverSubmitting] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
-
+  
+  // New engagement tracking state variables
+  const [isUserTyping, setIsUserTyping] = useState(false);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  
   const navigate = useNavigate();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const {
     sendMessage,
     getConversationMessages,
     markConversationAsRead,
+    markMessageAsRead,
+    markAllUnreadMessagesAsRead, // Add the new function
     sendClaimRequest,
     conversations,
   } = useMessage();
   const { userData } = useAuth();
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive (no animation)
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      // Direct scroll to bottom - most reliable method
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    } else if (messagesEndRef.current) {
+      // Fallback method
+      messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+    }
   };
 
-  // Handle scroll events to show/hide scroll to bottom button
+  // Scroll to bottom with animation (for button click)
+  const scrollToBottomWithAnimation = () => {
+    if (messagesContainerRef.current) {
+      // For smooth animation, we need to use scrollIntoView
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    } else if (messagesEndRef.current) {
+      // Fallback method
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  // Handle scroll events to show/hide scroll to bottom button and track engagement
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
-    const isScrolledUp =
-      target.scrollTop < target.scrollHeight - target.clientHeight - 100;
+    const scrollTop = target.scrollTop;
+    const scrollHeight = target.scrollHeight;
+    const clientHeight = target.clientHeight;
+    
+    // Check if user is near bottom (within 200px)
+    const isNearBottomNow = scrollTop >= scrollHeight - clientHeight - 200;
+    setIsNearBottom(isNearBottomNow);
+    
+    // Show/hide scroll to bottom button
+    const isScrolledUp = scrollTop < scrollHeight - clientHeight - 100;
     setShowScrollToBottom(isScrolledUp);
   };
 
+  // Scroll to bottom when messages change (for new messages)
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
   }, [messages]);
+
+  // Note: 2-second timer logic removed as requested
+
+
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -72,18 +113,71 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const unsubscribe = getConversationMessages(
       conversation.id,
       (loadedMessages) => {
+        // Check if these are new messages (not just initial load)
+        const previousMessageCount = messages.length;
+        const hasNewMessages = loadedMessages.length > previousMessageCount;
+        
         setMessages(loadedMessages);
         setIsLoading(false);
 
         // Mark conversation as read when messages are loaded
-        if (userData && conversation.unreadCounts?.[userData.uid] > 0) {
+        if (userData && conversation?.unreadCounts?.[userData.uid] > 0 && conversation?.id) {
           markConversationAsRead(conversation.id);
         }
+
+        // Mark all unread messages as read when conversation is opened and messages are loaded
+        if (userData && conversation?.unreadCounts?.[userData.uid] > 0 && conversation?.id) {
+          markAllUnreadMessagesAsRead(conversation.id);
+        }
+
+        // Auto-read new messages if user is engaged
+        if (hasNewMessages && previousMessageCount > 0) {
+          const newMessages = loadedMessages.slice(previousMessageCount);
+          // Only auto-read if there are actually new messages and user is engaged
+          if (newMessages.length > 0) {
+            autoReadNewMessages(newMessages);
+          }
+        }
+
+        // Scroll to bottom when conversation is opened and messages are loaded
+        // Use requestAnimationFrame to ensure DOM is fully rendered
+        requestAnimationFrame(() => {
+          scrollToBottom();
+        });
       }
     );
 
     return () => unsubscribe();
-  }, [conversation, getConversationMessages, markConversationAsRead, userData]);
+  }, [conversation, getConversationMessages, markConversationAsRead, userData, markAllUnreadMessagesAsRead]);
+
+  // Function to check if new messages should be auto-read based on user engagement
+  const shouldAutoReadMessage = (): boolean => {
+    // Auto-read if user is typing
+    if (isUserTyping) return true;
+    
+    // Auto-read if user is near bottom (within 200px)
+    if (isNearBottom) return true;
+    
+    return false;
+  };
+
+  // Mark conversation as read when new messages arrive while user is viewing
+  useEffect(() => {
+    if (!conversation?.id || !userData?.uid || !messages.length) return;
+
+    // Check if there are unread messages in this conversation
+    if (conversation?.unreadCounts?.[userData.uid] > 0) {
+      // Check if user is engaged enough to auto-read new messages
+      if (shouldAutoReadMessage()) {
+        // User is engaged - mark conversation as read
+        markConversationAsRead(conversation.id);
+        
+        // Also mark all unread messages as read for better UX
+        markAllUnreadMessagesAsRead(conversation.id);
+      }
+      // If user is not engaged, don't mark as read - let them do it manually
+    }
+  }, [messages, conversation, userData, markConversationAsRead, markAllUnreadMessagesAsRead, shouldAutoReadMessage]);
 
   // Check if conversation still exists (wasn't deleted)
   useEffect(() => {
@@ -94,14 +188,51 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       (conv) => conv.id === conversation.id
     );
     if (!conversationStillExists) {
-      console.log(
-        "🗑️ Conversation was deleted from local state, redirecting user..."
-      );
-      setIsRedirecting(true);
-      navigate("/messages"); // Redirect to messages page b1eb10c578051989894bb0b7fcc26ca096ed5fa6
+      navigate("/messages"); // Redirect to messages page
       return;
     }
-  }, [conversation, conversations, onClearConversation]);
+  }, [conversation, conversations, navigate]);
+
+  // Function to auto-read new messages based on user engagement
+  const autoReadNewMessages = async (newMessages: Message[]) => {
+    if (!conversation?.id || !userData?.uid || !shouldAutoReadMessage()) {
+      return; // Don't auto-read if user is not engaged
+    }
+
+    try {
+      // Mark conversation as read
+      await markConversationAsRead(conversation.id);
+      
+      // Mark all new messages as read
+      for (const message of newMessages) {
+        // Only mark messages that haven't been read by this user
+        if (!message.readBy?.includes(userData.uid)) {
+          await markMessageAsRead(conversation.id, message.id);
+        }
+      }
+      
+      console.log(`✅ Auto-read ${newMessages.length} new messages due to user engagement`);
+    } catch (error) {
+      console.warn('Failed to auto-read new messages:', error);
+    }
+  };
+
+  // Function to mark message as read when it comes into view
+  const handleMessageSeen = async (messageId: string) => {
+    if (!conversation?.id || !userData?.uid) return;
+    
+    try {
+      // Mark the individual message as read
+      await markMessageAsRead(conversation.id, messageId);
+      
+      // Also mark the conversation as read if it has unread messages
+      if (conversation?.unreadCounts?.[userData.uid] > 0) {
+        await markConversationAsRead(conversation.id);
+      }
+    } catch (error) {
+      console.warn('Failed to mark message/conversation as read:', error);
+    }
+  };
 
   // Additional check for conversation existence in database (less frequent)
   useEffect(() => {
@@ -118,10 +249,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         // If conversation doesn't exist, it was deleted
         if (!conversationSnap.exists()) {
-          console.log(
-            "🗑️ Conversation was deleted from database, redirecting user..."
-          );
-          setIsRedirecting(true);
           navigate("/messages"); // Redirect to messages page
         }
       } catch (error: any) {
@@ -130,11 +257,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           error.message?.includes("permission") ||
           error.message?.includes("not-found")
         ) {
-          console.log(
-            "🗑️ Conversation access denied (likely deleted), redirecting user..."
-          );
-          setIsRedirecting(true);
-          navigate("/messages"); // Redirect to messages page b1eb10c578051989894bb0b7fcc26ca096ed5fa6
+          navigate("/messages"); // Redirect to messages page
         }
       }
     };
@@ -143,7 +266,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const interval = setInterval(checkConversationExists, 10000);
 
     return () => clearInterval(interval);
-  }, [conversation, onClearConversation]);
+  }, [conversation, navigate]);
 
   // Update existing conversations with missing post data
   useEffect(() => {
@@ -656,8 +779,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return false;
     }
 
-    // Only show if found action is "keep" (Found and Keep posts)
-    if (conversation.foundAction !== "keep") {
+    // Allow claiming for "keep" and "turnover to Campus Security" posts
+    // Only exclude posts that are disposed or donated
+    if (conversation.foundAction === "disposed" || conversation.foundAction === "donated") {
       return false;
     }
 
@@ -669,27 +793,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return true;
   };
 
-  // Show redirecting state if conversation is being deleted
-  if (isRedirecting) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
-        <div className="text-center p-8 bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="w-16 h-16 mx-auto mb-4">
-            <LoadingSpinner />
-          </div>
-          <p className="text-xl font-semibold text-gray-800 mb-2">
-            Handover Completed! 🎉
-          </p>
-          <p className="text-gray-600 mb-4">
-            The conversation has been successfully completed and archived.
-          </p>
-          <p className="text-sm text-gray-500">
-            Redirecting you to the conversation list...
-          </p>
-        </div>
-      </div>
-    );
-  }
+
 
   if (!conversation) {
     return (
@@ -705,9 +809,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   }
 
-  function handleConfirmIdPhotoSuccess(_messageId: string): void {
-    throw new Error("Function not implemented.");
-  }
+  const handleConfirmIdPhotoSuccess = (messageId: string): void => {
+    // The onClearConversation is already being called in MessageBubble
+    // This function is just for any additional cleanup if needed
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-white h-full">
@@ -766,11 +871,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Messages Area */}
       <div
-        className="overflow-y-auto p-4 bg-white scroll-smooth hover:scrollbar-thin hover:scrollbar-thumb-gray-300 hover:scrollbar-track-gray-100 relative"
+        ref={messagesContainerRef}
+        className="overflow-y-auto p-4 bg-white hover:scrollbar-thin hover:scrollbar-thumb-gray-300 hover:scrollbar-track-gray-100 relative"
         style={{
-          scrollBehavior: "smooth",
+          scrollBehavior: "auto",
         }}
         onScroll={handleScroll}
+        onClick={() => {
+          // User clicked in chat area - this indicates engagement
+          // No timer needed - just track the interaction
+        }}
       >
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
@@ -784,36 +894,94 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         ) : (
           <div className="space-y-3">
             {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                isOwnMessage={message.senderId === userData?.uid}
-                showSenderName={
-                  Object.keys(conversation.participants).length > 2
-                }
-                conversationId={conversation.id}
-                currentUserId={userData?.uid || ""}
-                postOwnerId={conversation.postCreatorId}
-                onHandoverResponse={handleHandoverResponse}
-                onClaimResponse={handleClaimResponse}
-                onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
-              />
+                             <MessageBubble
+                 key={message.id}
+                 message={message}
+                 isOwnMessage={message.senderId === userData?.uid}
+                 showSenderName={
+                   Object.keys(conversation.participants).length > 2
+                 }
+                 conversationId={conversation.id}
+                 currentUserId={userData?.uid || ""}
+                 postOwnerId={conversation.postCreatorId}
+                 onHandoverResponse={handleHandoverResponse}
+                 onClaimResponse={handleClaimResponse}
+                 onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
+                 onClearConversation={onClearConversation}
+                 onMessageSeen={() => handleMessageSeen(message.id)}
+               />
             ))}
             <div ref={messagesEndRef} />
           </div>
         )}
+      </div>
 
-        {/* Scroll to Bottom Button */}
-        {showScrollToBottom && (
+      {/* Message Input - Sticky at bottom */}
+      <div className="border-t border-gray-200 bg-white mt-auto relative">
+        {/* Message Counter - Sticky above input */}
+        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-600 font-medium">
+              Messages in conversation
+            </span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <div className={`w-3 h-3 rounded-full ${
+                  messages.length >= 45 ? 'bg-red-400' : 
+                  messages.length >= 40 ? 'bg-yellow-400' : 'bg-green-400'
+                }`} />
+                <span className={`text-sm font-semibold ${
+                  messages.length >= 45 ? 'text-red-600' : 
+                  messages.length >= 40 ? 'text-yellow-600' : 'text-green-600'
+                }`}>
+                  {messages.length}/50
+                </span>
+              </div>
+              {messages.length >= 45 && (
+                <span className="text-xs text-red-500 font-medium">
+                  {50 - messages.length} left
+                </span>
+              )}
+            </div>
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+            <div 
+              className={`h-2 rounded-full transition-all duration-300 ${
+                messages.length >= 45 ? 'bg-red-400' : 
+                messages.length >= 40 ? 'bg-yellow-400' : 'bg-green-400'
+              }`}
+              style={{ width: `${(messages.length / 50) * 100}%` }}
+            />
+          </div>
+          
+          {/* Status Message */}
+          {messages.length >= 45 && (
+            <div className="text-xs text-red-500 text-center">
+              ⚠️ Oldest messages will be automatically removed when limit is reached
+            </div>
+          )}
+        </div>
+
+        {/* Input Form */}
+        <div className="p-4 relative">
+          {/* Scroll to Bottom Button - Above Input */}
           <button
-            onClick={scrollToBottom}
-            className="absolute bottom-4 left-1/2 transform -translate-x-1/2 p-2 bg-white border border-zinc-300 text-white rounded-full shadow-lg hover:bg-zinc-200 transition-colors duration-200 z-10"
+            onClick={scrollToBottomWithAnimation}
+            className={`absolute -top-15 left-1/2 transform -translate-x-1/2 p-2 border border-gray-300 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-300 bg-white z-10 ${
+              showScrollToBottom ? 'animate-slide-up opacity-100' : 'animate-slide-down opacity-0'
+            }`}
             title="Scroll to bottom"
+            style={{ 
+              visibility: showScrollToBottom ? 'visible' : 'hidden',
+              pointerEvents: showScrollToBottom ? 'auto' : 'none'
+            }}
           >
             <svg
-              className="size-4"
+              className="w-4 h-4 text-gray-600"
               fill="none"
-              stroke="#000000"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path
@@ -824,32 +992,43 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               />
             </svg>
           </button>
-        )}
-      </div>
-
-      {/* Message Input - Sticky at bottom */}
-      <div className="p-4 border-t border-gray-200 bg-white mt-auto">
-        <form onSubmit={handleSendMessage} className="flex gap-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-navyblue focus:border-transparent"
-            disabled={isSending}
-          />
-          <button
-            type="submit"
-            disabled={!newMessage.trim() || isSending}
-            className="px-4 py-2 bg-brand text-white rounded-lg hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSending ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              "Send"
-            )}
-          </button>
-        </form>
+          
+          <form onSubmit={handleSendMessage} className="flex gap-2">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onFocus={() => setIsUserTyping(true)}
+                onBlur={() => setIsUserTyping(false)}
+                placeholder="Type your message..."
+                maxLength={200}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-navyblue focus:border-transparent ${
+                  newMessage.length > 180 
+                    ? newMessage.length >= 200 
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-yellow-300 focus:ring-yellow-500'
+                    : 'border-gray-300'
+                }`}
+                disabled={isSending}
+              />
+              <div className="absolute bottom-1 right-2 text-xs text-gray-400">
+                {newMessage.length}/200
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={!newMessage.trim() || isSending || newMessage.length > 200}
+              className="px-4 py-2 bg-brand text-white rounded-lg hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSending ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                "Send"
+              )}
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Claim Verification Modal */}

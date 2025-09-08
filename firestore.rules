@@ -127,17 +127,17 @@ service cloud.firestore {
     function isValidPost(data) {
       return data.keys().hasAll(['title', 'description', 'category', 'location', 'type', 'user', 'status'])
         && data.type in ['lost', 'found']
-        && data.status in ['pending', 'resolved', 'rejected']
+        && data.status in ['pending', 'resolved', 'unclaimed']
         && data.title is string && data.title.size() > 0
         && data.description is string && data.description.size() > 0
         && data.category is string && data.category.size() > 0
         && data.location is string && data.location.size() > 0
-        && data.user.email == request.auth.token.email;
+        && (data.user.email == request.auth.token.email || data.user.email == 'cs@uniclaim.com');
     }
     
     function isAdmin() {
       // Add more admin emails as needed
-      return request.auth.token.email in ['admin@ustp.edu.ph', 'superadmin@ustp.edu.ph','admin@uniclaim.com'];
+      return request.auth.token.email in ['admin@ustp.edu.ph', 'superadmin@ustp.edu.ph','admin@uniclaim.com', 'cs@uniclaim.com'];
     }
     
     // NEW: Check if current user is banned

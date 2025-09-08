@@ -18,6 +18,8 @@ import Profile from "../app/tabs/Profile";
 import Register from "../app/tabs/Register";
 import Report from "../app/tabs/Report";
 import USTPMapScreen from "../app/tabs/USTPMapScreen";
+import ClaimFormScreen from "../app/tabs/ClaimFormScreen";
+import PhotoCaptureScreen from "../app/tabs/PhotoCaptureScreen";
 
 // Components
 import CustomTabs from "../components/BottomTabs";
@@ -70,25 +72,29 @@ export default function Navigation({
     }
   }, [user, isBanned]);
 
-  // Prevent banned users from accessing main app
+  // Prevent banned users from accessing main app - redirect to index screen
   if (user && isBanned) {
     return (
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName="Index"
         screenOptions={{ headerShown: false, animation: "fade" }}
       >
+        <Stack.Screen name="Index" component={withScreenWrapper(Index)} />
         <Stack.Screen name="Login" component={withScreenWrapper(Login)} />
+        <Stack.Screen name="Register" component={withScreenWrapper(Register)} />
+        <Stack.Screen name="ForgotPassword" component={withScreenWrapper(ForgotPassword)} />
       </Stack.Navigator>
     );
   }
 
-  // If user is not authenticated, show login
+  // If user is not authenticated, show index screen (welcome screen with login/register options)
   if (!isAuthenticated && !user) {
     return (
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName="Index"
         screenOptions={{ headerShown: false, animation: "fade" }}
       >
+        <Stack.Screen name="Index" component={withScreenWrapper(Index)} />
         <Stack.Screen name="Login" component={withScreenWrapper(Login)} />
         <Stack.Screen name="Register" component={withScreenWrapper(Register)} />
         <Stack.Screen name="ForgotPassword" component={withScreenWrapper(ForgotPassword)} />
@@ -136,6 +142,8 @@ export default function Navigation({
         component={withScreenWrapper(PostDetails)}
       />
       <Stack.Screen name="Chat" component={withScreenWrapper(Chat)} />
+      <Stack.Screen name="ClaimFormScreen" component={withScreenWrapper(ClaimFormScreen)} />
+      <Stack.Screen name="PhotoCaptureScreen" component={withScreenWrapper(PhotoCaptureScreen)} />
 
       {/* ✅ FIXED: Pass props using render function */}
       <Stack.Screen name="ItemDetails">

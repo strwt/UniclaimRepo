@@ -82,8 +82,44 @@ export default function Report() {
     if (!userData || !reportType || !user) return;
 
     setIsSubmitting(true);
+    
 
     try {
+      // Check if this should be transferred to Campus Security
+      const shouldTransferToCampusSecurity = reportType === "found" && foundAction === "turnover to Campus Security";
+      
+      // Get real Campus Security user data
+      let campusSecurityData = null;
+      let campusSecurityUserId = null;
+      
+      if (shouldTransferToCampusSecurity) {
+        const { authService } = await import("../../utils/firebase/auth");
+        const campusSecurityUser = await authService.getCampusSecurityUser();
+        
+        if (campusSecurityUser) {
+          campusSecurityData = {
+            firstName: campusSecurityUser.firstName,
+            lastName: campusSecurityUser.lastName,
+            email: campusSecurityUser.email,
+            contactNum: campusSecurityUser.contactNum,
+            studentId: campusSecurityUser.studentId,
+            profilePicture: campusSecurityUser.profilePicture || null
+          };
+          campusSecurityUserId = campusSecurityUser.uid;
+        } else {
+          // Fallback to hardcoded data if no Campus Security user found
+          campusSecurityData = {
+            firstName: "Campus",
+            lastName: "Security",
+            email: "cs@uniclaim.com",
+            contactNum: "",
+            studentId: "",
+            profilePicture: null
+          };
+          campusSecurityUserId = "hedUWuv96VWQek5OucPzXTCkpQU2";
+        }
+      }
+
       // Build post data conditionally to avoid undefined values in Firebase
       const postData: Omit<Post, 'id' | 'createdAt'> = {
         title: title.trim(),
@@ -93,16 +129,17 @@ export default function Report() {
         type: reportType,
         images: images,
         dateTime: selectedDate!.toISOString(),
-        user: {
+        user: shouldTransferToCampusSecurity ? campusSecurityData : {
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: userData.email,
           contactNum: userData.contactNum,
           studentId: userData.studentId,
           profilePicture: userData.profilePicture || null, // Ensure it's never undefined
+          role: userData.role || 'user', // Include user role
         },
-        creatorId: user.uid, // Add creator ID
-        postedById: user.uid, // Use Firebase user ID for messaging
+        creatorId: shouldTransferToCampusSecurity ? campusSecurityUserId : user.uid, // Transfer ownership if needed
+        postedById: shouldTransferToCampusSecurity ? campusSecurityUserId : user.uid, // Use Firebase user ID for messaging
         status: "pending",
       };
 
@@ -119,8 +156,30 @@ export default function Report() {
         postData.foundAction = foundAction;
       }
 
-      const postId = await postService.createPost(postData, user.uid);
+      // Add turnover details for both OSA and Campus Security turnover
+      if (reportType === "found" && foundAction && 
+          (foundAction === "turnover to OSA" || foundAction === "turnover to Campus Security")) {
+        postData.turnoverDetails = {
+          originalFinder: {
+            uid: user.uid,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            email: userData.email,
+            contactNum: userData.contactNum,
+            studentId: userData.studentId,
+            profilePicture: userData.profilePicture || null,
+          },
+          turnoverAction: foundAction,
+          turnoverDecisionAt: new Date(), // Will be converted to Firebase timestamp
+          turnoverStatus: foundAction === "turnover to OSA" ? "declared" : "transferred", // Different statuses for different workflows
+          // Note: turnoverReason is optional and not included if undefined
+        };
+      }
 
+      await postService.createPost(postData);
+
+
+      
       Alert.alert(
         "Success",
         "Your report has been submitted successfully!",
@@ -139,12 +198,14 @@ export default function Report() {
               setCoordinates({ latitude: 0, longitude: 0 });
               setImages([]);
               setActiveTab("item");
+
             },
           },
         ]
       );
     } catch (error: any) {
       console.error('Error creating post:', error);
+
       Alert.alert(
         "Error",
         error.message || "Failed to submit report. Please try again.",
@@ -245,6 +306,8 @@ export default function Report() {
 
         {/* Submit Button */}
         <View className="absolute bg-teal-50 bottom-0 left-0 w-full p-4">
+
+          
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={isSubmitting}

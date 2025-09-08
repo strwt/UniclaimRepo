@@ -11,8 +11,6 @@ interface LocationProps {
   setCoordinates: (val: { lat: number; lng: number } | null) => void;
 }
 
-
-
 const LocationReport = ({
   selectedLocation,
   setSelectedLocation,

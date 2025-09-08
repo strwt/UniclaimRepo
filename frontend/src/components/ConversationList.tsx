@@ -8,30 +8,16 @@ import ProfilePicture from "./ProfilePicture";
 interface ConversationListProps {
   onSelectConversation: (conversation: Conversation) => void;
   selectedConversationId?: string;
-  autoSelectConversationId?: string | null;
 }
 
 const ConversationList: React.FC<ConversationListProps> = ({
   onSelectConversation,
   selectedConversationId,
-  autoSelectConversationId,
 }) => {
   const { conversations, loading } = useMessage();
   const { userData } = useAuth();
 
-  // Auto-select conversation when component mounts or conversations change
-  useEffect(() => {
-    if (autoSelectConversationId && conversations.length > 0) {
-      // Always try to find and select the conversation from URL parameter
-      // Remove the !selectedConversationId condition to allow re-selection
-      const conversationToSelect = conversations.find(
-        (conv) => conv.id === autoSelectConversationId
-      );
-      if (conversationToSelect) {
-        onSelectConversation(conversationToSelect);
-      }
-    }
-  }, [autoSelectConversationId, conversations, onSelectConversation]);
+
 
   // Sort conversations by most recent message timestamp, with fallback to createdAt (newest first)
   const sortedConversations = useMemo(() => {
@@ -111,9 +97,11 @@ const ConversationList: React.FC<ConversationListProps> = ({
 
     const date = timestamp instanceof Date ? timestamp : timestamp.toDate();
     const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    const diffInMinutes = (now.getTime() - date.getTime()) / (1000 * 60);
+    const diffInHours = diffInMinutes / 60;
 
-    if (diffInHours < 1) return "Just now";
+    if (diffInMinutes < 1) return "Just now";
+    if (diffInMinutes < 60) return `${Math.floor(diffInMinutes)}m`;
     if (diffInHours < 24) return `${Math.floor(diffInHours)}h ago`;
     if (diffInHours < 48) return "Yesterday";
     return date.toLocaleDateString();
@@ -151,10 +139,36 @@ const ConversationList: React.FC<ConversationListProps> = ({
       : null;
   };
 
+  // Get the name of the user who sent the last message
+  const getLastMessageSenderName = (
+    conversation: Conversation,
+    currentUserId: string
+  ) => {
+    if (!conversation.lastMessage?.senderId) return "Unknown User";
+    
+    // If the sender is the current user
+    if (conversation.lastMessage.senderId === currentUserId) {
+      return "You";
+    }
+    
+    // Find the sender in participants
+    const sender = Object.entries(conversation.participants).find(
+      ([uid]) => uid === conversation.lastMessage.senderId
+    );
+    
+    if (sender) {
+      const firstName = sender[1].firstName || "";
+      const lastName = sender[1].lastName || "";
+      return `${firstName} ${lastName}`.trim() || "Unknown User";
+    }
+    
+    return "Unknown User";
+  };
+
   return (
     <div className="bg-gray-50 border-r border-gray-200 h-full flex flex-col">
       <div className="pl-7 pr-4 py-3 border-b border-gray-200 flex-shrink-0">
-        <h1 className="text-base font-semibold">Contacts</h1>
+        <h1 className="text-xl font-semibold">Contacts</h1>
         <p className="text-sm text-gray-500">
           {sortedConversations.length} conversation
           {sortedConversations.length !== 1 ? "s" : ""}
@@ -223,20 +237,54 @@ const ConversationList: React.FC<ConversationListProps> = ({
                 )}
               </div>
 
-              {conversation.lastMessage && (
+              {conversation.lastMessage ? (
                 <div className="flex items-center justify-between pl-3">
-                  <p
-                    className={`text-sm truncate flex-1 mr-2 ${
-                      hasUnread
-                        ? "font-semibold text-gray-800"
-                        : "text-gray-600"
-                    }`}
-                  >
-                    {conversation.lastMessage.text}
+                  <div className="flex-1 min-w-0 mr-2">
+                    <p
+                      className={`text-sm truncate ${
+                        hasUnread
+                          ? "font-semibold text-gray-800"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      <span className="font-medium">
+                        {userData
+                          ? getLastMessageSenderName(conversation, userData.uid)
+                          : "Unknown User"}
+                      </span>
+                      : {conversation.lastMessage.text}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                      {formatTimestamp(conversation.lastMessage.timestamp)}
+                    </span>
+                    {conversation.lastMessage.senderId !== userData?.uid && (
+                      <span className="text-xs">
+                        {conversation.lastMessage.readBy && 
+                         conversation.lastMessage.readBy.includes(userData?.uid || '') ? (
+                          <span className="text-blue-500" title="Seen">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                            </svg>
+                          </span>
+                        ) : (
+                          <span className="text-gray-400" title="Not seen">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between pl-3">
+                  <p className="text-sm text-gray-400 italic">
+                    No messages yet
                   </p>
-                  <span className="text-xs text-gray-400 whitespace-nowrap">
-                    {formatTimestamp(conversation.lastMessage.timestamp)}
-                  </span>
                 </div>
               )}
             </div>

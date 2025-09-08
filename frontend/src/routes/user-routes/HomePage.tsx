@@ -10,6 +10,7 @@ import SearchBar from "../../components/SearchBar";
 // hooks
 import { usePosts, useResolvedPosts } from "@/hooks/usePosts";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { useAdminStatus } from "@/hooks/useAdminStatus";
 
 function fuzzyMatch(text: string, query: string): boolean {
   const cleanedText = text.toLowerCase();
@@ -23,6 +24,10 @@ export default function HomePage() {
   // ✅ Use the custom hooks for real-time posts
   const { posts, loading, error } = usePosts();
   const { posts: resolvedPosts, loading: resolvedLoading, error: resolvedError } = useResolvedPosts();
+  
+  // Get admin statuses for all posts
+  const allPosts = [...posts, ...resolvedPosts];
+  const adminStatuses = useAdminStatus(allPosts);
   const [viewType, setViewType] = useState<"all" | "lost" | "found" | "completed">("all");
   const [lastDescriptionKeyword, setLastDescriptionKeyword] = useState("");
   const [rawResults, setRawResults] = useState<Post[] | null>(null); // store-search-result-without-viewType-filter
@@ -75,9 +80,25 @@ export default function HomePage() {
   const getPostsToDisplay = () => {
     const basePosts = rawResults ?? (viewType === "completed" ? resolvedPosts : posts) ?? [];
 
-    if (viewType === "all") return basePosts;
-    if (viewType === "completed") return basePosts; // resolvedPosts already filtered
-    return basePosts.filter((post) => post.type.toLowerCase() === viewType);
+    // Filter out unclaimed posts and items awaiting turnover confirmation from all views
+    const filteredPosts = basePosts.filter((post) => {
+      // Filter out unclaimed posts
+      if (post.status === 'unclaimed') return false;
+      
+      // Filter out items with turnoverStatus: "declared" ONLY for OSA turnover (awaiting OSA confirmation)
+      // Campus Security items with "transferred" status should be visible
+      if (post.turnoverDetails && 
+          post.turnoverDetails.turnoverStatus === "declared" && 
+          post.turnoverDetails.turnoverAction === "turnover to OSA") {
+        return false;
+      }
+      
+      return true;
+    });
+
+    if (viewType === "all") return filteredPosts;
+    if (viewType === "completed") return filteredPosts; // resolvedPosts already filtered
+    return filteredPosts.filter((post) => post.type.toLowerCase() === viewType);
   };
 
   const postsToDisplay = getPostsToDisplay();
@@ -154,7 +175,7 @@ export default function HomePage() {
             setTimeout(() => setIsLoading(false), 200);
           }}
         >
-          Lost Item Reports
+          Lost Items
         </button>
 
         <button
@@ -170,7 +191,7 @@ export default function HomePage() {
             setTimeout(() => setIsLoading(false), 200);
           }}
         >
-          Found Item Reports
+          Found Items
         </button>
 
         <button
@@ -186,7 +207,7 @@ export default function HomePage() {
             setTimeout(() => setIsLoading(false), 200);
           }}
         >
-          Completed Reports
+          Completed Items
         </button>
       </div>
 
@@ -223,6 +244,7 @@ export default function HomePage() {
                 post={post}
                 onClick={() => setSelectedPost(post)}
                 highlightText={lastDescriptionKeyword}
+                adminStatuses={adminStatuses}
               />
             ))
         )}

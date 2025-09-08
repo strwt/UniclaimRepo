@@ -3,7 +3,14 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import React, { useState } from "react";
-import { Modal, Pressable, Text, TouchableOpacity, View, TextInput } from "react-native";
+import {
+  Modal,
+  Pressable,
+  Text,
+  TouchableOpacity,
+  View,
+  TextInput,
+} from "react-native";
 import CustomDropdown from "../../components/Dropdown";
 import CustomDropdownWithSearch from "../../components/DropdownWithSearch";
 import ImageUpload from "../../components/ImageUpload";
@@ -29,15 +36,22 @@ type ItemDetailsProps = {
   setDescription: React.Dispatch<React.SetStateAction<string>>;
   reportType: "lost" | "found" | null;
   setReportType: React.Dispatch<React.SetStateAction<"lost" | "found" | null>>;
-  foundAction: "keep" | "turnover to OSA" | "turnover to Campus Security" | null;
-  setFoundAction: React.Dispatch<React.SetStateAction<"keep" | "turnover to OSA" | "turnover to Campus Security" | null>>;
+  foundAction:
+    | "keep"
+    | "turnover to OSA"
+    | "turnover to Campus Security"
+    | null;
+  setFoundAction: React.Dispatch<
+    React.SetStateAction<
+      "keep" | "turnover to OSA" | "turnover to Campus Security" | null
+    >
+  >;
   selectedDate: Date | null;
   setSelectedDate: React.Dispatch<React.SetStateAction<Date | null>>;
   selectedLocation: string | null;
   setSelectedLocation: React.Dispatch<React.SetStateAction<string | null>>;
   selectedCategory: string | null;
   setSelectedCategory: React.Dispatch<React.SetStateAction<string | null>>;
-
 };
 
 type NavigationProps = NativeStackNavigationProp<
@@ -95,7 +109,9 @@ export default function ItemDetails({
 
       {/* Title Input */}
       <View className="mb-4">
-        <Text className="text-base font-manrope-semibold mb-2">Item Title</Text>
+        <Text className="text-base font-manrope-semibold mb-2 mt-3">
+          Item Title
+        </Text>
         <TextInput
           className="bg-white border border-gray-300 rounded-md px-3 py-3 text-base font-manrope"
           placeholder="Enter item title (e.g., Blue Jansport Backpack)"
@@ -106,8 +122,10 @@ export default function ItemDetails({
       </View>
 
       {/* Description Input */}
-      <View className="mb-4">
-        <Text className="text-base font-manrope-semibold mb-2">Description</Text>
+      <View className="">
+        <Text className="text-base font-manrope-semibold mb-2">
+          Description
+        </Text>
         <TextInput
           className="bg-white border border-gray-300 rounded-md px-3 py-3 text-base font-manrope h-24"
           placeholder="Describe the item in detail..."
@@ -245,7 +263,10 @@ export default function ItemDetails({
               : "Pin a location to show coordinates"}
           </Text>
           {coordinates && (
-            <Pressable onPress={() => setCoordinates({ latitude: 0, longitude: 0 })} hitSlop={10}>
+            <Pressable
+              onPress={() => setCoordinates({ latitude: 0, longitude: 0 })}
+              hitSlop={10}
+            >
               <Ionicons name="close-outline" size={20} color="#4B5563" />
             </Pressable>
           )}

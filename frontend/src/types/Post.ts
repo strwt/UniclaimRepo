@@ -17,17 +17,18 @@ export interface Post {
     studentId: string;
     profilePicture?: string | null;
     profileImageUrl?: string;
+    role?: 'user' | 'admin' | 'campus_security';
   };
   createdAt?: string | Date | any; // Firebase timestamp or Date
   updatedAt?: string | Date | any; // Firebase timestamp or Date
-  status?: "pending" | "resolved" | "rejected";
+  status?: "pending" | "resolved" | "unclaimed";
   foundAction?: "keep" | "turnover to OSA" | "turnover to Campus Security"; // For found items
   dateTime?: string; // When the item was lost/found
   // New fields for 30-day lifecycle system
   expiryDate?: string | Date | any; // When the post expires (30 days from creation)
   isExpired?: boolean; // Boolean flag for quick filtering
   movedToUnclaimed?: boolean; // Boolean flag to track if moved to unclaimed
-  originalStatus?: "pending" | "resolved" | "rejected"; // Store the original status before moving to unclaimed
+  originalStatus?: "pending" | "resolved" | "unclaimed"; // Store the original status before moving to unclaimed
 
   // New fields for handover details (when ID photo is confirmed)
   handoverDetails?: {
@@ -93,6 +94,85 @@ export interface Post {
     participants: any; // Conversation participants
     createdAt: any; // When the conversation was created
     lastMessage: any; // Last message in the conversation
+  };
+
+  // New fields for claim details (when claim is confirmed)
+  claimDetails?: {
+    claimerName: string; // Full name of person who claimed
+    claimerContact: string; // Contact number of person who claimed
+    claimerStudentId: string; // Student ID of person who claimed
+    claimerEmail: string; // Email of person who claimed
+    evidencePhotos: {
+      url: string;
+      uploadedAt: any;
+      description?: string;
+    }[]; // Evidence photos for ownership proof
+    claimerIdPhoto: string; // ID photo of person who claimed
+    ownerIdPhoto: string; // ID photo of the item owner
+    claimConfirmedAt: any; // When the claim was confirmed
+    claimConfirmedBy: string; // User ID who confirmed the claim
+    ownerName?: string; // Name of the person who confirmed the claim
+
+    // New field: Complete claim request chat bubble details
+    claimRequestDetails?: {
+      // Original message details
+      messageId: string;
+      messageText: string;
+      messageTimestamp: any;
+      senderId: string;
+      senderName: string;
+      senderProfilePicture?: string;
+
+      // Claim data from the message
+      claimReason?: string;
+      claimRequestedAt: any;
+      claimRespondedAt?: any;
+      claimResponseMessage?: string;
+
+      // ID photo verification details
+      idPhotoUrl?: string;
+      idPhotoConfirmed: boolean;
+      idPhotoConfirmedAt: any;
+      idPhotoConfirmedBy: string;
+
+      // Evidence photos
+      evidencePhotos: {
+        url: string;
+        uploadedAt: any;
+        description?: string;
+      }[];
+      evidencePhotosConfirmed?: boolean;
+      evidencePhotosConfirmedAt?: any;
+      evidencePhotosConfirmedBy?: string;
+
+      // Owner verification details
+      ownerIdPhoto?: string;
+      ownerIdPhotoConfirmed?: boolean;
+      ownerIdPhotoConfirmedAt?: any;
+      ownerIdPhotoConfirmedBy?: string;
+    };
+  };
+
+  // New field for turnover details (when item is turned over to OSA or Campus Security)
+  turnoverDetails?: {
+    originalFinder: {
+      uid: string;                    // Original finder's user ID
+      firstName: string;              // Original finder's first name
+      lastName: string;               // Original finder's last name
+      email: string;                  // Original finder's email
+      contactNum: string;             // Original finder's contact number
+      studentId: string;              // Original finder's student ID
+      profilePicture?: string | null; // Original finder's profile picture
+    };
+    turnoverAction: "turnover to OSA" | "turnover to Campus Security";
+    turnoverDecisionAt: any;          // When the turnover decision was made (Firebase timestamp)
+    turnoverReason?: string;          // Optional reason for turnover
+
+    // New fields for turnover confirmation system
+    turnoverStatus: "declared" | "confirmed" | "not_received" | "transferred"; // Status of the turnover process
+    confirmedBy?: string;             // OSA admin user ID who confirmed receipt
+    confirmedAt?: any;                // When OSA confirmed receipt (Firebase timestamp)
+    confirmationNotes?: string;       // Optional notes from OSA about the item condition
   };
 }
 
@@ -176,7 +256,7 @@ export interface Conversation {
   postTitle: string;
   // New fields for handover button functionality
   postType: "lost" | "found";
-  postStatus?: "pending" | "resolved" | "rejected";
+  postStatus?: "pending" | "resolved" | "unclaimed";
   postCreatorId: string;
   foundAction?: "keep" | "turnover to OSA" | "turnover to Campus Security"; // For found items
   participants: {

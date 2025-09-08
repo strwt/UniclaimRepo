@@ -125,6 +125,109 @@ export const usePosts = () => {
     return { posts, loading, error };
 };
 
+// Custom hook for admin posts (includes items awaiting turnover confirmation)
+export const useAdminPosts = () => {
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const { isAuthenticated, userData } = useAuth();
+    const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const listenerActiveRef = useRef<boolean>(false);
+
+    useEffect(() => {
+        // Clear any existing timeout
+        if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+            loadingTimeoutRef.current = null;
+        }
+
+        // Don't create listeners until user is authenticated
+        if (!isAuthenticated) {
+            setPosts([]);
+            setLoading(false);
+            setError(null);
+            listenerActiveRef.current = false;
+            return;
+        }
+
+        // If authenticated but userData is still loading, wait
+        if (isAuthenticated && !userData) {
+            setLoading(true);
+            setError(null);
+            listenerActiveRef.current = false;
+            return;
+        }
+
+        // Both authenticated and userData loaded - create listeners
+        setLoading(true);
+        setError(null);
+        listenerActiveRef.current = true;
+
+        // Set a safety timeout to prevent infinite loading
+        loadingTimeoutRef.current = setTimeout(() => {
+            setLoading(false);
+            setError('Loading timeout - please refresh the page');
+            listenerActiveRef.current = false;
+        }, 15 * 1000); // 15 second timeout
+
+        // Subscribe to real-time updates - ADMIN VERSION: Includes items awaiting turnover confirmation
+        const unsubscribe = postService.getAllPostsForAdmin((fetchedPosts) => {
+            if (listenerActiveRef.current) {
+                setPosts(fetchedPosts);
+                setLoading(false);
+                setError(null);
+
+                // Clear the timeout since we got data
+                if (loadingTimeoutRef.current) {
+                    clearTimeout(loadingTimeoutRef.current);
+                    loadingTimeoutRef.current = null;
+                }
+            }
+        });
+
+        // Set up background refresh every 2 minutes for optimal performance
+        const backgroundRefreshInterval = setInterval(() => {
+            if (listenerActiveRef.current && !loading) {
+                // Trigger a background refresh
+                postService.getAllPostsForAdmin((refreshedPosts) => {
+                    if (listenerActiveRef.current) {
+                        setPosts(refreshedPosts);
+                    }
+                });
+            }
+        }, 2 * 60 * 1000); // 2 minutes
+
+        return () => {
+            listenerActiveRef.current = false;
+
+            // Clear timeout
+            if (loadingTimeoutRef.current) {
+                clearTimeout(loadingTimeoutRef.current);
+                loadingTimeoutRef.current = null;
+            }
+
+            // Clear background refresh interval
+            clearInterval(backgroundRefreshInterval);
+
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+    }, [isAuthenticated, userData]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (loadingTimeoutRef.current) {
+                clearTimeout(loadingTimeoutRef.current);
+            }
+            listenerActiveRef.current = false;
+        };
+    }, []);
+
+    return { posts, loading, error };
+};
+
 // Custom hook for posts by type
 export const usePostsByType = (type: 'lost' | 'found') => {
     const [posts, setPosts] = useState<Post[]>([]);

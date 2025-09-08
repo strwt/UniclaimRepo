@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { FiChevronDown, FiChevronUp, FiX } from 'react-icons/fi';
+import { useState, useRef, useEffect } from "react";
+import { FiChevronDown, FiChevronUp, FiX } from "react-icons/fi";
 
 type DropdownProps = {
   label?: string;
@@ -29,36 +29,37 @@ const DropdownWithSearch = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setExpanded(false);
         setSearch("");
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {label && (
-        <label className="block text-[14px] mb-3">
-          {label}
-        </label>
-      )}
+      {label && <label className="block text-[14px] mb-3">{label}</label>}
 
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
         className={`w-full flex justify-between items-center bg-grayg border rounded text-left focus:outline-none focus-within:ring-2 focus-within:ring-blue-500 ${
           error ? "border-2 border-red-500" : "border border-gray-500"
-        } px-4 py-3`}
+        } px-2 py-2`}
       >
         <span
           className={`block truncate text-sm ${
-            selected ? "text-gray-700" : "text-gray-500 bg-gray-100 px-2 py-1 rounded"
+            selected
+              ? "text-gray-700"
+              : "text-gray-500 bg-gray-100 px-2 py-1 rounded"
           }`}
         >
           {selected || placeholder}

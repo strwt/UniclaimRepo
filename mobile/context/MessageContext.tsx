@@ -1,27 +1,31 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { messageService } from "../utils/firebase";
-import { useAuth } from "./AuthContext";
 import type { Conversation, Message } from "../types/type";
 
 interface MessageContextType {
   conversations: Conversation[];
   loading: boolean;
+  totalUnreadCount: number; // Add total unread count like web version
   sendMessage: (conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string) => Promise<void>;
   createConversation: (postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: any, postOwnerUserData?: any) => Promise<string>;
-  getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void) => () => void;
-  getConversation: (conversationId: string) => Promise<any>; // Add getConversation function
-  deleteMessage: (conversationId: string, messageId: string) => Promise<void>; // New: Delete message function
-  updateHandoverResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update handover response
-  confirmHandoverIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm ID photo function
-  sendClaimRequest: (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string) => Promise<void>; // New: Send claim request
-  updateClaimResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>; // New: Update claim response
-  confirmClaimIdPhoto: (conversationId: string, messageId: string) => Promise<void>; // New: Confirm claim ID photo
-  refreshConversations: () => Promise<void>; // Add refresh function
-  markConversationAsRead: (conversationId: string, userId: string) => Promise<void>; // New: Mark conversation as read
-  getUnreadConversationCount: (userId: string) => number; // New: Get count of conversations with unread messages
-  getTotalUnreadMessageCount: (userId: string) => number; // New: Get total count of unread messages
-  getConversationUnreadCount: (conversationId: string, userId: string) => number; // New: Get unread count for specific conversation
-  getUnreadConversationsSummary: (userId: string) => { count: number; conversations: Array<{ id: string; postTitle: string; unreadCount: number; lastMessage?: any }> }; // New: Get detailed unread summary
+  getConversationMessages: (conversationId: string, callback: (messages: Message[]) => void, limit?: number) => () => void;
+  getOlderMessages: (conversationId: string, lastMessageTimestamp: any, limit?: number) => Promise<Message[]>;
+  getConversation: (conversationId: string) => Promise<any>;
+  deleteMessage: (conversationId: string, messageId: string) => Promise<void>;
+  markMessageAsRead: (conversationId: string, messageId: string) => Promise<void>;
+  markAllUnreadMessagesAsRead: (conversationId: string, userId: string) => Promise<void>;
+  sendHandoverRequest: (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string) => Promise<void>;
+  updateHandoverResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>;
+  confirmHandoverIdPhoto: (conversationId: string, messageId: string) => Promise<void>;
+  sendClaimRequest: (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string, evidencePhotos?: { url: string; uploadedAt: any; description?: string }[]) => Promise<void>;
+  updateClaimResponse: (conversationId: string, messageId: string, status: 'accepted' | 'rejected') => Promise<void>;
+  confirmClaimIdPhoto: (conversationId: string, messageId: string) => Promise<void>;
+  refreshConversations: () => Promise<void>;
+  markConversationAsRead: (conversationId: string, userId: string) => Promise<void>;
+  getUnreadConversationCount: (userId: string) => number;
+  getTotalUnreadMessageCount: (userId: string) => number;
+  getConversationUnreadCount: (conversationId: string, userId: string) => number;
+  getUnreadConversationsSummary: (userId: string) => { count: number; conversations: Array<{ id: string; postTitle: string; unreadCount: number; lastMessage?: any }> };
 }
 
 const MessageContext = createContext<MessageContextType | undefined>(undefined);
@@ -29,18 +33,15 @@ const MessageContext = createContext<MessageContextType | undefined>(undefined);
 export const MessageProvider = ({ children, userId }: { children: ReactNode; userId: string | null }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isAdmin } = useAuth();
+
+  // Calculate total unread count for the current user (like web version)
+  const totalUnreadCount = conversations.reduce((total, conv) => {
+    const userUnreadCount = conv.unreadCounts?.[userId || ''] || 0;
+    return total + userUnreadCount;
+  }, 0);
 
   // Load user conversations
   useEffect(() => {
-    // Admin users don't need conversations loaded
-    if (isAdmin) {
-      console.log('Admin user detected - skipping conversation loading');
-      setConversations([]);
-      setLoading(false);
-      return;
-    }
-
     if (!userId) {
       setConversations([]);
       setLoading(false);
@@ -53,32 +54,16 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     const unsubscribe = messageService.getUserConversations(userId, (loadedConversations) => {
       setConversations(loadedConversations);
       setLoading(false);
-    }, (error) => {
-      console.error('Mobile MessageContext: Listener error:', error);
-      setLoading(false);
-
-      // Only try to refresh for permission errors (not for admin users)
-      if (error?.code === 'permission-denied' || error?.code === 'not-found') {
-        console.log('Permission error detected, attempting refresh...');
-        refreshConversations().catch(refreshError => {
-          console.error('Refresh also failed:', refreshError);
-          // If refresh fails, just set empty conversations
-          setConversations([]);
-        });
-      }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [userId, isAdmin]);
+  }, [userId]);
+
+
 
   const sendMessage = async (conversationId: string, senderId: string, senderName: string, text: string, senderProfilePicture?: string): Promise<void> => {
-    // Admin users shouldn't send messages through the mobile app
-    if (isAdmin) {
-      throw new Error('Admin users cannot send messages through the mobile app. Please use the admin interface.');
-    }
-
     try {
       await messageService.sendMessage(conversationId, senderId, senderName, text, senderProfilePicture);
     } catch (error: any) {
@@ -87,11 +72,6 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
   };
 
   const createConversation = async (postId: string, postTitle: string, postOwnerId: string, currentUserId: string, currentUserData: any, postOwnerUserData?: any): Promise<string> => {
-    // Admin users shouldn't create conversations through the mobile app
-    if (isAdmin) {
-      throw new Error('Admin users cannot create conversations through the mobile app. Please use the admin interface.');
-    }
-
     try {
       return await messageService.createConversation(postId, postTitle, postOwnerId, currentUserId, currentUserData, postOwnerUserData);
     } catch (error: any) {
@@ -99,8 +79,16 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
   };
 
-  const getConversationMessages = (conversationId: string, callback: (messages: Message[]) => void) => {
-    return messageService.getConversationMessages(conversationId, callback);
+  const getConversationMessages = (conversationId: string, callback: (messages: Message[]) => void, limit?: number) => {
+    return messageService.getConversationMessages(conversationId, callback, limit);
+  };
+
+  const getOlderMessages = async (conversationId: string, lastMessageTimestamp: any, limit?: number) => {
+    try {
+      return await messageService.getOlderMessages(conversationId, lastMessageTimestamp, limit);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to get older messages');
+    }
   };
 
   const getConversation = async (conversationId: string) => {
@@ -116,6 +104,26 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
       await messageService.deleteMessage(conversationId, messageId, userId!);
     } catch (error: any) {
       throw new Error(error.message || 'Failed to delete message');
+    }
+  };
+
+  const markMessageAsRead = async (conversationId: string, messageId: string): Promise<void> => {
+    if (!userId) return;
+
+    try {
+      await messageService.markMessageAsRead(conversationId, messageId, userId);
+    } catch (error: any) {
+      console.error('Failed to mark message as read:', error);
+    }
+  };
+
+  const markAllUnreadMessagesAsRead = async (conversationId: string, userId: string): Promise<void> => {
+    try {
+      await messageService.markAllUnreadMessagesAsRead(conversationId, userId);
+      console.log(`✅ All unread messages marked as read in ${conversationId}`);
+    } catch (error: any) {
+      console.error('Failed to mark all unread messages as read:', error);
+      // Don't throw error - just log it
     }
   };
 
@@ -135,9 +143,17 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
     }
   };
 
-  const sendClaimRequest = async (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string): Promise<void> => {
+  const sendHandoverRequest = async (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string): Promise<void> => {
     try {
-      await messageService.sendClaimRequest(conversationId, senderId, senderName, senderProfilePicture, postId, postTitle);
+      await messageService.sendHandoverRequest(conversationId, senderId, senderName, senderProfilePicture, postId, postTitle);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to send handover request');
+    }
+  };
+
+  const sendClaimRequest = async (conversationId: string, senderId: string, senderName: string, senderProfilePicture: string, postId: string, postTitle: string, claimReason?: string, idPhotoUrl?: string, evidencePhotos?: { url: string; uploadedAt: any; description?: string }[]): Promise<void> => {
+    try {
+      await messageService.sendClaimRequest(conversationId, senderId, senderName, senderProfilePicture, postId, postTitle, claimReason, idPhotoUrl, evidencePhotos);
     } catch (error: any) {
       throw new Error(error.message || 'Failed to send claim request');
     }
@@ -161,14 +177,6 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
 
   // Simple refresh function that fetches current conversations
   const refreshConversations = async (): Promise<void> => {
-    // Admin users don't need conversation refresh
-    if (isAdmin) {
-      console.log('Admin user detected - skipping conversation refresh');
-      setConversations([]);
-      setLoading(false);
-      return;
-    }
-
     if (!userId) return;
 
     try {
@@ -196,12 +204,6 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
 
   // Mark conversation as read for a specific user
   const markConversationAsRead = async (conversationId: string, userId: string): Promise<void> => {
-    // Admin users don't need to mark conversations as read
-    if (isAdmin) {
-      console.log('Admin user detected - skipping mark as read');
-      return;
-    }
-
     if (!userId) return;
 
     try {
@@ -224,7 +226,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
 
   // Get count of conversations with unread messages for a specific user
   const getUnreadConversationCount = (userId: string): number => {
-    if (!userId || isAdmin) return 0;
+    if (!userId) return 0;
     
     return conversations.filter(conv => 
       conv.unreadCounts?.[userId] > 0
@@ -233,7 +235,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
 
   // Get total count of unread messages for a specific user (optional - for future use)
   const getTotalUnreadMessageCount = (userId: string): number => {
-    if (!userId || isAdmin) return 0;
+    if (!userId) return 0;
     
     return conversations.reduce((total, conv) => 
       total + (conv.unreadCounts?.[userId] || 0), 0
@@ -242,7 +244,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
 
   // Get unread count for a specific conversation (useful for chat headers)
   const getConversationUnreadCount = (conversationId: string, userId: string): number => {
-    if (!userId || isAdmin) return 0;
+    if (!userId) return 0;
     
     const conversation = conversations.find(conv => conv.id === conversationId);
     return conversation?.unreadCounts?.[userId] || 0;
@@ -250,7 +252,7 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
 
   // Get unread conversations summary (useful for notifications or other UI elements)
   const getUnreadConversationsSummary = (userId: string) => {
-    if (!userId || isAdmin) return { count: 0, conversations: [] };
+    if (!userId) return { count: 0, conversations: [] };
     
     const unreadConversations = conversations.filter(conv => 
       conv.unreadCounts?.[userId] > 0
@@ -272,11 +274,16 @@ export const MessageProvider = ({ children, userId }: { children: ReactNode; use
       value={{
         conversations,
         loading,
+        totalUnreadCount,
         sendMessage,
         createConversation,
         getConversationMessages,
+        getOlderMessages,
         getConversation,
         deleteMessage,
+        markMessageAsRead,
+        markAllUnreadMessagesAsRead,
+        sendHandoverRequest,
         updateHandoverResponse,
         confirmHandoverIdPhoto,
         sendClaimRequest,

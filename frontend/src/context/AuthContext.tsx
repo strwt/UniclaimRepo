@@ -315,7 +315,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const startPeriodicBanCheck = () => {
-    // Fallback method: check ban status every 30 seconds
+    // SMART BAN CHECKING: Only run periodic checks if real-time listener fails
+    // This prevents unnecessary quota consumption for non-banned users
+    console.log('🔄 Starting smart ban check system (frontend)');
+    
     const intervalId = setInterval(async () => {
       if (!auth.currentUser) {
         clearInterval(intervalId);
@@ -329,11 +332,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           clearInterval(intervalId);
           handleImmediateBanLogout(userData);
         }
-      } catch (error) {
-        console.warn('Periodic ban check error:', error);
+      } catch (error: any) {
+        // Handle quota errors gracefully - don't spam the console
+        if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+          console.warn('Periodic ban check quota exceeded - will retry later');
+          // Don't clear interval - let it retry when quota resets
+        } else {
+          console.warn('Periodic ban check error:', error);
+        }
         // Continue checking - don't stop on errors
       }
-    }, 30000); // Check every 30 seconds
+    }, 300000); // Check every 5 minutes (300,000 ms)
     
     // Store interval ID for cleanup
     setPeriodicCheckInterval(intervalId);

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { Message } from "@/types/Post";
 import ProfilePicture from "./ProfilePicture";
 import { useMessage } from "../context/MessageContext";
@@ -21,6 +21,8 @@ interface MessageBubbleProps {
     status: "accepted" | "rejected"
   ) => void;
   onConfirmIdPhotoSuccess?: (_messageId: string) => void;
+  onClearConversation?: () => void;
+  onMessageSeen?: () => void; // Callback when message is seen
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -32,6 +34,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   postOwnerId,
   onHandoverResponse,
   onClaimResponse,
+  onClearConversation,
+  onMessageSeen,
 }) => {
   const {
     deleteMessage,
@@ -50,12 +54,36 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     url: string;
     altText: string;
   } | null>(null);
+  const messageRef = useRef<HTMLDivElement>(null);
+  const [hasBeenSeen, setHasBeenSeen] = useState(false);
   const formatTime = (timestamp: any) => {
     if (!timestamp) return "";
 
     const date = timestamp instanceof Date ? timestamp : timestamp.toDate();
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
+
+  // Intersection observer to detect when message comes into view
+  useEffect(() => {
+    if (!messageRef.current || !onMessageSeen || hasBeenSeen || isOwnMessage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setHasBeenSeen(true);
+            onMessageSeen();
+            observer.disconnect();
+          }
+        });
+      },
+      { threshold: 0.5 } // Trigger when 50% of message is visible
+    );
+
+    observer.observe(messageRef.current);
+
+    return () => observer.disconnect();
+  }, [onMessageSeen, hasBeenSeen, isOwnMessage]);
 
   const handleHandoverResponse = async (status: "accepted" | "rejected") => {
     if (!onHandoverResponse) return;
@@ -147,11 +175,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           alert(
             "✅ Handover confirmed successfully! The conversation has been archived and the post is now marked as completed."
           );
+          // Clear conversation to show "Select a conversation" screen
+          onClearConversation?.();
         } else {
           // Handover confirmed but conversation not deleted (fallback case)
           alert(
             "✅ Handover confirmed successfully! The post is now marked as completed."
           );
+          // Clear conversation to show "Select a conversation" screen
+          onClearConversation?.();
         }
       } else {
         // Handover failed
@@ -252,6 +284,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       await confirmClaimIdPhoto(conversationId, message.id);
       // Call the callback to update UI
       onClaimResponse?.(message.id, "accepted");
+      
+      // Show success message
+      alert("✅ Claim ID photo confirmed successfully!");
+      
+      // Clear conversation to show "Select a conversation" screen
+      onClearConversation?.();
     } catch (error: any) {
       console.error("Failed to confirm claim ID photo:", error);
       alert("Failed to confirm ID photo. Please try again.");
@@ -793,6 +831,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   return (
     <div
+      ref={messageRef}
       className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} mb-3`}
     >
       {renderIdPhotoModal()}
@@ -835,17 +874,22 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <div>
-              {formatTime(message.timestamp)}
+            <div className="flex items-center gap-1">
+              <span>{formatTime(message.timestamp)}</span>
               {isOwnMessage && (
-                <span className="ml-2">
+                <span className="ml-1">
                   {message.readBy && message.readBy.length > 1 ? (
-                    <span className="text-blue-500" title="Read">
-                      ✓✓
+                    <span className="text-blue-500" title="Seen">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                      </svg>
                     </span>
                   ) : (
                     <span className="text-gray-400" title="Delivered">
-                      ✓
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
                     </span>
                   )}
                 </span>

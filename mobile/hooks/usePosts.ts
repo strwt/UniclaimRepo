@@ -55,7 +55,7 @@ export const usePosts = () => {
             setLoading(true);
         }
 
-        // Subscribe to real-time updates
+        // Subscribe to real-time updates directly (like web version)
         const unsubscribe = postService.getAllPosts((fetchedPosts) => {
             setPosts(fetchedPosts);
             setLoading(false);
@@ -197,8 +197,11 @@ export const usePostsByCategory = (category: string) => {
 
         setLoading(true);
 
-        const unsubscribe = postService.getPostsByCategory(category, (fetchedPosts) => {
-            setPosts(fetchedPosts);
+        // Note: getPostsByCategory doesn't exist in postService, using getAllPosts instead
+        const unsubscribe = postService.getAllPosts((fetchedPosts) => {
+            // Filter by category locally
+            const filteredPosts = fetchedPosts.filter(post => post.category === category);
+            setPosts(filteredPosts);
             setLoading(false);
         });
 
@@ -277,19 +280,21 @@ export const useUserPostsWithSet = (userEmail: string) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const unsubscribeRef = useRef<(() => void) | null>(null);
+    const isMountedRef = useRef(true);
 
     useEffect(() => {
+        // Set mounted flag
+        isMountedRef.current = true;
+
         // If user is not authenticated, clear posts and don't set up listeners
         if (!isAuthenticated) {
-            console.log('User not authenticated - clearing user posts (with set) and listeners');
-
-            // Clear posts
-            setPosts([]);
-            setLoading(false);
+            if (isMountedRef.current) {
+                setPosts([]);
+                setLoading(false);
+            }
 
             // Clean up any existing listener
             if (unsubscribeRef.current) {
-                console.log('Cleaning up user posts (with set) listener');
                 unsubscribeRef.current();
                 unsubscribeRef.current = null;
             }
@@ -298,24 +303,34 @@ export const useUserPostsWithSet = (userEmail: string) => {
 
         // User is authenticated
         if (!userEmail) {
-            setPosts([]);
-            setLoading(false);
+            if (isMountedRef.current) {
+                setPosts([]);
+                setLoading(false);
+            }
             return;
         }
 
-        setLoading(true);
+        if (isMountedRef.current) {
+            setLoading(true);
+        }
 
         const unsubscribe = postService.getUserPosts(userEmail, (fetchedPosts) => {
-            setPosts(fetchedPosts);
-            setLoading(false);
+            // Only update state if component is still mounted
+            if (isMountedRef.current) {
+                setPosts(fetchedPosts);
+                setLoading(false);
+            }
         });
 
         // Store unsubscribe function for cleanup
         unsubscribeRef.current = unsubscribe;
 
         return () => {
+            // Set mounted flag to false
+            isMountedRef.current = false;
+
+            // Clean up listener
             if (unsubscribe) {
-                console.log('Cleaning up user posts (with set) listener on unmount');
                 unsubscribe();
                 unsubscribeRef.current = null;
             }
@@ -323,4 +338,62 @@ export const useUserPostsWithSet = (userEmail: string) => {
     }, [userEmail, isAuthenticated]);
 
     return { posts, setPosts, loading };
+};
+
+// Custom hook for resolved posts (completed reports)
+export const useResolvedPosts = () => {
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const { isAuthenticated } = useAuth();
+    const unsubscribeRef = useRef<(() => void) | null>(null);
+
+    useEffect(() => {
+        // If user is not authenticated, clear posts and don't set up listeners
+        if (!isAuthenticated) {
+            console.log('User not authenticated - clearing resolved posts and listeners');
+
+            // Clear posts
+            setPosts([]);
+            setLoading(false);
+            setError(null);
+
+            // Clean up any existing listener
+            if (unsubscribeRef.current) {
+                console.log('Cleaning up resolved posts listener');
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+            return;
+        }
+
+        // User is authenticated - set up listeners
+        console.log('User authenticated - setting up resolved posts listener');
+
+        setLoading(true);
+        setError(null);
+
+        // Subscribe to resolved posts directly (like web version)
+        const unsubscribe = postService.getResolvedPosts((fetchedPosts: Post[]) => {
+            console.log('🔍 [DEBUG] useResolvedPosts: Fetched resolved posts count:', fetchedPosts.length);
+            console.log('🔍 [DEBUG] useResolvedPosts: Sample resolved posts:', fetchedPosts.slice(0, 3).map(p => ({ id: p.id, status: p.status, title: p.title })));
+
+            setPosts(fetchedPosts);
+            setLoading(false);
+            setError(null);
+        });
+
+        // Store unsubscribe function for cleanup
+        unsubscribeRef.current = unsubscribe;
+
+        return () => {
+            if (unsubscribe) {
+                console.log('Cleaning up resolved posts listener on unmount');
+                unsubscribe();
+                unsubscribeRef.current = null;
+            }
+        };
+    }, [isAuthenticated]);
+
+    return { posts, loading, error };
 };

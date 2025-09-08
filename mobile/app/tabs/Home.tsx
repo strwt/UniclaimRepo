@@ -7,33 +7,53 @@ import Layout from "../../layout/HomeLayout";
 import type { Post } from "../../types/type";
 
 // hooks
-import { usePosts } from "../../hooks/usePosts";
-import { useScrollPreservation } from "../../hooks/useScrollPreservation";
+import { usePosts, useResolvedPosts } from "../../hooks/usePosts";
 
 export default function Home() {
   // ✅ Use the custom hook for real-time posts with smart loading
   const { posts, loading, error, isInitialLoad } = usePosts();
+  const { posts: resolvedPosts, loading: resolvedLoading, error: resolvedError } = useResolvedPosts();
   
-  // ✅ Use scroll preservation hook
-  const { flatListRef, handleScroll, restoreScrollPosition } = useScrollPreservation('home');
+  // Simple scroll handling (like web version)
+  const flatListRef = React.useRef<FlatList>(null);
   
-  const [activeButton, setActiveButton] = useState<"lost" | "found">("lost");
+  const [activeButton, setActiveButton] = useState<"all" | "lost" | "found" | "completed">("all");
   const [query, setQuery] = useState("");
   const [categorySearch, setCategorySearch] = useState("");
   const [locationSearch, setLocationSearch] = useState("");
   const [descriptionSearch, setDescriptionSearch] = useState("");
 
-  // Restore scroll position when component becomes visible
-  useEffect(() => {
-    // Small delay to ensure the component is fully rendered
-    const timer = setTimeout(() => {
-      restoreScrollPosition();
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, [restoreScrollPosition]);
+  // Simple scroll handling - no complex preservation needed
 
-  const filteredPosts = (posts || []).filter((post) => {
+  // Determine which posts to display based on activeButton
+  const getPostsToDisplay = () => {
+    let basePosts;
+    if (activeButton === "completed") {
+      basePosts = resolvedPosts || [];
+    } else {
+      basePosts = posts || [];
+    }
+    
+    // Filter out unclaimed posts and items awaiting turnover confirmation from all views
+    return basePosts.filter((post) => {
+      // Filter out unclaimed posts
+      if (post.movedToUnclaimed) return false;
+      
+      // Filter out items with turnoverStatus: "declared" ONLY for OSA turnover (awaiting OSA confirmation)
+      // Campus Security items with "transferred" status should be visible
+      if (post.turnoverDetails && 
+          post.turnoverDetails.turnoverStatus === "declared" && 
+          post.turnoverDetails.turnoverAction === "turnover to OSA") {
+        return false;
+      }
+      
+      return true;
+    });
+  };
+
+  const postsToDisplay = getPostsToDisplay();
+
+  const filteredPosts = postsToDisplay.filter((post) => {
     // ✅ Add data validation to prevent crashes
     if (!post || !post.title || !post.description || !post.category || !post.location) {
       return false;
@@ -59,8 +79,14 @@ export default function Home() {
       ? post.location === locationSearch
       : true;
 
+    // Handle different activeButton states
+    const typeMatch = 
+      activeButton === "all" ? post.status !== "resolved" && !post.movedToUnclaimed : // Show all ACTIVE posts (exclude completed and unclaimed)
+      activeButton === "completed" ? true : // Show all resolved posts (already filtered by data source)
+      post.type === activeButton && post.status !== "resolved" && !post.movedToUnclaimed; // Show posts matching specific type AND are active (not completed and not unclaimed)
+
     return (
-      post.type === activeButton &&
+      typeMatch &&
       titleMatch &&
       categoryMatch &&
       locationMatch &&
@@ -84,6 +110,21 @@ export default function Home() {
 
         <View className="flex-row mt-5 gap-2">
           <TouchableOpacity
+            onPress={() => setActiveButton("all")}
+            className={`flex-1 h-[3.3rem] rounded-md items-center justify-center ${
+              activeButton === "all" ? "bg-navyblue" : "bg-zinc-200"
+            }`}
+          >
+            <Text
+              className={`font-semibold text-base font-manrope-semibold ${
+                activeButton === "all" ? "text-white" : "text-black"
+              }`}
+            >
+              All Items
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             onPress={() => setActiveButton("lost")}
             className={`flex-1 h-[3.3rem] rounded-md items-center justify-center ${
               activeButton === "lost" ? "bg-navyblue" : "bg-zinc-200"
@@ -94,7 +135,7 @@ export default function Home() {
                 activeButton === "lost" ? "text-white" : "text-black"
               }`}
             >
-              Lost Item
+              Lost Items
             </Text>
           </TouchableOpacity>
 
@@ -109,16 +150,33 @@ export default function Home() {
                 activeButton === "found" ? "text-white" : "text-black"
               }`}
             >
-              Found Item
+              Found Items
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View className="flex-row mt-2 gap-2">
+          <TouchableOpacity
+            onPress={() => setActiveButton("completed")}
+            className={`flex-1 h-[3.3rem] rounded-md items-center justify-center ${
+              activeButton === "completed" ? "bg-navyblue" : "bg-zinc-200"
+            }`}
+          >
+            <Text
+              className={`font-semibold text-base font-manrope-semibold ${
+                activeButton === "completed" ? "text-white" : "text-black"
+              }`}
+            >
+              Completed Items
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* 📄 Filtered Post List with Smart Loading & Error States */}
-        {error ? (
+        {(error || resolvedError) ? (
           <View className="items-center justify-center mt-10">
             <Text className="text-red-500 text-base font-manrope-medium">
-              Error loading posts: {error}
+              Error loading posts: {error || resolvedError}
             </Text>
             <TouchableOpacity 
               onPress={() => {/* Add retry functionality if needed */}}
@@ -127,7 +185,7 @@ export default function Home() {
               <Text className="text-white font-manrope-medium">Retry</Text>
             </TouchableOpacity>
           </View>
-        ) : isInitialLoad && loading ? (
+        ) : (isInitialLoad && (loading || resolvedLoading)) ? (
           // Show skeleton loading only on first load
           <PostCardSkeletonList count={5} />
         ) : (
@@ -138,7 +196,6 @@ export default function Home() {
             renderItem={({ item }) => (
               <PostCard post={item} descriptionSearch={descriptionSearch} />
             )}
-            onScroll={handleScroll}
             scrollEventThrottle={16} // Optimize scroll performance
             ListEmptyComponent={
               <View className="items-center justify-center mt-10">

@@ -45,7 +45,7 @@ const Profile = () => {
         email: userData.email || "",
         contact: userData.contactNum || "",
         studentId: userData.studentId || "",
-        profilePicture: userData.profilePicture || userData.profileImageUrl || "",
+        profilePicture: userData.profilePicture || "",
       };
       setUserInfo(updatedInfo);
       setInitialUserInfo(updatedInfo);

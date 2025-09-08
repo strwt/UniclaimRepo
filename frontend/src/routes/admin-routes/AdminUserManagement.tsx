@@ -277,9 +277,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                          {user.profilePicture || user.profileImageUrl ? (
+                          {user.profilePicture ? (
                             <img
-                              src={user.profilePicture || user.profileImageUrl}
+                              src={user.profilePicture}
                               alt="Profile"
                               className="h-10 w-10 rounded-full object-cover"
                             />

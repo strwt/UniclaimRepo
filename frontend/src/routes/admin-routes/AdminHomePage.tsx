@@ -4,13 +4,16 @@ import type { Post } from "@/types/Post";
 // components
 import AdminPostCard from "@/components/AdminPostCard";
 import PostModal from "@/components/PostModal";
+import TicketModal from "@/components/TicketModal";
+import TurnoverConfirmationModal from "@/components/TurnoverConfirmationModal";
 import MobileNavText from "@/components/NavHeadComp";
 import SearchBar from "../../components/SearchBar";
 
 // hooks
-import { usePosts, useResolvedPosts } from "@/hooks/usePosts";
+import { useAdminPosts, useResolvedPosts } from "@/hooks/usePosts";
 import { useToast } from "@/context/ToastContext";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { useAuth } from "@/context/AuthContext";
 
 function fuzzyMatch(text: string, query: string): boolean {
   const cleanedText = text.toLowerCase();
@@ -21,15 +24,16 @@ function fuzzyMatch(text: string, query: string): boolean {
 }
 
 export default function AdminHomePage() {
-  // ✅ Use the custom hooks for real-time posts
-  const { posts, loading, error } = usePosts();
+  // ✅ Use the custom hooks for real-time posts (admin version includes turnover items)
+  const { posts, loading, error } = useAdminPosts();
   const { posts: resolvedPosts, loading: resolvedLoading, error: resolvedError } = useResolvedPosts();
   const { showToast } = useToast();
+  const { userData } = useAuth();
 
 
 
 
-  const [viewType, setViewType] = useState<"all" | "lost" | "found" | "unclaimed" | "completed">("all");
+  const [viewType, setViewType] = useState<"all" | "lost" | "found" | "unclaimed" | "completed" | "turnover">("all");
   const [lastDescriptionKeyword, setLastDescriptionKeyword] = useState("");
   const [rawResults, setRawResults] = useState<Post[] | null>(null); // store-search-result-without-viewType-filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,6 +43,15 @@ export default function AdminHomePage() {
   // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [postToDelete, setPostToDelete] = useState<Post | null>(null);
+
+  // Turnover confirmation modal state
+  const [showTurnoverModal, setShowTurnoverModal] = useState(false);
+  const [postToConfirm, setPostToConfirm] = useState<Post | null>(null);
+  const [confirmationType, setConfirmationType] = useState<"confirmed" | "not_received" | null>(null);
+
+  // Edit modal state
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [isUpdatingPost, setIsUpdatingPost] = useState(false);
 
   // Admin statistics state
   const [adminStats, setAdminStats] = useState({
@@ -190,7 +203,7 @@ export default function AdminHomePage() {
     try {
       // Import and use the postService to update the status
       const { postService } = await import('../../utils/firebase');
-      await postService.updatePostStatus(post.id, status as 'pending' | 'resolved' | 'rejected');
+      await postService.updatePostStatus(post.id, status as 'pending' | 'resolved' | 'unclaimed');
       
       showToast("success", "Status Updated", `Post status changed to ${status}`);
     } catch (error: any) {
@@ -200,12 +213,27 @@ export default function AdminHomePage() {
   };
 
   const handleActivateTicket = async (post: Post) => {
-    if (confirm(`Are you sure you want to activate "${post.title}"? This will move it back to active status with a new 30-day period.`)) {
+    const canActivate = post.status === 'unclaimed' || post.movedToUnclaimed;
+    
+    if (!canActivate) {
+      showToast("error", "Cannot Activate", "This post cannot be activated as it's not in unclaimed status.");
+      return;
+    }
+
+    const confirmMessage = post.movedToUnclaimed 
+      ? `Are you sure you want to activate "${post.title}"? This will move it back to active status with a new 30-day period.`
+      : `Are you sure you want to activate "${post.title}"? This will move it back to active status with a new 30-day period.`;
+
+    if (confirm(confirmMessage)) {
       try {
         const { postService } = await import('../../utils/firebase');
         await postService.activateTicket(post.id);
         
-        showToast("success", "Ticket Activated", `"${post.title}" has been activated and moved back to active status.`);
+        const statusMessage = post.movedToUnclaimed 
+          ? `"${post.title}" has been activated from expired status and moved back to active status.`
+          : `"${post.title}" has been activated and moved back to active status.`;
+        
+        showToast("success", "Ticket Activated", statusMessage);
         console.log('Ticket activated successfully:', post.title);
       } catch (error: any) {
         console.error('Failed to activate ticket:', error);
@@ -222,25 +250,36 @@ export default function AdminHomePage() {
       try {
         const { postService } = await import('../../utils/firebase');
         
-        // First, clean up handover details and photos
+        let totalPhotosDeleted = 0;
+        let allErrors: string[] = [];
+        
+        // Clean up handover details and photos
         console.log('🧹 Starting cleanup of handover details and photos...');
-        const cleanupResult = await postService.cleanupHandoverDetailsAndPhotos(post.id);
+        const handoverCleanupResult = await postService.cleanupHandoverDetailsAndPhotos(post.id);
+        totalPhotosDeleted += handoverCleanupResult.photosDeleted;
+        allErrors.push(...handoverCleanupResult.errors);
+        
+        // Clean up claim details and photos
+        console.log('🧹 Starting cleanup of claim details and photos...');
+        const claimCleanupResult = await postService.cleanupClaimDetailsAndPhotos(post.id);
+        totalPhotosDeleted += claimCleanupResult.photosDeleted;
+        allErrors.push(...claimCleanupResult.errors);
         
         // Then update the post status to pending
         await postService.updatePostStatus(post.id, 'pending');
         
         // Show success message with cleanup details
         let successMessage = `"${post.title}" has been reverted back to pending status.`;
-        if (cleanupResult.photosDeleted > 0) {
-          successMessage += ` ${cleanupResult.photosDeleted} photos were deleted from storage.`;
+        if (totalPhotosDeleted > 0) {
+          successMessage += ` ${totalPhotosDeleted} photos were deleted from storage.`;
         }
-        if (cleanupResult.errors.length > 0) {
-          console.warn('⚠️ Some cleanup errors occurred:', cleanupResult.errors);
+        if (allErrors.length > 0) {
+          console.warn('⚠️ Some cleanup errors occurred:', allErrors);
           successMessage += ` Note: Some cleanup operations had issues.`;
         }
         
         showToast("success", "Resolution Reverted", successMessage);
-        console.log('Post resolution reverted successfully:', post.title, 'Cleanup result:', cleanupResult);
+        console.log('Post resolution reverted successfully:', post.title, 'Total photos deleted:', totalPhotosDeleted);
         
       } catch (error: any) {
         console.error('Failed to revert post resolution:', error);
@@ -249,7 +288,103 @@ export default function AdminHomePage() {
     }
   };
 
+  // Handle turnover confirmation
+  const handleConfirmTurnover = (post: Post, status: "confirmed" | "not_received") => {
+    setPostToConfirm(post);
+    setConfirmationType(status);
+    setShowTurnoverModal(true);
+  };
 
+  const handleTurnoverConfirmation = async (status: "confirmed" | "not_received", notes?: string) => {
+    if (!postToConfirm) return;
+
+    try {
+      const { postService } = await import('../../services/firebase/posts');
+      // Get current admin user ID from auth context
+      const currentUserId = userData?.uid;
+      
+      if (!currentUserId) {
+        throw new Error("Admin user ID not found. Please log in again.");
+      }
+      
+      console.log(`🔑 Using admin user ID for turnover confirmation: ${currentUserId}`);
+      
+      if (status === "not_received") {
+        // Total deletion when OSA marks item as not received
+        await postService.deletePost(postToConfirm.id);
+        
+        const statusMessage = `Item "${postToConfirm.title}" has been completely deleted from the system as it was not received by OSA.`;
+        showToast("success", "Item Deleted", statusMessage);
+        console.log('Item completely deleted:', postToConfirm.title, 'Reason: Not received by OSA');
+        
+      } else {
+        // Normal status update for confirmed items
+        await postService.updateTurnoverStatus(postToConfirm.id, status, currentUserId, notes);
+        
+        const statusMessage = `Item receipt confirmed for "${postToConfirm.title}"`;
+        showToast("success", "Turnover Status Updated", statusMessage);
+        console.log('Turnover status updated successfully:', postToConfirm.title, 'Status:', status);
+      }
+      
+    } catch (error: any) {
+      console.error('Failed to process turnover confirmation:', error);
+      const errorMessage = status === "not_received" 
+        ? 'Failed to delete item from system'
+        : 'Failed to update turnover status';
+      showToast("error", "Operation Failed", error.message || errorMessage);
+    } finally {
+      setShowTurnoverModal(false);
+      setPostToConfirm(null);
+      setConfirmationType(null);
+    }
+  };
+
+  // Handle edit post
+  const handleEditPost = (post: Post) => {
+    setEditingPost(post);
+  };
+
+  // Handle update post (for TicketModal)
+  const handleUpdatePost = async (updatedPost: Post) => {
+    try {
+      setIsUpdatingPost(true);
+      
+      // Import postService
+      const { postService } = await import('../../services/firebase/posts');
+      
+      // Update the post in Firebase
+      await postService.updatePost(updatedPost.id, {
+        title: updatedPost.title,
+        description: updatedPost.description,
+        location: updatedPost.location,
+        status: updatedPost.status,
+        category: updatedPost.category,
+        type: updatedPost.type,
+        createdAt: updatedPost.createdAt,
+        images: updatedPost.images,
+      });
+
+      // Close edit modal
+      setEditingPost(null);
+      
+      // Show success message
+      showToast(
+        "success",
+        "Post Updated",
+        "The post has been successfully updated!"
+      );
+      
+    } catch (error: any) {
+      console.error("Error updating post:", error);
+      showToast(
+        "error",
+        "Update Failed",
+        error.message || "Failed to update post. Please try again."
+      );
+    } finally {
+      setIsUpdatingPost(false);
+    }
+  };
 
   const handleSearch = async (query: string, filters: any) => {
     setLastDescriptionKeyword(filters.description || "");
@@ -292,13 +427,21 @@ export default function AdminHomePage() {
     let shouldShow = false;
 
     if (viewType === "all") {
-      shouldShow = true;
+      // Show all posts EXCEPT unclaimed ones in "All Item Reports"
+      shouldShow = post.status !== 'unclaimed' && !post.movedToUnclaimed;
     } else if (viewType === "unclaimed") {
-      shouldShow = post.movedToUnclaimed === true;
+      // Show posts that are either status 'unclaimed' OR have movedToUnclaimed flag
+      shouldShow = post.status === 'unclaimed' || post.movedToUnclaimed;
     } else if (viewType === "completed") {
       shouldShow = true; // resolvedPosts already filtered
+    } else if (viewType === "turnover") {
+      // Show only Found items marked for turnover to OSA that need confirmation
+      shouldShow = post.type === "found" && 
+                   post.turnoverDetails && 
+                   post.turnoverDetails.turnoverAction === "turnover to OSA" &&
+                   post.turnoverDetails.turnoverStatus === "declared";
     } else {
-      shouldShow = post.type.toLowerCase() === viewType;
+      shouldShow = post.type.toLowerCase() === viewType && post.status !== 'unclaimed' && !post.movedToUnclaimed;
     }
 
     return shouldShow;
@@ -356,7 +499,7 @@ export default function AdminHomePage() {
 
 
         
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-blue-600">{posts?.length || 0}</div>
             <div className="text-sm text-gray-600">Total Posts</div>
@@ -381,7 +524,7 @@ export default function AdminHomePage() {
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-orange-600">
-              {posts?.filter(p => p.movedToUnclaimed === true).length || 0}
+              {posts?.filter(p => p.status === 'unclaimed' || p.movedToUnclaimed).length || 0}
             </div>
             <div className="text-sm text-gray-600">Unclaimed</div>
           </div>
@@ -390,6 +533,14 @@ export default function AdminHomePage() {
               {resolvedPosts?.length || 0}
             </div>
             <div className="text-sm text-gray-600">Completed</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-indigo-600">
+              {posts?.filter(p => p.type === "found" && 
+                p.turnoverDetails && 
+                p.turnoverDetails.turnoverAction === "turnover to OSA").length || 0}
+            </div>
+            <div className="text-sm text-gray-600">OSA Turnover Items</div>
           </div>
         </div>
       </div>
@@ -403,6 +554,7 @@ export default function AdminHomePage() {
           <span className="text-sm font-semibold text-blue-600 capitalize">
             {viewType === "unclaimed" ? "Unclaimed Items" :
              viewType === "completed" ? "Completed Reports" :
+             viewType === "turnover" ? "Turnover Management" :
              `${viewType} Item Reports`}
           </span>
         </div>
@@ -486,6 +638,22 @@ export default function AdminHomePage() {
           Completed Reports
         </button>
 
+        <button
+          className={`px-4 py-2 cursor-pointer lg:px-8 rounded text-[14px] lg:text-base font-medium transition-colors duration-300 ${
+            viewType === "turnover"
+              ? "bg-navyblue text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-blue-200 border-gray-300"
+          }`}
+          onClick={() => {
+            setIsLoading(true);
+            setViewType("turnover");
+            setCurrentPage(1); // Reset pagination when switching views
+            setTimeout(() => setIsLoading(false), 200);
+          }}
+        >
+          Turnover Management
+        </button>
+
         
 
 
@@ -498,6 +666,7 @@ export default function AdminHomePage() {
             <span className="text-gray-400">
               Loading {viewType === "unclaimed" ? "unclaimed" :
                        viewType === "completed" ? "completed" :
+                       viewType === "turnover" ? "turnover management" :
                        viewType} report items...
             </span>
           </div>
@@ -527,9 +696,11 @@ export default function AdminHomePage() {
                 onClick={() => setSelectedPost(post)}
                 highlightText={lastDescriptionKeyword}
                 onDelete={handleDeletePost}
+                onEdit={handleEditPost}
                 onStatusChange={handleStatusChange}
                 onActivateTicket={handleActivateTicket}
                 onRevertResolution={handleRevertResolution}
+                onConfirmTurnover={handleConfirmTurnover}
                 isDeleting={deletingPostId === post.id}
               />
             ))
@@ -662,6 +833,31 @@ export default function AdminHomePage() {
         </>
       )}
 
+      {/* Turnover Confirmation Modal */}
+      <TurnoverConfirmationModal
+        isOpen={showTurnoverModal}
+        onClose={() => {
+          setShowTurnoverModal(false);
+          setPostToConfirm(null);
+          setConfirmationType(null);
+        }}
+        onConfirm={handleTurnoverConfirmation}
+        post={postToConfirm}
+        confirmationType={confirmationType}
+      />
+
+      {/* Edit Modal */}
+      {editingPost && (
+        <TicketModal
+          key={editingPost.id}
+          post={editingPost}
+          onClose={() => setEditingPost(null)}
+          onDelete={handleDeletePost}
+          onUpdatePost={handleUpdatePost}
+          isDeleting={isUpdatingPost}
+          isAdmin={true}
+        />
+      )}
 
     </div>
   );

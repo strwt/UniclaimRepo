@@ -250,8 +250,6 @@ export default function EditTicketModal({
     switch (status) {
       case 'resolved':
         return 'bg-green-100';
-      case 'rejected':
-        return 'bg-red-100';
       default:
         return 'bg-yellow-100';
     }
@@ -261,8 +259,6 @@ export default function EditTicketModal({
     switch (status) {
       case 'resolved':
         return 'text-green-700';
-      case 'rejected':
-        return 'text-red-700';
       default:
         return 'text-yellow-700';
     }

@@ -175,6 +175,41 @@ export default function ReportPage() {
         throw new Error("User data not available");
       }
 
+      // Check if this should be transferred to Campus Security
+      const shouldTransferToCampusSecurity = selectedReport === "found" && selectedFoundAction === "turnover to Campus Security";
+      
+      // Get real Campus Security user data
+      let campusSecurityData = null;
+      let campusSecurityUserId = null;
+      
+      if (shouldTransferToCampusSecurity) {
+        const { authService } = await import("../../services/firebase/auth");
+        const campusSecurityUser = await authService.getCampusSecurityUser();
+        
+        if (campusSecurityUser) {
+          campusSecurityData = {
+            firstName: campusSecurityUser.firstName,
+            lastName: campusSecurityUser.lastName,
+            email: campusSecurityUser.email,
+            contactNum: campusSecurityUser.contactNum,
+            studentId: campusSecurityUser.studentId,
+            profilePicture: campusSecurityUser.profilePicture || null
+          };
+          campusSecurityUserId = campusSecurityUser.uid;
+        } else {
+          // Fallback to hardcoded data if no Campus Security user found
+          campusSecurityData = {
+            firstName: "Campus",
+            lastName: "Security",
+            email: "cs@uniclaim.com",
+            contactNum: "",
+            studentId: "",
+            profilePicture: null
+          };
+          campusSecurityUserId = "hedUWuv96VWQek5OucPzXTCkpQU2";
+        }
+      }
+
       // Build post data conditionally to avoid undefined values in Firebase
       const createdPost: Omit<Post, "id" | "createdAt"> = {
         title: title.trim(),
@@ -184,15 +219,15 @@ export default function ReportPage() {
         type: selectedReport,
         images: selectedFiles,
         dateTime: selectedDateTime,
-        creatorId: userData.uid, // Add creator ID
-        user: {
+        creatorId: shouldTransferToCampusSecurity ? campusSecurityUserId : userData.uid, // Transfer ownership if needed
+        user: shouldTransferToCampusSecurity ? campusSecurityData : {
           firstName: userData?.firstName || "",
           lastName: userData?.lastName || "",
           email: userData?.email || "",
           contactNum: userData?.contactNum || "",
           studentId: userData?.studentId || "",
-          profilePicture:
-            userData?.profilePicture || userData?.profileImageUrl || null, // Ensure it's never undefined
+          profilePicture: userData?.profilePicture || null, // Ensure it's never undefined
+          role: userData?.role || 'user', // Include user role
         },
         status: "pending",
       };
@@ -202,6 +237,26 @@ export default function ReportPage() {
         createdPost.foundAction = selectedFoundAction;
       }
 
+      // Add turnover details for both OSA and Campus Security turnover
+      if (selectedReport === "found" && selectedFoundAction && 
+          (selectedFoundAction === "turnover to OSA" || selectedFoundAction === "turnover to Campus Security")) {
+        createdPost.turnoverDetails = {
+          originalFinder: {
+            uid: userData.uid,
+            firstName: userData?.firstName || "",
+            lastName: userData?.lastName || "",
+            email: userData?.email || "",
+            contactNum: userData?.contactNum || "",
+            studentId: userData?.studentId || "",
+            profilePicture: userData?.profilePicture || null,
+          },
+          turnoverAction: selectedFoundAction,
+          turnoverDecisionAt: new Date(), // Will be converted to Firebase timestamp
+          turnoverStatus: selectedFoundAction === "turnover to OSA" ? "declared" : "transferred", // Different statuses for different workflows
+          // Note: turnoverReason is optional and not included if undefined
+        };
+      }
+
       // Only add optional fields if they have valid values
       if (coordinates) {
         createdPost.coordinates = coordinates;
@@ -209,7 +264,7 @@ export default function ReportPage() {
 
       // Use Firebase service to create post
       const { postService } = await import("../../utils/firebase");
-      const postId = await postService.createPost(createdPost, userData.uid);
+      const postId = await postService.createPost(createdPost, shouldTransferToCampusSecurity ? campusSecurityUserId : userData.uid);
 
       console.log("Post created successfully with ID:", postId);
 

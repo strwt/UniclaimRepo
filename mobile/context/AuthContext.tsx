@@ -3,6 +3,8 @@ import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, authService, UserData, db } from '../utils/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { credentialStorage } from '../utils/credentialStorage';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -30,9 +32,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [banInfo, setBanInfo] = useState<any>(null);
   const [showBanNotification, setShowBanNotification] = useState(false);
+  const [isAutoLogging, setIsAutoLogging] = useState(false);
 
   // Track ban listener to clean up on logout
   const banListenerRef = useRef<(() => void) | null>(null);
+  // Track smart ban check system
+  const smartBanCheckRef = useRef<{ activatePeriodicChecks: () => void; deactivatePeriodicChecks: () => void } | null>(null);
 
   // Helper function to check if user is admin
   const checkIfAdmin = (email: string | null): boolean => {
@@ -41,8 +46,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return adminEmails.includes(email.toLowerCase());
   };
 
+  // Auto-login function
+  const attemptAutoLogin = async (): Promise<boolean> => {
+    try {
+      setIsAutoLogging(true);
+      console.log('Attempting auto-login...');
+      
+      const storedCredentials = await credentialStorage.getStoredCredentials();
+      
+      if (!storedCredentials) {
+        console.log('No stored credentials found');
+        return false;
+      }
+      
+      // Attempt login with stored credentials
+      const userCredential = await signInWithEmailAndPassword(
+        auth, 
+        storedCredentials.email, 
+        storedCredentials.password
+      );
+      
+      console.log('Auto-login successful');
+      return true;
+      
+    } catch (error: any) {
+      console.log('Auto-login failed:', error.message);
+      
+      // Clear invalid credentials
+      await credentialStorage.clearCredentials();
+      return false;
+    } finally {
+      setIsAutoLogging(false);
+    }
+  };
+
   // Listen for authentication state changes
   useEffect(() => {
+    let hasAttemptedAutoLogin = false;
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
@@ -65,6 +106,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIsBanned(false);
             setBanInfo(null);
           }
+          
+          // Set loading to false after successful authentication and data fetch
+          setLoading(false);
           
           // Start monitoring this specific user for ban status changes
           // Only set up listener if user is authenticated to prevent permission errors during logout
@@ -93,6 +137,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     // User was unbanned
                     setIsBanned(false);
                     setBanInfo(null);
+                    
+                    // Deactivate periodic checks since real-time listener is working
+                    if (smartBanCheckRef.current) {
+                      smartBanCheckRef.current.deactivatePeriodicChecks();
+                    }
                   }
                 }
               },
@@ -117,13 +166,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 // Only start fallback if still authenticated
                 if (isAuthenticated) {
-                  startPeriodicBanCheck();
+                  // Start smart ban check system
+                  const smartBanCheck = startSmartBanCheck();
+                  smartBanCheckRef.current = smartBanCheck;
+                  smartBanCheck.activatePeriodicChecks();
                 }
               }
             );
 
             // Store the unsubscribe function for cleanup on logout
             banListenerRef.current = banUnsubscribe;
+            
+            // Deactivate periodic checks since real-time listener is working
+            if (smartBanCheckRef.current) {
+              smartBanCheckRef.current.deactivatePeriodicChecks();
+            }
           }
           
         } catch (error: any) {
@@ -131,6 +188,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserData(null);
           setIsBanned(false);
           setBanInfo(null);
+          // Set loading to false even if there's an error fetching user data
+          setLoading(false);
         }
       } else {
         // User logged out - clean up all listeners
@@ -143,6 +202,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           banListenerRef.current = null;
         }
 
+        // Clean up smart ban check if it exists
+        if (smartBanCheckRef.current) {
+          console.log('Cleaning up smart ban check system');
+          smartBanCheckRef.current.deactivatePeriodicChecks();
+          smartBanCheckRef.current = null;
+        }
+
         setUser(null);
         setUserData(null);
         setIsAuthenticated(false);
@@ -150,9 +216,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAdmin(false);
         setBanInfo(null);
         setShowBanNotification(false);
+        
+        // No authenticated user - try auto-login once
+        if (!hasAttemptedAutoLogin) {
+          hasAttemptedAutoLogin = true;
+          const autoLoginSuccess = await attemptAutoLogin();
+          
+          if (!autoLoginSuccess) {
+            // Auto-login failed or no credentials - user needs to login manually
+            setLoading(false);
+          }
+          // If auto-login succeeds, onAuthStateChanged will be called again with the user
+        } else {
+          // Already attempted auto-login, user is truly not authenticated
+          setLoading(false);
+        }
       }
-      
-      setLoading(false);
     });
 
     return () => {
@@ -163,6 +242,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('Cleaning up ban listener on unmount');
         banListenerRef.current();
         banListenerRef.current = null;
+      }
+
+      // Clean up smart ban check on component unmount
+      if (smartBanCheckRef.current) {
+        console.log('Cleaning up smart ban check on unmount');
+        smartBanCheckRef.current.deactivatePeriodicChecks();
+        smartBanCheckRef.current = null;
       }
     };
   }, []);
@@ -195,6 +281,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setBanInfo(null);
       setShowBanNotification(false);
       
+      // Save credentials for auto-login (only for successful, non-banned logins)
+      try {
+        await credentialStorage.saveCredentials(email, password);
+        console.log('Credentials saved for auto-login');
+      } catch (saveError) {
+        console.warn('Failed to save credentials for auto-login:', saveError);
+        // Don't throw error - login was successful, credential saving is optional
+      }
+      
     } catch (error: any) {
       console.error('Login error:', error);
       throw error;
@@ -213,6 +308,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('Immediately cleaning up ban listener during logout');
         banListenerRef.current();
         banListenerRef.current = null;
+      }
+      
+      // Clear stored credentials for auto-login
+      try {
+        await credentialStorage.clearCredentials();
+        console.log('Stored credentials cleared during logout');
+      } catch (credentialError) {
+        console.warn('Error clearing stored credentials:', credentialError);
+        // Continue with logout even if clearing credentials fails
+      }
+      
+      // Clear stored user preferences and data
+      try {
+        await AsyncStorage.multiRemove([
+          'user_preferences',
+          'search_history',
+          'recent_items',
+          'filter_preferences',
+          'sort_preferences',
+          'cached_posts',
+          'user_profile_cache',
+          'message_cache',
+          'coordinates_cache'
+        ]);
+        console.log('User preferences and data cleared successfully');
+      } catch (storageError) {
+        console.log('Error clearing some stored data:', storageError);
+        // Continue with logout even if clearing storage fails
       }
       
       await authService.logout();
@@ -256,6 +379,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         banListenerRef.current = null;
       }
 
+      // Clear stored credentials for auto-login (banned users shouldn't auto-login)
+      try {
+        await credentialStorage.clearCredentials();
+        console.log('Stored credentials cleared during ban logout');
+      } catch (credentialError) {
+        console.warn('Error clearing stored credentials during ban:', credentialError);
+        // Continue with logout even if clearing credentials fails
+      }
+
       // Logout user immediately
       await authService.logout();
 
@@ -283,6 +415,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         banListenerRef.current = null;
       }
 
+      // Clear credentials even if logout fails
+      try {
+        await credentialStorage.clearCredentials();
+      } catch (credentialError) {
+        console.warn('Error clearing credentials during ban logout error:', credentialError);
+      }
+
       // Even if logout fails, reset the state to force redirect
       setUser(null);
       setUserData(null);
@@ -294,7 +433,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const startPeriodicBanCheck = () => {
-    // Fallback method: check ban status every 30 seconds
+    // SMART BAN CHECKING: Only run periodic checks if real-time listener fails
+    // This prevents unnecessary quota consumption for non-banned users
+    console.log('🔄 Starting smart ban check system (mobile)');
+    
     const intervalId = setInterval(async () => {
       if (!auth.currentUser) {
         clearInterval(intervalId);
@@ -308,11 +450,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           clearInterval(intervalId);
           handleImmediateBanLogout(userData);
         }
-      } catch (error) {
-        console.warn('Periodic ban check error (mobile):', error);
+      } catch (error: any) {
+        // Handle quota errors gracefully - don't spam the console
+        if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+          console.warn('Periodic ban check quota exceeded (mobile) - will retry later');
+          // Don't clear interval - let it retry when quota resets
+        } else {
+          console.warn('Periodic ban check error (mobile):', error);
+        }
         // Continue checking - don't stop on errors
       }
-    }, 30000); // Check every 30 seconds
+    }, 300000); // Check every 5 minutes (300,000 ms)
+  };
+
+  // NEW: Smart ban checking that only runs when needed
+  const startSmartBanCheck = () => {
+    console.log('🧠 Starting smart ban check system (mobile)');
+    
+    // Only start periodic checks if real-time listener fails
+    // This prevents unnecessary quota consumption for non-banned users
+    let periodicCheckActive = false;
+    
+    const intervalId = setInterval(async () => {
+      if (!auth.currentUser) {
+        clearInterval(intervalId);
+        return;
+      }
+      
+      // Skip periodic checks if real-time listener is working
+      if (!periodicCheckActive) {
+        return;
+      }
+      
+      try {
+        const userData = await authService.getUserData(auth.currentUser.uid);
+        if (userData && userData.status === 'banned') {
+          console.log('Ban detected via periodic check (mobile)');
+          clearInterval(intervalId);
+          handleImmediateBanLogout(userData);
+        }
+      } catch (error: any) {
+        // Handle quota errors gracefully - don't spam the console
+        if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+          console.warn('Periodic ban check quota exceeded (mobile) - will retry later');
+          // Don't clear interval - let it retry when quota resets
+        } else {
+          console.warn('Periodic ban check error (mobile):', error);
+        }
+        // Continue checking - don't stop on errors
+      }
+    }, 300000); // Check every 5 minutes (300,000 ms)
+    
+    // Return function to activate periodic checks only when needed
+    return {
+      activatePeriodicChecks: () => {
+        periodicCheckActive = true;
+        console.log('⚠️ Activating periodic ban checks due to real-time listener failure');
+      },
+      deactivatePeriodicChecks: () => {
+        periodicCheckActive = false;
+        console.log('✅ Deactivating periodic ban checks - real-time listener working');
+      }
+    };
   };
 
   return (

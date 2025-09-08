@@ -1,4 +1,5 @@
 import ImageCarousel from "@/components/ImageCarousel";
+import ProfilePicture from "@/components/ProfilePicture";
 import {
   Ionicons,
   MaterialCommunityIcons,
@@ -312,6 +313,51 @@ export default function PostDetailsScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Show turnover information if this post was turned over */}
+        {post.turnoverDetails && (
+          <View className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <View className="flex-row items-center gap-2 mb-3">
+              <Text className="text-blue-600 text-lg">🔄</Text>
+              <Text className="text-sm font-semibold text-blue-800">Turnover Information</Text>
+            </View>
+            <View className="space-y-2">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-sm text-blue-700 font-medium">Originally found by:</Text>
+                <ProfilePicture
+                  src={post.turnoverDetails.originalFinder.profilePicture}
+                  size="sm"
+                />
+                <Text className="text-sm text-blue-700">
+                  {post.turnoverDetails.originalFinder.firstName} {post.turnoverDetails.originalFinder.lastName}
+                </Text>
+              </View>
+              <View>
+                <Text className="text-sm text-blue-700">
+                  <Text className="font-medium">Student ID:</Text> {post.turnoverDetails.originalFinder.studentId || 'N/A'}
+                </Text>
+              </View>
+              <View>
+                <Text className="text-sm text-blue-700">
+                  <Text className="font-medium">Email:</Text> {post.turnoverDetails.originalFinder.email}
+                </Text>
+              </View>
+              {post.turnoverDetails.originalFinder.contactNum && (
+                <View>
+                  <Text className="text-sm text-blue-700">
+                    <Text className="font-medium">Contact:</Text> {post.turnoverDetails.originalFinder.contactNum}
+                  </Text>
+                </View>
+              )}
+              <View>
+                <Text className="text-sm text-blue-700">
+                  <Text className="font-medium">Turned over to:</Text>{" "}
+                  {post.turnoverDetails.turnoverAction === "turnover to OSA" ? "OSA" : "Campus Security"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

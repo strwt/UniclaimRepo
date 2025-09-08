@@ -9,6 +9,7 @@ import ConversationCleanupAdmin from "../components/ConversationCleanupAdmin";
 
 import Login from "../routes/user-routes/Login";
 import Register from "../routes/user-routes/Register";
+import ResetPassword from "../routes/user-routes/ResetPassword";
 import HomePage from "../routes/user-routes/HomePage";
 import MainHome from "../routes/user-routes/MainHome";
 
@@ -31,7 +32,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { MessageProvider } from "@/context/MessageContext";
 import PageWrapper from "@/components/PageWrapper";
 import ScrollToTop from "@/context/ScrollTop";
-import "@/utils/cleanupScheduler"; // Start automatic cleanup scheduler
+
 
 // Component that uses the useAuth hook
 function AppRoutesWithAuth() {
@@ -54,6 +55,14 @@ function AppRoutesWithAuth() {
           element={
             <PageWrapper title="Register">
               <Register />
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <PageWrapper title="Reset Password">
+              <ResetPassword />
             </PageWrapper>
           }
         />

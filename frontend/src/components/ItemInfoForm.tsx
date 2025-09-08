@@ -246,7 +246,7 @@ export default function ItemInfoForm({
           className={`w-full p-2 border rounded resize-none
             ${descriptionError ? "border-2 border-red-500" : "border-gray-500"}
             focus:outline-none focus:ring-1 focus:ring-black
-            h-32 sm:h-36 md:h-40 lg:h-44 xl:h-48 2xl:h-59
+            h-32 sm:h-36 md:h-38 lg:h-58
           `}
         />
       </div>
