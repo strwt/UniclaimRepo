@@ -13,6 +13,7 @@ import {
     doc,
     setDoc,
     getDoc,
+    updateDoc,
     serverTimestamp,
     collection,
     query,
@@ -61,6 +62,7 @@ export const authService = {
                 studentId,
                 profilePicture: '/src/assets/empty_profile.jpg', // Set default profile picture
                 status: 'active', // Set default status to active - CRITICAL for permissions
+                emailVerified: false, // New users need to verify their email
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             };
@@ -71,6 +73,9 @@ export const authService = {
             }
 
             await setDoc(doc(db, 'users', user.uid), userData);
+
+            // Send email verification
+            await sendEmailVerification(user);
 
             return { user, userData };
         } catch (error: any) {
@@ -288,6 +293,43 @@ export const authService = {
         } catch (error: any) {
             console.error('Error getting Campus Security user:', error);
             return null;
+        }
+    },
+
+    // Check if user needs email verification
+    async needsEmailVerification(user: FirebaseUser, userData: UserData): Promise<boolean> {
+        try {
+            // Admin and campus security users don't need email verification
+            if (userData.role === 'admin' || userData.role === 'campus_security') {
+                return false;
+            }
+
+            // Check Firebase Auth email verification status
+            const firebaseEmailVerified = user.emailVerified;
+
+            // Check Firestore email verification status
+            // If emailVerified field is missing, assume true (grandfathered user)
+            const firestoreEmailVerified = userData.emailVerified !== undefined ? userData.emailVerified : true;
+
+            // User needs verification if either Firebase or Firestore shows unverified
+            return !firebaseEmailVerified || !firestoreEmailVerified;
+        } catch (error: any) {
+            console.error('Error checking email verification status:', error);
+            // Default to requiring verification if there's an error
+            return true;
+        }
+    },
+
+    // Update email verification status in Firestore
+    async updateEmailVerificationStatus(uid: string, verified: boolean): Promise<void> {
+        try {
+            await updateDoc(doc(db, 'users', uid), {
+                emailVerified: verified,
+                updatedAt: serverTimestamp()
+            });
+        } catch (error: any) {
+            console.error('Error updating email verification status:', error);
+            throw new Error('Failed to update email verification status');
         }
     }
 };

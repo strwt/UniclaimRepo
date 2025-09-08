@@ -15,6 +15,7 @@ export interface User {
   status?: 'active' | 'banned';
   banInfo?: any;
   role?: 'user' | 'admin';
+  emailVerified?: boolean; // Email verification status
 }
 
 // Re-export UserData from firebase utils for consistency

@@ -11,10 +11,12 @@ interface AuthContextType {
   loading: boolean;
   isBanned: boolean;
   banInfo: any;
+  needsEmailVerification: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, firstName: string, lastName: string, contactNum: string, studentId: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUserData: () => Promise<void>;
+  handleEmailVerificationComplete: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
   const [banInfo, setBanInfo] = useState<any>(null);
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
   const [banListenerUnsubscribe, setBanListenerUnsubscribe] = useState<(() => void) | null>(null);
   const [periodicCheckInterval, setPeriodicCheckInterval] = useState<NodeJS.Timeout | null>(null);
 
@@ -48,6 +51,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           } else {
             setIsBanned(false);
             setBanInfo(null);
+          }
+
+          // Check email verification status
+          if (fetchedUserData) {
+            const needsVerification = await authService.needsEmailVerification(firebaseUser, fetchedUserData);
+            setNeedsEmailVerification(needsVerification);
+
+            // If Firebase email is verified but Firestore is not, update Firestore
+            if (firebaseUser.emailVerified && !fetchedUserData.emailVerified) {
+              try {
+                await authService.updateEmailVerificationStatus(firebaseUser.uid, true);
+                console.log('Updated Firestore email verification status to true');
+              } catch (error) {
+                console.error('Failed to update email verification status:', error);
+              }
+            }
+          } else {
+            setNeedsEmailVerification(false);
           }
           
           // Start monitoring this specific user for ban status changes
@@ -75,6 +96,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   // User was unbanned
                   setIsBanned(false);
                   setBanInfo(null);
+                }
+
+                // Update user data and check email verification status
+                setUserData(userData);
+                if (firebaseUser) {
+                  // Check email verification status asynchronously
+                  authService.needsEmailVerification(firebaseUser, userData)
+                    .then(needsVerification => {
+                      setNeedsEmailVerification(needsVerification);
+                    })
+                    .catch(error => {
+                      console.error('Error checking email verification status in listener:', error);
+                    });
                 }
               }
             },
@@ -182,6 +216,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('AuthContext: Registration failed:', error);
       setLoading(false);
       throw new Error(getFirebaseErrorMessage(error));
+    }
+  };
+
+  const handleEmailVerificationComplete = async (): Promise<void> => {
+    if (!user || !userData) return;
+
+    try {
+      // Update Firestore email verification status
+      await authService.updateEmailVerificationStatus(user.uid, true);
+      
+      // Refresh user data to get updated verification status
+      await refreshUserData();
+      
+      console.log('Email verification completed successfully');
+    } catch (error: any) {
+      console.error('Failed to complete email verification:', error);
+      throw new Error('Failed to complete email verification');
     }
   };
 
@@ -356,10 +407,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       loading,
       isBanned,
       banInfo,
+      needsEmailVerification,
       login,
       register,
       logout,
-      refreshUserData
+      refreshUserData,
+      handleEmailVerificationComplete
     }}>
       {children}
     </AuthContext.Provider>

@@ -5,6 +5,7 @@ import {
     signOut,
     updateProfile,
     sendPasswordResetEmail,
+    sendEmailVerification,
     UserCredential
 } from 'firebase/auth';
 import { auth, db } from './config';
@@ -34,6 +35,7 @@ export interface UserData {
     role?: 'user' | 'admin' | 'campus_security';
     status?: 'active' | 'banned';
     banInfo?: any;
+    emailVerified?: boolean; // Email verification status
     createdAt: any;
     updatedAt: any;
 }
@@ -41,15 +43,25 @@ export interface UserData {
 // Authentication service
 export const authService = {
     // Register new user
-    async register(email: string, password: string, userData: Partial<UserData>): Promise<UserCredential> {
+    async register(
+        email: string,
+        password: string,
+        firstName: string,
+        lastName: string,
+        contactNum: string,
+        studentId: string
+    ): Promise<UserCredential> {
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
             // Update profile with additional user data
             if (userCredential.user) {
                 await updateProfile(userCredential.user, {
-                    displayName: `${userData.firstName} ${userData.lastName}`
+                    displayName: `${firstName} ${lastName}`
                 });
+
+                // Send email verification
+                await sendEmailVerification(userCredential.user);
             }
 
             return userCredential;
@@ -129,6 +141,7 @@ export const userService = {
         try {
             await setDoc(doc(db, 'users', userId), {
                 ...userData,
+                emailVerified: false, // New users need to verify their email
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
@@ -178,6 +191,30 @@ export const userService = {
         } catch (error: any) {
             console.error('Error getting Campus Security user:', error);
             return null;
+        }
+    },
+
+    // Check if user needs email verification
+    async needsEmailVerification(user: any, userData: UserData): Promise<boolean> {
+        try {
+            // Admin and campus security users don't need email verification
+            if (userData.role === 'admin' || userData.role === 'campus_security') {
+                return false;
+            }
+
+            // Check Firebase Auth email verification status
+            const firebaseEmailVerified = user.emailVerified;
+
+            // Check Firestore email verification status
+            // If emailVerified field is missing, assume true (grandfathered user)
+            const firestoreEmailVerified = userData.emailVerified !== undefined ? userData.emailVerified : true;
+
+            // User needs verification if either Firebase or Firestore shows unverified
+            return !firebaseEmailVerified || !firestoreEmailVerified;
+        } catch (error: any) {
+            console.error('Error checking email verification status:', error);
+            // Default to requiring verification if there's an error
+            return true;
         }
     }
 };
