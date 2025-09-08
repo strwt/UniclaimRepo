@@ -1,4 +1,4 @@
-import { Bell, X } from "lucide-react-native";
+import { Bell, X, Settings } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Animated,
@@ -9,13 +9,19 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ScrollView,
 } from "react-native";
+import { useNotifications } from "../context/NotificationContext";
+import NotificationPreferencesModal from "./NotificationPreferences";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function Header() {
   const [isVisible, setIsVisible] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
   const slideAnim = useState(new Animated.Value(SCREEN_WIDTH))[0];
+  
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications();
 
   const openPanel = () => {
     setIsVisible(true);
@@ -54,8 +60,15 @@ export default function Header() {
         </View>
 
         {/* Right: Bell Icon */}
-        <TouchableOpacity onPress={openPanel}>
+        <TouchableOpacity onPress={openPanel} className="relative">
           <Bell className="text-blue-900" size={26} />
+          {unreadCount > 0 && (
+            <View className="absolute -top-1 -right-1 bg-red-500 rounded-full h-5 w-5 items-center justify-center">
+              <Text className="text-white text-xs font-bold">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -80,22 +93,123 @@ export default function Header() {
               }}
             >
               <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-xl font-manrope-semibold text-black">
-                  Notifications
-                </Text>
-                <TouchableOpacity onPress={closePanel}>
-                  <X size={24} color="black" />
-                </TouchableOpacity>
+                <View className="flex-row items-center">
+                  <Text className="text-xl font-manrope-semibold text-black">
+                    Notifications
+                  </Text>
+                  {unreadCount > 0 && (
+                    <View className="ml-2 bg-red-500 rounded-full px-2 py-1">
+                      <Text className="text-white text-xs font-bold">
+                        {unreadCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <View className="flex-row items-center space-x-2">
+                  <TouchableOpacity 
+                    onPress={() => setShowPreferences(true)}
+                    className="p-1"
+                  >
+                    <Settings size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={closePanel}>
+                    <X size={24} color="black" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* Notification content */}
-              <View className="items-center justify-center flex-1">
-                <Text className="text-lg font-inter text-gray-700">
-                  📣 You have no new notifications.
-                </Text>
-              </View>
+              <ScrollView className="flex-1">
+                {notifications.length === 0 ? (
+                  <View className="items-center justify-center flex-1">
+                    <Text className="text-lg font-inter text-gray-700">
+                      📣 You have no new notifications.
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="space-y-2">
+                    {notifications.map((notification) => (
+                      <TouchableOpacity
+                        key={notification.id}
+                        onPress={() => {
+                          if (!notification.read) {
+                            markAsRead(notification.id);
+                          }
+                          // TODO: Navigate to relevant post
+                          closePanel();
+                        }}
+                        className={`p-3 rounded-lg border-l-4 ${
+                          notification.read 
+                            ? 'bg-gray-50 border-gray-200' 
+                            : 'bg-blue-50 border-blue-500'
+                        }`}
+                      >
+                        <View className="flex-row justify-between items-start">
+                          <View className="flex-1">
+                            <Text className="font-medium text-gray-900 text-sm">
+                              {notification.title}
+                            </Text>
+                            <Text className="text-gray-600 text-xs mt-1">
+                              {notification.body}
+                            </Text>
+                            <Text className="text-gray-400 text-xs mt-2">
+                              {new Date(notification.createdAt?.toDate?.() || notification.createdAt).toLocaleString()}
+                            </Text>
+                          </View>
+                          <View className="flex-row items-center ml-2">
+                            {!notification.read && (
+                              <View className="w-2 h-2 bg-blue-500 rounded-full mr-2" />
+                            )}
+                            <TouchableOpacity
+                              onPress={(e) => {
+                                e.stopPropagation(); // Prevent triggering the notification click
+                                deleteNotification(notification.id);
+                              }}
+                              className="p-1"
+                            >
+                              <X size={16} color="#9CA3AF" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
+
+              {notifications.length > 0 && (
+                <View className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+                  <TouchableOpacity
+                    onPress={markAllAsRead}
+                    className="w-full py-2"
+                  >
+                    <Text className="text-center text-blue-600 font-medium">
+                      Mark all as read
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={deleteAllNotifications}
+                    className="w-full py-2"
+                  >
+                    <Text className="text-center text-red-600 font-medium">
+                      Delete all
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </Animated.View>
           </View>
+        </Modal>
+      )}
+
+      {/* Notification Preferences Modal */}
+      {showPreferences && (
+        <Modal
+          visible={showPreferences}
+          animationType="slide"
+          presentationStyle="pageSheet"
+        >
+          <NotificationPreferencesModal onClose={() => setShowPreferences(false)} />
         </Modal>
       )}
     </>

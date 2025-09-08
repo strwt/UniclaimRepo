@@ -75,9 +75,8 @@ function extractCloudinaryPublicId(url: string): string | null {
     }
 }
 
-// Import other services (will be added as we create them)
-// import { imageService } from './images';
-// import { ghostConversationService } from './conversations';
+// Import other services
+import { notificationSender } from './notificationSender';
 
 // Post service functions
 export const postService = {
@@ -128,6 +127,30 @@ export const postService = {
 
             // Create post in one operation (no separate update needed)
             await setDoc(doc(db, 'posts', postId), post);
+
+            // Send notifications to all users about the new post
+            try {
+                // Get creator information for the notification
+                const creatorDoc = await getDoc(doc(db, 'users', creatorId));
+                const creatorData = creatorDoc.exists() ? creatorDoc.data() : null;
+                const creatorName = creatorData ? `${creatorData.firstName} ${creatorData.lastName}` : 'Someone';
+
+                // Send notifications to all users
+                await notificationSender.sendNewPostNotification({
+                    id: postId,
+                    title: post.title,
+                    category: post.category,
+                    location: post.location,
+                    type: post.type,
+                    creatorId: creatorId,
+                    creatorName: creatorName
+                });
+
+                console.log('Notifications sent for new post:', postId);
+            } catch (notificationError) {
+                // Don't fail post creation if notifications fail
+                console.error('Error sending notifications for post:', postId, notificationError);
+            }
 
             return postId;
         } catch (error: any) {

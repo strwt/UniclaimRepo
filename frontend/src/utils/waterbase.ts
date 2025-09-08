@@ -2155,6 +2155,33 @@ export const postService = {
                 expiryDate: expiryDate
             });
 
+            // Send notifications to all users about the new post
+            try {
+                // Import notification sender dynamically to avoid circular dependencies
+                const { notificationSender } = await import('../services/firebase/notificationSender');
+
+                // Get creator information for the notification
+                const creatorDoc = await getDoc(doc(db, 'users', creatorId));
+                const creatorData = creatorDoc.exists() ? creatorDoc.data() : null;
+                const creatorName = creatorData ? `${creatorData.firstName} ${creatorData.lastName}` : 'Someone';
+
+                // Send notifications to all users
+                await notificationSender.sendNewPostNotification({
+                    id: postId,
+                    title: post.title,
+                    category: post.category,
+                    location: post.location,
+                    type: post.type,
+                    creatorId: creatorId,
+                    creatorName: creatorName
+                });
+
+                console.log('Notifications sent for new post:', postId);
+            } catch (notificationError) {
+                // Don't fail post creation if notifications fail
+                console.error('Error sending notifications for post:', postId, notificationError);
+            }
+
             return postId;
         } catch (error: any) {
             console.error('Error creating post:', error);

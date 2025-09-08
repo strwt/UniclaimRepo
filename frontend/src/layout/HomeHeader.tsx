@@ -3,13 +3,16 @@ import {
   HiOutlineBell,
   HiOutlineUser,
   HiOutlineX,
+  HiOutlineCog,
 } from "react-icons/hi";
 import { IoLogOutOutline } from "react-icons/io5";
 import Logo from "../assets/uniclaim_logo.png";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationContext";
 import ProfilePicture from "@/components/ProfilePicture";
+import NotificationPreferencesModal from "@/components/NotificationPreferences";
 
 interface HomeHeaderProps {
   sideNavClick: () => void;
@@ -22,11 +25,13 @@ export default function HomeHeader({
 }: HomeHeaderProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
 
   const toggleProfileMenu = () => setShowProfileMenu((prev) => !prev);
   const toggleNotif = () => setShowNotif((prev) => !prev);
 
   const { logout, userData } = useAuth();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications();
 
   const navigate = useNavigate();
 
@@ -69,8 +74,13 @@ export default function HomeHeader({
             {/* notification-bell-w-profile-container */}
             <div className="flex items-center gap-4 relative">
               {/* notification-bell */}
-              <button onClick={toggleNotif}>
+              <button onClick={toggleNotif} className="relative">
                 <HiOutlineBell className="size-8 text-white stroke-[1.3px] cursor-pointer hover:text-brand" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
               {/* profile picture */}
               <div className="">
@@ -112,20 +122,110 @@ export default function HomeHeader({
             showNotif ? "translate-x-0" : "translate-x-full"
           } w-full md:w-2/3 lg:w-1/3`}
         >
-          <div className="p-4 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-navyblue">
-              Notifications
-            </h2>
-            <button
-              onClick={toggleNotif}
-              className="text-lg lg:text-gray-500 lg:hover:text-gray-800"
-            >
-              <HiOutlineX className="size-6 stroke-[1.5px]" />
-            </button>
+          <div className="p-4 flex justify-between items-center border-b border-gray-200">
+            <div className="flex items-center">
+              <h2 className="text-lg font-semibold text-navyblue">
+                Notifications
+              </h2>
+              {unreadCount > 0 && (
+                <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                  {unreadCount}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowPreferences(true)}
+                className="text-gray-500 hover:text-gray-800 p-1"
+                title="Notification Settings"
+              >
+                <HiOutlineCog className="size-5" />
+              </button>
+              <button
+                onClick={toggleNotif}
+                className="text-lg lg:text-gray-500 lg:hover:text-gray-800"
+              >
+                <HiOutlineX className="size-6 stroke-[1.5px]" />
+              </button>
+            </div>
           </div>
-          <div className="p-4">
-            <p className="text-gray-500">No new notifications.</p>
+          
+          <div className="flex-1 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="p-4">
+                <p className="text-gray-500 text-center">No notifications yet.</p>
+              </div>
+            ) : (
+              <div className="p-2">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`p-3 mb-2 rounded-lg border-l-4 cursor-pointer transition-colors ${
+                      notification.read 
+                        ? 'bg-gray-50 border-gray-200' 
+                        : 'bg-blue-50 border-blue-500'
+                    }`}
+                    onClick={() => {
+                      if (!notification.read) {
+                        markAsRead(notification.id);
+                      }
+                      // Navigate to relevant page based on notification type
+                      if (notification.postId) {
+                        navigate(`/post/${notification.postId}`);
+                        toggleNotif();
+                      }
+                    }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900 text-sm">
+                          {notification.title}
+                        </h3>
+                        <p className="text-gray-600 text-xs mt-1">
+                          {notification.body}
+                        </p>
+                        <p className="text-gray-400 text-xs mt-2">
+                          {new Date(notification.createdAt?.toDate?.() || notification.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center ml-2">
+                        {!notification.read && (
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent triggering the notification click
+                            deleteNotification(notification.id);
+                          }}
+                          className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                          title="Delete notification"
+                        >
+                          <HiOutlineX className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+          
+          {notifications.length > 0 && (
+            <div className="p-4 border-t border-gray-200 space-y-2">
+              <button
+                onClick={markAllAsRead}
+                className="w-full text-center text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Mark all as read
+              </button>
+              <button
+                onClick={deleteAllNotifications}
+                className="w-full text-center text-red-600 hover:text-red-800 text-sm font-medium"
+              >
+                Delete all
+              </button>
+            </div>
+          )}
         </div>
 
         {showNotif && (
@@ -133,6 +233,11 @@ export default function HomeHeader({
             className="fixed inset-0 bg-black/35 z-30"
             onClick={toggleNotif}
           />
+        )}
+
+        {/* Notification Preferences Modal */}
+        {showPreferences && (
+          <NotificationPreferencesModal onClose={() => setShowPreferences(false)} />
         )}
       </div>
     </>

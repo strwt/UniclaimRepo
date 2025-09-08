@@ -32,6 +32,7 @@ import EmailVerificationRoute from "../components/EmailVerificationRoute";
 import { ToastProvider } from "@/context/ToastContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { MessageProvider } from "@/context/MessageContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import PageWrapper from "@/components/PageWrapper";
 import ScrollToTop from "@/context/ScrollTop";
 
@@ -41,8 +42,9 @@ function AppRoutesWithAuth() {
   const { user } = useAuth();
   
   return (
-    <MessageProvider userId={user?.uid || null}>
-      <Routes>
+    <NotificationProvider>
+      <MessageProvider userId={user?.uid || null}>
+        <Routes>
         {/* Public routes */}
         <Route
           path="/login"
@@ -224,7 +226,8 @@ function AppRoutesWithAuth() {
         {/* Catch-all: redirect unknown or unauthenticated routes to /login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </MessageProvider>
+      </MessageProvider>
+    </NotificationProvider>
   );
 }
 
