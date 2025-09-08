@@ -188,7 +188,7 @@ export default function CustomTabs() {
         >
           <View
             style={{ height: TAB_BAR_HEIGHT }}
-            className="flex-row items-center justify-around mx-4"
+            className="flex-row items-center justify-around mx-4 mb-14"
           >
             {tabs.map((tab) => {
               const isActive = currentTab === tab.key;
