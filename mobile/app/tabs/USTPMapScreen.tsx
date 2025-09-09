@@ -6,6 +6,7 @@ import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { useCoordinates } from "../../context/CoordinatesContext";
+import { detectLocationFromCoordinates } from "../../utils/locationDetection";
 
 export default function USTPMapScreen() {
   const navigation = useNavigation();
@@ -13,9 +14,17 @@ export default function USTPMapScreen() {
 
   const onMessage = (event: any) => {
     const coords = JSON.parse(event.nativeEvent.data);
-    setCoordinatesFromMap({
+    
+    // Detect location from coordinates
+    const detectionResult = detectLocationFromCoordinates({
       latitude: coords.lat,
       longitude: coords.lng
+    });
+    
+    setCoordinatesFromMap({
+      latitude: coords.lat,
+      longitude: coords.lng,
+      detectedLocation: detectionResult.location
     });
     navigation.goBack();
   };

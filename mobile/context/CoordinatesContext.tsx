@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 interface Coordinates {
   latitude: number;
   longitude: number;
+  detectedLocation?: string | null;
 }
 
 interface CoordinatesContextType {
