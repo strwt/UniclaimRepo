@@ -91,6 +91,7 @@ export interface UserData {
     role?: 'user' | 'admin'; // User role for access control
     status?: 'active' | 'banned'; // User account status
     banInfo?: any; // Ban information
+    emailVerified?: boolean; // Email verification status
     createdAt: any;
     updatedAt: any;
 }
@@ -131,6 +132,7 @@ export const authService = {
                 studentId,
                 profilePicture: '/src/assets/empty_profile.jpg', // Set default profile picture
                 status: 'active', // Set default status to active - CRITICAL for permissions
+                emailVerified: false, // New users need to verify their email
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             };
@@ -141,6 +143,9 @@ export const authService = {
             }
 
             await setDoc(doc(db, 'users', user.uid), userData);
+
+            // Send email verification
+            await sendEmailVerification(user);
 
             return { user, userData };
         } catch (error: any) {
@@ -279,6 +284,43 @@ export const authService = {
             await signOut(auth);
         } catch (error: any) {
             throw new Error(error.message || 'Failed to send verification email');
+        }
+    },
+
+    // Check if user needs email verification
+    async needsEmailVerification(user: FirebaseUser, userData: UserData): Promise<boolean> {
+        try {
+            // Admin and campus security users don't need email verification
+            if (userData.role === 'admin' || userData.role === 'campus_security') {
+                return false;
+            }
+
+            // Check Firebase Auth email verification status
+            const firebaseEmailVerified = user.emailVerified;
+
+            // Check Firestore email verification status
+            // If emailVerified field is missing, assume true (grandfathered user)
+            const firestoreEmailVerified = userData.emailVerified !== undefined ? userData.emailVerified : true;
+
+            // User needs verification if either Firebase or Firestore shows unverified
+            return !firebaseEmailVerified || !firestoreEmailVerified;
+        } catch (error: any) {
+            console.error('Error checking email verification status:', error);
+            // Default to requiring verification if there's an error
+            return true;
+        }
+    },
+
+    // Update email verification status in Firestore
+    async updateEmailVerificationStatus(uid: string, verified: boolean): Promise<void> {
+        try {
+            await updateDoc(doc(db, 'users', uid), {
+                emailVerified: verified,
+                updatedAt: serverTimestamp()
+            });
+        } catch (error: any) {
+            console.error('Error updating email verification status:', error);
+            throw new Error('Failed to update email verification status');
         }
     }
 };
@@ -2112,6 +2154,33 @@ export const postService = {
             await updateDoc(doc(db, 'posts', postId), {
                 expiryDate: expiryDate
             });
+
+            // Send notifications to all users about the new post
+            try {
+                // Import notification sender dynamically to avoid circular dependencies
+                const { notificationSender } = await import('../services/firebase/notificationSender');
+
+                // Get creator information for the notification
+                const creatorDoc = await getDoc(doc(db, 'users', creatorId));
+                const creatorData = creatorDoc.exists() ? creatorDoc.data() : null;
+                const creatorName = creatorData ? `${creatorData.firstName} ${creatorData.lastName}` : 'Someone';
+
+                // Send notifications to all users
+                await notificationSender.sendNewPostNotification({
+                    id: postId,
+                    title: post.title,
+                    category: post.category,
+                    location: post.location,
+                    type: post.type,
+                    creatorId: creatorId,
+                    creatorName: creatorName
+                });
+
+                console.log('Notifications sent for new post:', postId);
+            } catch (notificationError) {
+                // Don't fail post creation if notifications fail
+                console.error('Error sending notifications for post:', postId, notificationError);
+            }
 
             return postId;
         } catch (error: any) {

@@ -10,6 +10,7 @@ import ConversationCleanupAdmin from "../components/ConversationCleanupAdmin";
 import Login from "../routes/user-routes/Login";
 import Register from "../routes/user-routes/Register";
 import ResetPassword from "../routes/user-routes/ResetPassword";
+import EmailVerification from "../routes/user-routes/EmailVerification";
 import HomePage from "../routes/user-routes/HomePage";
 import MainHome from "../routes/user-routes/MainHome";
 
@@ -27,9 +28,11 @@ import MessagesPage from "@/routes/user-routes/MessagesPage";
 
 // wrappers
 import ProtectedRoute from "../components/ProtectedRoute";
+import EmailVerificationRoute from "../components/EmailVerificationRoute";
 import { ToastProvider } from "@/context/ToastContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { MessageProvider } from "@/context/MessageContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import PageWrapper from "@/components/PageWrapper";
 import ScrollToTop from "@/context/ScrollTop";
 
@@ -39,8 +42,9 @@ function AppRoutesWithAuth() {
   const { user } = useAuth();
   
   return (
-    <MessageProvider userId={user?.uid || null}>
-      <Routes>
+    <NotificationProvider>
+      <MessageProvider userId={user?.uid || null}>
+        <Routes>
         {/* Public routes */}
         <Route
           path="/login"
@@ -74,6 +78,14 @@ function AppRoutesWithAuth() {
             </PageWrapper>
           }
         />
+        <Route
+          path="/email-verification"
+          element={
+            <PageWrapper title="Email Verification">
+              <EmailVerification />
+            </PageWrapper>
+          }
+        />
 
 
 
@@ -81,9 +93,9 @@ function AppRoutesWithAuth() {
         <Route
           path="/"
           element={
-            <ProtectedRoute>
+            <EmailVerificationRoute>
               <MainHome />
-            </ProtectedRoute>
+            </EmailVerificationRoute>
           }
         >
           <Route
@@ -214,7 +226,8 @@ function AppRoutesWithAuth() {
         {/* Catch-all: redirect unknown or unauthenticated routes to /login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </MessageProvider>
+      </MessageProvider>
+    </NotificationProvider>
   );
 }
 

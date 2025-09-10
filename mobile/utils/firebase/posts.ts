@@ -15,6 +15,9 @@ import {
     serverTimestamp
 } from 'firebase/firestore';
 
+// Import notification sender (mobile service)
+import { notificationSender } from './notificationSender';
+
 // Post service
 export const postService = {
     // Get all posts
@@ -159,6 +162,31 @@ export const postService = {
 
 
             const postRef = await addDoc(collection(db, 'posts'), enhancedPostData);
+
+            // Send notifications to all users about the new post
+            try {
+                // Get creator information for the notification
+                const creatorDoc = await getDoc(doc(db, 'users', postData.creatorId || postData.user?.uid));
+                const creatorData = creatorDoc.exists() ? creatorDoc.data() : null;
+                const creatorName = creatorData ? `${creatorData.firstName} ${creatorData.lastName}` : 'Someone';
+
+                // Send notifications to all users
+                await notificationSender.sendNewPostNotification({
+                    id: postRef.id,
+                    title: postData.title,
+                    category: postData.category,
+                    location: postData.location,
+                    type: postData.type,
+                    creatorId: postData.creatorId || postData.user?.uid,
+                    creatorName: creatorName
+                });
+
+                console.log('Notifications sent for new post:', postRef.id);
+            } catch (notificationError) {
+                // Don't fail post creation if notifications fail
+                console.error('Error sending notifications for post:', postRef.id, notificationError);
+            }
+
             return postRef.id;
         } catch (error: any) {
             throw new Error(error.message || 'Failed to create post');

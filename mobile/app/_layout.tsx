@@ -13,6 +13,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import ScreenWrapper from "../components/ScreenWrapper";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { MessageProvider } from "../context/MessageContext";
+import { NotificationProvider } from "../context/NotificationContext";
 import { CoordinatesProvider } from "../context/CoordinatesContext";
 
 // utils
@@ -47,7 +48,22 @@ const AppContent = ({
   // NEW: If user is banned, show login screen
   if (isBanned) {
     return (
-      <MessageProvider userId={null}>
+      <NotificationProvider>
+        <MessageProvider userId={null}>
+          <Navigation
+            hasSeenOnBoarding={hasSeenOnBoarding}
+            setHasSeenOnBoarding={setHasSeenOnBoarding}
+            hasPassedIndex={hasPassedIndex}
+            setHasPassedIndex={setHasPassedIndex}
+          />
+        </MessageProvider>
+      </NotificationProvider>
+    );
+  }
+
+  return (
+    <NotificationProvider>
+      <MessageProvider userId={user?.uid || null}>
         <Navigation
           hasSeenOnBoarding={hasSeenOnBoarding}
           setHasSeenOnBoarding={setHasSeenOnBoarding}
@@ -55,18 +71,7 @@ const AppContent = ({
           setHasPassedIndex={setHasPassedIndex}
         />
       </MessageProvider>
-    );
-  }
-
-  return (
-    <MessageProvider userId={user?.uid || null}>
-      <Navigation
-        hasSeenOnBoarding={hasSeenOnBoarding}
-        setHasSeenOnBoarding={setHasSeenOnBoarding}
-        hasPassedIndex={hasPassedIndex}
-        setHasPassedIndex={setHasPassedIndex}
-      />
-    </MessageProvider>
+    </NotificationProvider>
   );
 };
 

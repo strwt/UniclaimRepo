@@ -4,6 +4,8 @@ import {
     signInWithEmailAndPassword,
     signOut,
     updateProfile,
+    sendPasswordResetEmail,
+    sendEmailVerification,
     UserCredential
 } from 'firebase/auth';
 import { auth, db } from './config';
@@ -33,6 +35,7 @@ export interface UserData {
     role?: 'user' | 'admin' | 'campus_security';
     status?: 'active' | 'banned';
     banInfo?: any;
+    emailVerified?: boolean; // Email verification status
     createdAt: any;
     updatedAt: any;
 }
@@ -40,20 +43,53 @@ export interface UserData {
 // Authentication service
 export const authService = {
     // Register new user
-    async register(email: string, password: string, userData: Partial<UserData>): Promise<UserCredential> {
+    async register(
+        email: string,
+        password: string,
+        firstName: string,
+        lastName: string,
+        contactNum: string,
+        studentId: string
+    ): Promise<UserCredential> {
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
             // Update profile with additional user data
             if (userCredential.user) {
                 await updateProfile(userCredential.user, {
-                    displayName: `${userData.firstName} ${userData.lastName}`
+                    displayName: `${firstName} ${lastName}`
                 });
+
+                // Send email verification
+                await sendEmailVerification(userCredential.user);
             }
 
             return userCredential;
         } catch (error: any) {
-            throw new Error(error.message || 'Failed to register user');
+            // Helper function to get readable error messages (inline to avoid circular dependency)
+            const getFirebaseErrorMessage = (error: any): string => {
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                        return 'No account found with this email address.';
+                    case 'auth/wrong-password':
+                        return 'Incorrect password.';
+                    case 'auth/email-already-in-use':
+                        return 'An account already exists with this email address.';
+                    case 'auth/weak-password':
+                        return 'Password should be at least 6 characters long.';
+                    case 'auth/invalid-email':
+                        return 'Please enter a valid email address.';
+                    case 'auth/invalid-credential':
+                        return 'Invalid email or password. Please check your credentials and try again.';
+                    case 'auth/too-many-requests':
+                        return 'Too many failed login attempts. Please try again later.';
+                    case 'auth/network-request-failed':
+                        return 'Network error. Please check your internet connection.';
+                    default:
+                        return error.message || 'An unexpected error occurred. Please try again.';
+                }
+            };
+            throw new Error(getFirebaseErrorMessage(error));
         }
     },
 
@@ -62,7 +98,30 @@ export const authService = {
         try {
             return await signInWithEmailAndPassword(auth, email, password);
         } catch (error: any) {
-            throw new Error(error.message || 'Failed to sign in');
+            // Helper function to get readable error messages (inline to avoid circular dependency)
+            const getFirebaseErrorMessage = (error: any): string => {
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                        return 'No account found with this email address.';
+                    case 'auth/wrong-password':
+                        return 'Incorrect password.';
+                    case 'auth/email-already-in-use':
+                        return 'An account already exists with this email address.';
+                    case 'auth/weak-password':
+                        return 'Password should be at least 6 characters long.';
+                    case 'auth/invalid-email':
+                        return 'Please enter a valid email address.';
+                    case 'auth/invalid-credential':
+                        return 'Invalid email or password. Please check your credentials and try again.';
+                    case 'auth/too-many-requests':
+                        return 'Too many failed login attempts. Please try again later.';
+                    case 'auth/network-request-failed':
+                        return 'Network error. Please check your internet connection.';
+                    default:
+                        return error.message || 'An unexpected error occurred. Please try again.';
+                }
+            };
+            throw new Error(getFirebaseErrorMessage(error));
         }
     },
 
@@ -72,6 +131,38 @@ export const authService = {
             await signOut(auth);
         } catch (error: any) {
             throw new Error(error.message || 'Failed to sign out');
+        }
+    },
+
+    // Send password reset email
+    async sendPasswordResetEmail(email: string): Promise<void> {
+        try {
+            await sendPasswordResetEmail(auth, email);
+        } catch (error: any) {
+            // Handle specific Firebase auth errors
+            let errorMessage = 'Failed to send password reset email';
+
+            switch (error.code) {
+                case 'auth/user-not-found':
+                    errorMessage = 'No account found with this email address';
+                    break;
+                case 'auth/invalid-email':
+                    errorMessage = 'Invalid email address format';
+                    break;
+                case 'auth/too-many-requests':
+                    errorMessage = 'Too many requests. Please try again later';
+                    break;
+                case 'auth/network-request-failed':
+                    errorMessage = 'Network error. Please check your internet connection';
+                    break;
+                case 'auth/invalid-credential':
+                    errorMessage = 'Invalid credentials provided';
+                    break;
+                default:
+                    errorMessage = error.message || errorMessage;
+            }
+
+            throw new Error(errorMessage);
         }
     },
 
@@ -96,6 +187,7 @@ export const userService = {
         try {
             await setDoc(doc(db, 'users', userId), {
                 ...userData,
+                emailVerified: false, // New users need to verify their email
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
@@ -145,6 +237,30 @@ export const userService = {
         } catch (error: any) {
             console.error('Error getting Campus Security user:', error);
             return null;
+        }
+    },
+
+    // Check if user needs email verification
+    async needsEmailVerification(user: any, userData: UserData): Promise<boolean> {
+        try {
+            // Admin and campus security users don't need email verification
+            if (userData.role === 'admin' || userData.role === 'campus_security') {
+                return false;
+            }
+
+            // Check Firebase Auth email verification status
+            const firebaseEmailVerified = user.emailVerified;
+
+            // Check Firestore email verification status
+            // If emailVerified field is missing, assume true (grandfathered user)
+            const firestoreEmailVerified = userData.emailVerified !== undefined ? userData.emailVerified : true;
+
+            // User needs verification if either Firebase or Firestore shows unverified
+            return !firebaseEmailVerified || !firestoreEmailVerified;
+        } catch (error: any) {
+            console.error('Error checking email verification status:', error);
+            // Default to requiring verification if there's an error
+            return true;
         }
     }
 };

@@ -5,6 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { credentialStorage } from '../utils/credentialStorage';
+import { notificationService } from '../utils/firebase/notifications';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -109,6 +110,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           // Set loading to false after successful authentication and data fetch
           setLoading(false);
+          
+          // Initialize notifications for authenticated user
+          try {
+            const pushToken = await notificationService.registerForPushNotifications();
+            if (pushToken) {
+              await notificationService.savePushToken(firebaseUser.uid, pushToken);
+              console.log('Push notifications initialized for user:', firebaseUser.uid);
+            }
+          } catch (error) {
+            console.error('Error initializing notifications:', error);
+          }
           
           // Start monitoring this specific user for ban status changes
           // Only set up listener if user is authenticated to prevent permission errors during logout

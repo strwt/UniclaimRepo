@@ -13,5 +13,8 @@ export { messageService } from './messages';
 // Posts and items services
 export { postService } from './posts';
 
+// Utility functions
+export { getFirebaseErrorMessage } from './utils';
+
 // Re-export commonly used Firebase types for convenience
 export type { UserCredential } from 'firebase/auth';
