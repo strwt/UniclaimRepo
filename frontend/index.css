@@ -40,7 +40,6 @@ body {
 
 @layer utilities {
   @keyframes soft-blink {
-
     0%,
     100% {
       opacity: 1;
@@ -95,7 +94,7 @@ body {
   --font-albert-sans: "Albert Sans", sans-serif;
 
   /* - brand color */
-  --color-brand: #12c3b4;
+  --color-brand: #eab308;
   --color-success-green: #39b54a;
   --color-navyblue: #0a193a;
 

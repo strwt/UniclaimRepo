@@ -26,7 +26,7 @@ export default function SearchHeader({
       </button>
       <button
         onClick={toggleFilter}
-        className="px-4 py-2 bg-brand text-black rounded hover:bg-teal-500"
+        className="px-4 py-2 bg-brand text-black rounded hover:bg-yellow-500"
       >
         {showFilter ? (
           <HiFilter className="size-6 stroke-[1.5px]" />

@@ -30,11 +30,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isClaimSubmitting, setIsClaimSubmitting] = useState(false);
   const [showHandoverModal, setShowHandoverModal] = useState(false);
   const [isHandoverSubmitting, setIsHandoverSubmitting] = useState(false);
-  
+
   // New engagement tracking state variables
   const [isUserTyping, setIsUserTyping] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
-  
+
   const navigate = useNavigate();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -54,7 +54,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
       // Direct scroll to bottom - most reliable method
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      messagesContainerRef.current.scrollTop =
+        messagesContainerRef.current.scrollHeight;
     } else if (messagesEndRef.current) {
       // Fallback method
       messagesEndRef.current.scrollIntoView({ behavior: "auto" });
@@ -67,7 +68,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       // For smooth animation, we need to use scrollIntoView
       messagesContainerRef.current.scrollTo({
         top: messagesContainerRef.current.scrollHeight,
-        behavior: "smooth"
+        behavior: "smooth",
       });
     } else if (messagesEndRef.current) {
       // Fallback method
@@ -81,11 +82,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const scrollTop = target.scrollTop;
     const scrollHeight = target.scrollHeight;
     const clientHeight = target.clientHeight;
-    
+
     // Check if user is near bottom (within 200px)
     const isNearBottomNow = scrollTop >= scrollHeight - clientHeight - 200;
     setIsNearBottom(isNearBottomNow);
-    
+
     // Show/hide scroll to bottom button
     const isScrolledUp = scrollTop < scrollHeight - clientHeight - 100;
     setShowScrollToBottom(isScrolledUp);
@@ -99,8 +100,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [messages]);
 
   // Note: 2-second timer logic removed as requested
-
-
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -116,17 +115,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         // Check if these are new messages (not just initial load)
         const previousMessageCount = messages.length;
         const hasNewMessages = loadedMessages.length > previousMessageCount;
-        
+
         setMessages(loadedMessages);
         setIsLoading(false);
 
         // Mark conversation as read when messages are loaded
-        if (userData && conversation?.unreadCounts?.[userData.uid] > 0 && conversation?.id) {
+        if (
+          userData &&
+          conversation?.unreadCounts?.[userData.uid] > 0 &&
+          conversation?.id
+        ) {
           markConversationAsRead(conversation.id);
         }
 
         // Mark all unread messages as read when conversation is opened and messages are loaded
-        if (userData && conversation?.unreadCounts?.[userData.uid] > 0 && conversation?.id) {
+        if (
+          userData &&
+          conversation?.unreadCounts?.[userData.uid] > 0 &&
+          conversation?.id
+        ) {
           markAllUnreadMessagesAsRead(conversation.id);
         }
 
@@ -148,16 +155,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
 
     return () => unsubscribe();
-  }, [conversation, getConversationMessages, markConversationAsRead, userData, markAllUnreadMessagesAsRead]);
+  }, [
+    conversation,
+    getConversationMessages,
+    markConversationAsRead,
+    userData,
+    markAllUnreadMessagesAsRead,
+  ]);
 
   // Function to check if new messages should be auto-read based on user engagement
   const shouldAutoReadMessage = (): boolean => {
     // Auto-read if user is typing
     if (isUserTyping) return true;
-    
+
     // Auto-read if user is near bottom (within 200px)
     if (isNearBottom) return true;
-    
+
     return false;
   };
 
@@ -171,13 +184,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       if (shouldAutoReadMessage()) {
         // User is engaged - mark conversation as read
         markConversationAsRead(conversation.id);
-        
+
         // Also mark all unread messages as read for better UX
         markAllUnreadMessagesAsRead(conversation.id);
       }
       // If user is not engaged, don't mark as read - let them do it manually
     }
-  }, [messages, conversation, userData, markConversationAsRead, markAllUnreadMessagesAsRead, shouldAutoReadMessage]);
+  }, [
+    messages,
+    conversation,
+    userData,
+    markConversationAsRead,
+    markAllUnreadMessagesAsRead,
+    shouldAutoReadMessage,
+  ]);
 
   // Check if conversation still exists (wasn't deleted)
   useEffect(() => {
@@ -202,7 +222,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     try {
       // Mark conversation as read
       await markConversationAsRead(conversation.id);
-      
+
       // Mark all new messages as read
       for (const message of newMessages) {
         // Only mark messages that haven't been read by this user
@@ -210,27 +230,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           await markMessageAsRead(conversation.id, message.id);
         }
       }
-      
-      console.log(`✅ Auto-read ${newMessages.length} new messages due to user engagement`);
+
+      console.log(
+        `✅ Auto-read ${newMessages.length} new messages due to user engagement`
+      );
     } catch (error) {
-      console.warn('Failed to auto-read new messages:', error);
+      console.warn("Failed to auto-read new messages:", error);
     }
   };
 
   // Function to mark message as read when it comes into view
   const handleMessageSeen = async (messageId: string) => {
     if (!conversation?.id || !userData?.uid) return;
-    
+
     try {
       // Mark the individual message as read
       await markMessageAsRead(conversation.id, messageId);
-      
+
       // Also mark the conversation as read if it has unread messages
       if (conversation?.unreadCounts?.[userData.uid] > 0) {
         await markConversationAsRead(conversation.id);
       }
     } catch (error) {
-      console.warn('Failed to mark message/conversation as read:', error);
+      console.warn("Failed to mark message/conversation as read:", error);
     }
   };
 
@@ -781,7 +803,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     // Allow claiming for "keep" and "turnover to Campus Security" posts
     // Only exclude posts that are disposed or donated
-    if (conversation.foundAction === "disposed" || conversation.foundAction === "donated") {
+    if (
+      conversation.foundAction === "disposed" ||
+      conversation.foundAction === "donated"
+    ) {
       return false;
     }
 
@@ -792,8 +817,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     return true;
   };
-
-
 
   if (!conversation) {
     return (
@@ -894,22 +917,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         ) : (
           <div className="space-y-3">
             {messages.map((message) => (
-                             <MessageBubble
-                 key={message.id}
-                 message={message}
-                 isOwnMessage={message.senderId === userData?.uid}
-                 showSenderName={
-                   Object.keys(conversation.participants).length > 2
-                 }
-                 conversationId={conversation.id}
-                 currentUserId={userData?.uid || ""}
-                 postOwnerId={conversation.postCreatorId}
-                 onHandoverResponse={handleHandoverResponse}
-                 onClaimResponse={handleClaimResponse}
-                 onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
-                 onClearConversation={onClearConversation}
-                 onMessageSeen={() => handleMessageSeen(message.id)}
-               />
+              <MessageBubble
+                key={message.id}
+                message={message}
+                isOwnMessage={message.senderId === userData?.uid}
+                showSenderName={
+                  Object.keys(conversation.participants).length > 2
+                }
+                conversationId={conversation.id}
+                currentUserId={userData?.uid || ""}
+                postOwnerId={conversation.postCreatorId}
+                onHandoverResponse={handleHandoverResponse}
+                onClaimResponse={handleClaimResponse}
+                onConfirmIdPhotoSuccess={handleConfirmIdPhotoSuccess}
+                onClearConversation={onClearConversation}
+                onMessageSeen={() => handleMessageSeen(message.id)}
+              />
             ))}
             <div ref={messagesEndRef} />
           </div>
@@ -926,14 +949,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </span>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
-                <div className={`w-3 h-3 rounded-full ${
-                  messages.length >= 45 ? 'bg-red-400' : 
-                  messages.length >= 40 ? 'bg-yellow-400' : 'bg-green-400'
-                }`} />
-                <span className={`text-sm font-semibold ${
-                  messages.length >= 45 ? 'text-red-600' : 
-                  messages.length >= 40 ? 'text-yellow-600' : 'text-green-600'
-                }`}>
+                <div
+                  className={`w-3 h-3 rounded-full ${
+                    messages.length >= 45
+                      ? "bg-red-400"
+                      : messages.length >= 40
+                      ? "bg-yellow-400"
+                      : "bg-green-400"
+                  }`}
+                />
+                <span
+                  className={`text-sm font-semibold ${
+                    messages.length >= 45
+                      ? "text-red-600"
+                      : messages.length >= 40
+                      ? "text-yellow-600"
+                      : "text-green-600"
+                  }`}
+                >
                   {messages.length}/50
                 </span>
               </div>
@@ -944,22 +977,26 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               )}
             </div>
           </div>
-          
+
           {/* Progress Bar */}
           <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-            <div 
+            <div
               className={`h-2 rounded-full transition-all duration-300 ${
-                messages.length >= 45 ? 'bg-red-400' : 
-                messages.length >= 40 ? 'bg-yellow-400' : 'bg-green-400'
+                messages.length >= 45
+                  ? "bg-red-400"
+                  : messages.length >= 40
+                  ? "bg-yellow-400"
+                  : "bg-green-400"
               }`}
               style={{ width: `${(messages.length / 50) * 100}%` }}
             />
           </div>
-          
+
           {/* Status Message */}
           {messages.length >= 45 && (
             <div className="text-xs text-red-500 text-center">
-              ⚠️ Oldest messages will be automatically removed when limit is reached
+              ⚠️ Oldest messages will be automatically removed when limit is
+              reached
             </div>
           )}
         </div>
@@ -970,12 +1007,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           <button
             onClick={scrollToBottomWithAnimation}
             className={`absolute -top-15 left-1/2 transform -translate-x-1/2 p-2 border border-gray-300 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-300 bg-white z-10 ${
-              showScrollToBottom ? 'animate-slide-up opacity-100' : 'animate-slide-down opacity-0'
+              showScrollToBottom
+                ? "animate-slide-up opacity-100"
+                : "animate-slide-down opacity-0"
             }`}
             title="Scroll to bottom"
-            style={{ 
-              visibility: showScrollToBottom ? 'visible' : 'hidden',
-              pointerEvents: showScrollToBottom ? 'auto' : 'none'
+            style={{
+              visibility: showScrollToBottom ? "visible" : "hidden",
+              pointerEvents: showScrollToBottom ? "auto" : "none",
             }}
           >
             <svg
@@ -992,7 +1031,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               />
             </svg>
           </button>
-          
+
           <form onSubmit={handleSendMessage} className="flex gap-2">
             <div className="flex-1 relative">
               <input
@@ -1004,11 +1043,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 placeholder="Type your message..."
                 maxLength={200}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-navyblue focus:border-transparent ${
-                  newMessage.length > 180 
-                    ? newMessage.length >= 200 
-                      ? 'border-red-300 focus:ring-red-500' 
-                      : 'border-yellow-300 focus:ring-yellow-500'
-                    : 'border-gray-300'
+                  newMessage.length > 180
+                    ? newMessage.length >= 200
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-yellow-300 focus:ring-yellow-500"
+                    : "border-gray-300"
                 }`}
                 disabled={isSending}
               />
@@ -1018,8 +1057,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
             <button
               type="submit"
-              disabled={!newMessage.trim() || isSending || newMessage.length > 200}
-              className="px-4 py-2 bg-brand text-white rounded-lg hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={
+                !newMessage.trim() || isSending || newMessage.length > 200
+              }
+              className="px-4 py-2 bg-navyblue text-white rounded-lg hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSending ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
