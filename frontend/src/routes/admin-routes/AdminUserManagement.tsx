@@ -334,14 +334,14 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                           onClick={() => handleUnbanUser(user)}
                           className="text-green-600 hover:text-green-900"
                         >
-                          Unban
+                          Reactivate
                         </button>
                       ) : (
                         <button
                           onClick={() => handleBanUser(user)}
                           className="text-red-600 hover:text-red-900"
                         >
-                          Ban
+                          Deactivate
                         </button>
                       )}
                     </td>
@@ -355,11 +355,13 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
         {/* Ban User Modal */}
         {showBanModal && banningUser && (
           <div className="fixed inset-0 bg-black/50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
-              <div className="mt-3">
+            <div className="relative top-8 mx-auto p-3 w-11/12 md:w-3/4 lg:w-1/2 rounded-md bg-white">
+              <div className="py-2 px-3">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Ban User</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Deactivate User
+                  </h3>
                   <button
                     onClick={handleCloseBanModal}
                     className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
@@ -371,9 +373,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                 {/* Ban Form */}
                 <div className="space-y-6">
                   {/* User Info */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-3 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">
-                      Banning User:
+                      Deactivate User:
                     </h4>
                     <p className="text-gray-700">
                       {banningUser.firstName} {banningUser.lastName} (
@@ -384,7 +386,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                   {/* Ban Reason */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Ban Reason <span className="text-red-500">*</span>
+                      Reason for Account Deactivation{" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={banReason}
@@ -409,7 +412,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                   {/* Ban Duration */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Ban Duration <span className="text-red-500">*</span>
+                      Account Deactivate Duration{" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <div className="space-y-3">
                       <label className="flex items-center">
@@ -424,7 +428,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                           }
                           className="mr-2"
                         />
-                        Temporary Ban
+                        Temporary Deactivation
                       </label>
                       <label className="flex items-center">
                         <input
@@ -438,7 +442,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                           }
                           className="mr-2"
                         />
-                        Permanent Ban
+                        Permanent Deactivation
                       </label>
                     </div>
                   </div>
@@ -447,7 +451,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                   {banDuration === "temporary" && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Ban Duration (Days){" "}
+                        Account Deactivation Period (Days){" "}
                         <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -477,7 +481,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                       onChange={(e) => setBanNotes(e.target.value)}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Additional details about this ban..."
+                      placeholder="Additional details about this account deactivation..."
                     />
                   </div>
 
@@ -485,16 +489,16 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                   <div className="flex justify-end space-x-3 pt-4 border-t">
                     <button
                       onClick={handleCloseBanModal}
-                      className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+                      className="px-4 py-2 text-gray-700 bg-gray-200 rounded-sm hover:bg-gray-300 transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleSubmitBan}
                       disabled={!banReason}
-                      className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      className="px-4 py-2 text-white bg-red-600 rounded-sm hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
-                      Ban User
+                      Deactivate User
                     </button>
                   </div>
                 </div>
@@ -511,7 +515,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                 {/* Modal Header */}
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-2xl font-bold text-gray-900">
-                    Unban User
+                    Reactivate User
                   </h3>
                   <button
                     onClick={handleCloseUnbanModal}
@@ -526,7 +530,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                   {/* User Info */}
                   <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                     <h4 className="font-medium text-green-900 mb-2">
-                      Unbanning User:
+                      Reactivate User:
                     </h4>
                     <p className="text-green-700">
                       {unbanningUser.firstName} {unbanningUser.lastName} (
@@ -540,14 +544,14 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                   {/* Unban Reason (Optional) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Unban Reason (Optional)
+                      Reason of Account Activation (Optional)
                     </label>
                     <textarea
                       value={unbanReason}
                       onChange={(e) => setUnbanReason(e.target.value)}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                      placeholder="Why are you unbanning this user? (Optional)"
+                      placeholder="Why are you reactivate this user account? (Optional)"
                     />
                   </div>
 
@@ -573,8 +577,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                         </h3>
                         <div className="mt-2 text-sm text-yellow-700">
                           <p>
-                            Unbanning will immediately restore this user's
-                            access to the app. Make sure this action is
+                            Reactivate an account will immediately restore this
+                            user's access to the app. Make sure this action is
                             appropriate.
                           </p>
                         </div>
@@ -594,7 +598,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                       onClick={handleSubmitUnban}
                       className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
                     >
-                      Unban User
+                      Reactivate User
                     </button>
                   </div>
                 </div>
@@ -745,7 +749,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                         }}
                         className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
                       >
-                        Unban User
+                        Reactivate User
                       </button>
                     ) : (
                       <button
@@ -755,7 +759,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = () => {
                         }}
                         className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
                       >
-                        Ban User
+                        Deactivate User
                       </button>
                     )}
                   </div>
