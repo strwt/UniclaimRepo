@@ -33,28 +33,11 @@ export default function AdminLogin() {
     };
   }, []);
 
-  // Check if user is already logged in and is admin
-  useEffect(() => {
-    if (user) {
-      checkAdminStatus();
-    }
-  }, [user]);
-
-  const checkAdminStatus = async () => {
-    if (user) {
-      try {
-        const isAdmin = await authService.isAdmin(user.uid);
-        if (isAdmin) {
-          navigate("/admin");
-        }
-      } catch (error) {
-        console.error("Error checking admin status:", error);
-      }
-    }
-  };
+  // Removed automatic admin redirect - admin must manually login
+  // This prevents auto-login when admin visits admin login page
 
   //error handling here
-  const handleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const newError = { adminEmail: "", adminPassword: "", adminGeneral: "" };
@@ -141,80 +124,84 @@ export default function AdminLogin() {
               Welcome back, it’s good to see you again
             </p>
 
-            {/* Email and password fields */}
-            <div>
-              {/* Email InputField*/}
-              <div className="mt-5">
-                <EmailInputField
-                  label="Email"
-                  placeholder="Enter email"
-                  value={adminEmail}
-                  error={adminError.adminEmail || adminError.adminGeneral} // still passes the style error
-                  showErrorText={!!adminError.adminEmail} // only shows text if email-specific error exists
-                  inputClass={inputClass}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    setAdminEmail(e.target.value);
+            {/* Wrap inputs and button in a form for Enter key support */}
+            <form onSubmit={handleLogin}>
+              {/* Email and password fields */}
+              <div>
+                {/* Email InputField*/}
+                <div className="mt-5">
+                  <EmailInputField
+                    label="Email"
+                    placeholder="Enter email"
+                    value={adminEmail}
+                    error={adminError.adminEmail || adminError.adminGeneral} // still passes the style error
+                    showErrorText={!!adminError.adminEmail} // only shows text if email-specific error exists
+                    inputClass={inputClass}
+                    autocomplete="email"
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setAdminEmail(e.target.value);
+                      setAdminError((prev) => ({
+                        ...prev,
+                        email: "",
+                        general: "",
+                      }));
+                    }}
+                  />
+                </div>
+
+                {/* Password */}
+                <PasswordInput
+                  value={adminPassword}
+                  onChange={(e) => {
+                    setAdminPassword(e.target.value);
                     setAdminError((prev) => ({
                       ...prev,
-                      email: "",
+                      password: "",
                       general: "",
                     }));
                   }}
+                  error={adminError.adminPassword}
+                  hasGeneralError={!!adminError.adminGeneral}
+                  autocomplete="current-password"
                 />
               </div>
 
-              {/* Password */}
-              <PasswordInput
-                value={adminPassword}
-                onChange={(e) => {
-                  setAdminPassword(e.target.value);
-                  setAdminError((prev) => ({
-                    ...prev,
-                    password: "",
-                    general: "",
-                  }));
-                }}
-                error={adminError.adminPassword}
-                hasGeneralError={!!adminError.adminGeneral}
-              />
-            </div>
+              {/* General error */}
+              {adminError.adminGeneral && (
+                <p className="text-xs text-red-500 text-center mt-3">
+                  {adminError.adminGeneral}
+                </p>
+              )}
 
-            {/* General error */}
-            {adminError.adminGeneral && (
-              <p className="text-xs text-red-500 text-center mt-3">
-                {adminError.adminGeneral}
-              </p>
-            )}
+              <div className="space-y-4 mt-8">
+                {/* submit button */}
+                <button
+                  className={`w-full py-2 text-white rounded-lg transition-all duration-200 ${
+                    isLoading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-brand hover:bg-yellow-600 hover:cursor-pointer"
+                  }`}
+                  type="submit"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Logging in...</span>
+                    </div>
+                  ) : (
+                    "Login"
+                  )}
+                </button>
 
-            <div className="space-y-4 mt-8">
-              {/* submit button */}
-              <button
-                onClick={handleLogin}
-                className={`w-full py-2 text-white rounded-lg transition-all duration-200 ${
-                  isLoading
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-brand hover:bg-yellow-600 hover:cursor-pointer"
-                }`}
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Logging in...</span>
-                  </div>
-                ) : (
-                  "Login"
-                )}
-              </button>
-
-              <Link
-                to="/login"
-                className="block w-full border text-center text-brand hover:text-yellow-600 hover:border-yellow-600 py-2 border-brand rounded-lg"
-              >
-                Login as user
-              </Link>
-            </div>
+                <Link
+                  to="/login"
+                  className="block w-full border text-center text-brand hover:text-yellow-600 hover:border-yellow-600 py-2 border-brand rounded-lg"
+                >
+                  Login as user
+                </Link>
+              </div>
+            </form>
           </div>
         </div>
       </div>

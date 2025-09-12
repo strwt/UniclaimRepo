@@ -10,6 +10,7 @@ import Logo from "../assets/uniclaim_logo.png";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useAdminView } from "@/context/AdminViewContext";
 import ProfilePicture from "@/components/ProfilePicture";
 
 interface AdminHeaderProps {
@@ -28,6 +29,7 @@ export default function AdminHeader({
   const toggleNotif = () => setShowNotif((prev) => !prev);
 
   const { logout, userData } = useAuth();
+  const { switchToUserView } = useAdminView();
   const navigate = useNavigate();
 
   const handleProfileClick = () => {
@@ -36,6 +38,7 @@ export default function AdminHeader({
   };
 
   const handleUserView = () => {
+    switchToUserView();
     navigate("/");
   };
 
