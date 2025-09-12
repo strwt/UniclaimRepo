@@ -732,6 +732,37 @@ export const messageService = {
             // Delete the message
             await deleteDoc(messageRef);
 
+            // Update the conversation's lastMessage with the most recent remaining message
+            try {
+                const conversationRef = doc(db, 'conversations', conversationId);
+                const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+                const messagesQuery = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
+                const messagesSnapshot = await getDocs(messagesQuery);
+
+                if (!messagesSnapshot.empty) {
+                    const lastMessageDoc = messagesSnapshot.docs[0];
+                    const lastMessageData = lastMessageDoc.data();
+
+                    await updateDoc(conversationRef, {
+                        lastMessage: {
+                            text: lastMessageData.text,
+                            senderId: lastMessageData.senderId,
+                            timestamp: lastMessageData.timestamp
+                        }
+                    });
+                    console.log('🔄 Updated conversation lastMessage after deletion');
+                } else {
+                    // No messages left, clear the lastMessage
+                    await updateDoc(conversationRef, {
+                        lastMessage: null
+                    });
+                    console.log('🗑️ Cleared conversation lastMessage - no messages remaining');
+                }
+            } catch (updateError: any) {
+                console.warn('Failed to update conversation lastMessage after deletion:', updateError.message);
+                // Continue even if lastMessage update fails
+            }
+
             console.log(`✅ Message deleted successfully: ${messageId}`);
         } catch (error: any) {
             console.error('❌ Firebase deleteMessage failed:', error);
