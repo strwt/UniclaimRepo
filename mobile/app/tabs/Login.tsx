@@ -183,7 +183,7 @@ export default function Login() {
               emailError
                 ? "border-red-500"
                 : emailFocused
-                  ? "border-yellow-500"
+                  ? "border-navyblue"
                   : "border-gray-300"
             }`}
           />
@@ -204,7 +204,7 @@ export default function Login() {
               passwordError
                 ? "border-red-500"
                 : passwordFocused
-                  ? "border-yellow-500"
+                  ? "border-navyblue"
                   : "border-gray-300"
             }`}
           >

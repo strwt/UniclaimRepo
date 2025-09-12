@@ -64,7 +64,7 @@ export default function Register() {
     if (Object.keys(newErrors).length === 0) {
       try {
         setIsLoading(true);
-        
+
         // Register user with Firebase
         const result = await authService.register(
           email,
@@ -81,8 +81,8 @@ export default function Register() {
           [
             {
               text: "OK",
-              onPress: () => navigation.navigate("Login")
-            }
+              onPress: () => navigation.navigate("Login"),
+            },
           ]
         );
       } catch (error: any) {
@@ -97,7 +97,7 @@ export default function Register() {
   const inputClass = (field: string) =>
     `bg-gray-100 rounded-lg px-5 h-[3.5rem] text-black border ${
       focusedInput === field
-        ? "border-brand"
+        ? "border-navyblue"
         : errors[field]
           ? "border-red-500"
           : "border-gray-300"
@@ -106,7 +106,7 @@ export default function Register() {
   const passwordInputClass = (field: string) =>
     `flex-row items-center bg-gray-100 rounded-lg px-4 h-[3.5rem] border ${
       focusedInput === field
-        ? "border-brand"
+        ? "border-navyblue"
         : errors[field]
           ? "border-red-500"
           : "border-gray-300"

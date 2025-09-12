@@ -30,8 +30,6 @@ export default function Ticket() {
   const [searchText, setSearchText] = useState("");
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
 
-
-
   // Edit modal state
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -41,11 +39,11 @@ export default function Ticket() {
   useFocusEffect(
     useCallback(() => {
       // Tab is focused - listeners are active
-      console.log('Ticket tab focused - listeners active');
-      
+      console.log("Ticket tab focused - listeners active");
+
       return () => {
         // Tab is unfocused - listeners are paused
-        console.log('Ticket tab unfocused - listeners paused');
+        console.log("Ticket tab unfocused - listeners paused");
       };
     }, [])
   );
@@ -63,8 +61,6 @@ export default function Ticket() {
       return matchesTab && matchesSearch;
     });
   }, [posts, activeTab, searchText]);
-
-
 
   const handleClearSearch = useCallback(() => {
     setSearchText("");
@@ -191,7 +187,7 @@ export default function Ticket() {
             </View>
 
             {/* Search Button */}
-            <TouchableOpacity className="bg-teal-500 rounded-md h-[3.3rem] px-4 justify-center items-center">
+            <TouchableOpacity className="bg-yellow-500 rounded-md h-[3.3rem] px-4 justify-center items-center">
               <Text className="text-white font-manrope-medium text-base">
                 Search
               </Text>
