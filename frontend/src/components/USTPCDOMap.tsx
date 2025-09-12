@@ -5,7 +5,7 @@ import View from "ol/View";
 import { fromLonLat, toLonLat, transformExtent } from "ol/proj";
 import TileLayer from "ol/layer/Tile";
 import OSM from "ol/source/OSM";
-import { Icon, Style, Fill, Stroke, Text } from "ol/style";
+import { Icon, Style, Fill, Stroke } from "ol/style";
 import { Feature } from "ol";
 import Point from "ol/geom/Point";
 import Polygon from "ol/geom/Polygon";
@@ -14,7 +14,7 @@ import VectorSource from "ol/source/Vector";
 import { Modify } from "ol/interaction";
 import { defaults as defaultControls } from "ol/control";
 import { detectLocationFromCoordinates } from "@/utils/locationDetection";
-import { USTP_CAMPUS_LOCATIONS } from "@/utils/campusCoordinates";
+import { USTP_CAMPUS_LOCATIONS, CAMPUS_BOUNDARY } from "@/utils/campusCoordinates";
 
 interface Props {
   locationError?: boolean;
@@ -34,6 +34,9 @@ const USTPLocationPicker: React.FC<Props> = ({
   const [showMap, setShowMap] = useState(false);
   const [localError, setLocalError] = useState(false);
   const [detectedLocation, setDetectedLocation] = useState<string | null>(null);
+  const [showBuildingHighlights] = useState(false);
+  const [showCornerNumbers] = useState(false);
+  const [showCampusBoundary] = useState(false);
 
   const { showToast } = useToast();
 
@@ -45,6 +48,9 @@ const USTPLocationPicker: React.FC<Props> = ({
   const markerSourceRef = useRef<VectorSource>(new VectorSource());
   const markerFeatureRef = useRef<Feature<Point> | null>(null);
   const buildingSourceRef = useRef<VectorSource>(new VectorSource());
+  const cornerSourceRef = useRef<VectorSource>(new VectorSource());
+  const boundarySourceRef = useRef<VectorSource>(new VectorSource());
+  const boundaryCornerSourceRef = useRef<VectorSource>(new VectorSource());
 
   const fromLonLatExtent = (extent: [number, number, number, number]) =>
     transformExtent(extent, "EPSG:4326", "EPSG:3857");
@@ -58,38 +64,125 @@ const USTPLocationPicker: React.FC<Props> = ({
 
     const markerSource = markerSourceRef.current;
     const buildingSource = buildingSourceRef.current;
+    const boundarySource = boundarySourceRef.current;
+    const boundaryCornerSource = boundaryCornerSourceRef.current;
 
-    // Create building boundary layer (hidden)
+    // Create building boundary layer (visible with highlighting)
     const buildingLayer = new VectorLayer({
       source: buildingSource,
       style: () => {
-        // No visual styling - buildings are invisible
+        if (!showBuildingHighlights) {
+          return new Style({
+            fill: new Fill({
+              color: 'transparent'
+            }),
+            stroke: new Stroke({
+              color: 'transparent',
+              width: 0
+            })
+          });
+        }
         return new Style({
           fill: new Fill({
-            color: 'transparent' // Invisible fill
+            color: 'rgba(59, 130, 246, 0.1)' // Light blue fill
           }),
           stroke: new Stroke({
-            color: 'transparent', // Invisible border
-            width: 0
+            color: '#3B82F6', // Blue border
+            width: 2
           })
         });
       }
     });
 
-    // Create corner indicator layer (hidden)
-    const cornerSource = new VectorSource();
+    // Create corner indicator layer (visible with numbers)
+    const cornerSource = cornerSourceRef.current;
     const cornerLayer = new VectorLayer({
       source: cornerSource,
-      style: () => {
-        // No visual styling - corners are invisible
+      style: (feature) => {
+        if (!showCornerNumbers) {
+          return new Style({
+            image: new Icon({
+              src: 'data:image/svg+xml;base64,' + btoa(`
+                <svg width="1" height="1" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="0.5" cy="0.5" r="0.5" fill="transparent"/>
+                </svg>
+              `),
+              scale: 0.1,
+              anchor: [0.5, 0.5]
+            })
+          });
+        }
+        const cornerLabel = feature.get('cornerLabel');
         return new Style({
           image: new Icon({
             src: 'data:image/svg+xml;base64,' + btoa(`
-              <svg width="1" height="1" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="0.5" cy="0.5" r="0.5" fill="transparent"/>
+              <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" fill="#EF4444" stroke="#DC2626" stroke-width="2"/>
+                <text x="12" y="16" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" font-weight="bold">${cornerLabel}</text>
               </svg>
             `),
-            scale: 0.1,
+            scale: 0.8,
+            anchor: [0.5, 0.5]
+          })
+        });
+      }
+    });
+
+    // Create campus boundary layer
+    const boundaryLayer = new VectorLayer({
+      source: boundarySource,
+      style: () => {
+        if (!showCampusBoundary) {
+          return new Style({
+            fill: new Fill({
+              color: 'transparent'
+            }),
+            stroke: new Stroke({
+              color: 'transparent',
+              width: 0
+            })
+          });
+        }
+        return new Style({
+          fill: new Fill({
+            color: 'rgba(255, 0, 0, 0.05)' // Very light red fill
+          }),
+          stroke: new Stroke({
+            color: '#FF0000', // Red border
+            width: 3,
+            lineDash: [10, 5] // Dashed line
+          })
+        });
+      }
+    });
+
+    // Create boundary corner indicators layer
+    const boundaryCornerLayer = new VectorLayer({
+      source: boundaryCornerSource,
+      style: (feature) => {
+        if (!showCampusBoundary) {
+          return new Style({
+            image: new Icon({
+              src: 'data:image/svg+xml;base64,' + btoa(`
+                <svg width="1" height="1" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="0.5" cy="0.5" r="0.5" fill="transparent"/>
+                </svg>
+              `),
+              scale: 0.1,
+              anchor: [0.5, 0.5]
+            })
+          });
+        }
+        const cornerLabel = feature.get('cornerLabel');
+        return new Style({
+          image: new Icon({
+            src: 'data:image/svg+xml;base64,' + btoa(`
+              <svg width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="16" cy="16" r="14" fill="#FF0000" stroke="#FFFFFF" stroke-width="3"/>
+                <text x="16" y="21" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" font-weight="bold">${cornerLabel}</text>
+              </svg>
+            `),
+            scale: 1.0,
             anchor: [0.5, 0.5]
           })
         });
@@ -103,6 +196,8 @@ const USTPLocationPicker: React.FC<Props> = ({
       target: mapRef.current,
       layers: [
         new TileLayer({ source: new OSM() }), 
+        boundaryLayer, // Campus boundary at the bottom
+        boundaryCornerLayer, // Boundary corner indicators
         buildingLayer, 
         cornerLayer,
         markerLayer
@@ -110,7 +205,7 @@ const USTPLocationPicker: React.FC<Props> = ({
       view: new View({
         center: initialCenter,
         zoom: 19,
-        extent: fromLonLatExtent([124.6545, 8.484, 124.659, 8.488]), // ✅ Right edge adjusted
+        extent: fromLonLatExtent([124.6535, 8.4835, 124.6605, 8.488]), // ✅ Extended to accommodate new boundary
       }),
 
       controls: defaultControls({ attribution: false }),
@@ -138,6 +233,26 @@ const USTPLocationPicker: React.FC<Props> = ({
       });
     });
 
+    // Add campus boundary polygon
+    const boundaryCoordinates = CAMPUS_BOUNDARY.map(coord => fromLonLat(coord));
+    const boundaryPolygon = new Polygon([boundaryCoordinates]);
+    const boundaryFeature = new Feature({
+      geometry: boundaryPolygon,
+      name: 'Campus Boundary'
+    });
+    boundarySource.addFeature(boundaryFeature);
+
+    // Add boundary corner indicators
+    const boundaryCornerLabels = ['TL', 'TR', 'BR', 'BL']; // Top-Left, Top-Right, Bottom-Right, Bottom-Left
+    CAMPUS_BOUNDARY.forEach((coord, index) => {
+      const point = new Point(fromLonLat(coord));
+      const cornerFeature = new Feature({
+        geometry: point,
+        cornerLabel: boundaryCornerLabels[index]
+      });
+      boundaryCornerSource.addFeature(cornerFeature);
+    });
+
     if (coordinates && !markerFeatureRef.current) {
       const { lat, lng } = coordinates;
       const point = new Point(fromLonLat([lng, lat]));
@@ -146,7 +261,7 @@ const USTPLocationPicker: React.FC<Props> = ({
         new Style({
           image: new Icon({
             src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-            scale: 0.05,
+            scale: 0.08,
             anchor: [0.5, 1],
             anchorXUnits: "fraction",
             anchorYUnits: "fraction",
@@ -174,7 +289,7 @@ const USTPLocationPicker: React.FC<Props> = ({
           new Style({
             image: new Icon({
               src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-              scale: 0.05,
+              scale: 0.08,
               anchor: [0.5, 1],
               anchorXUnits: "fraction",
               anchorYUnits: "fraction",
@@ -240,6 +355,21 @@ const USTPLocationPicker: React.FC<Props> = ({
       setMapInstance(null);
     }
   }, [showMap]);
+
+  // Update map layers when toggle states change
+  useEffect(() => {
+    if (mapInstance) {
+      // Force re-render of building, corner, boundary, and boundary corner layers
+      mapInstance.getLayers().forEach(layer => {
+        if (layer instanceof VectorLayer) {
+          const source = layer.getSource();
+          if (source === buildingSourceRef.current || source === cornerSourceRef.current || source === boundarySourceRef.current || source === boundaryCornerSourceRef.current) {
+            layer.changed();
+          }
+        }
+      });
+    }
+  }, [showBuildingHighlights, showCornerNumbers, showCampusBoundary, mapInstance]);
 
   const handleLocationSubmit = () => {
     if (!coordinates) {

@@ -108,10 +108,178 @@ export default function USTPMapScreen() {
           ]
         }).addTo(map);
 
+        // Add building polygons with highlights
+        const buildings = [
+          {
+            name: "Gymnasium",
+            coordinates: [
+              [8.48597, 124.65638], // TOP-LEFT corner
+              [8.48613, 124.65682],  // TOP-RIGHT corner
+              [8.48566, 124.65701],  // BOTTOM-RIGHT corner
+              [8.48549, 124.65658]   // BOTTOM-LEFT corner
+            ]
+          },
+          {
+            name: "Cafeteria",
+            coordinates: [
+              [8.48535, 124.65665], // TOP-LEFT corner
+              [8.48547, 124.65696], // TOP-RIGHT corner
+              [8.48520, 124.65702], // BOTTOM-RIGHT corner
+              [8.48508, 124.65692], // BOTTOM-RIGHT corner
+              [8.48502, 124.65677]  // BOTTOM-LEFT corner
+            ]
+          },
+          {
+            name: "Science Complex Building",
+            coordinates: [
+              [8.48561, 124.65572], // TOP-LEFT corner
+              [8.48579, 124.65632], // TOP-RIGHT corner
+              [8.48563, 124.65638], // BOTTOM-RIGHT corner
+              [8.48543, 124.65581]  // BOTTOM-LEFT corner
+            ]
+          },
+          {
+            name: "LRC Building",
+            coordinates: [
+              [8.48670, 124.65557], // TOP-LEFT corner
+              [8.48683, 124.65595], // TOP-RIGHT corner
+              [8.48659, 124.65604], // BOTTOM-RIGHT corner
+              [8.48654, 124.65590],
+              [8.48650, 124.65592],
+              [8.48646, 124.65580],
+              [8.48650, 124.65578],
+              [8.48646, 124.65566]
+            ]
+          },
+          {
+            name: "Civil Technology Building (Big)",
+            coordinates: [
+              [8.48659, 124.65482], // TOP-LEFT corner
+              [8.48665, 124.65499], // TOP-RIGHT corner
+              [8.48637, 124.65511], // BOTTOM-RIGHT corner
+              [8.48630, 124.65493]  // BOTTOM-LEFT corner
+            ]
+          },
+          {
+            name: "Civil Technology Building (small)",
+            coordinates: [
+              [8.48667, 124.65489], // TOP-LEFT corner
+              [8.48669, 124.65496], // TOP-RIGHT corner
+              [8.48666, 124.65497], // BOTTOM-RIGHT corner
+              [8.48663, 124.65491]  // BOTTOM-LEFT corner
+            ]
+          }
+        ];
+
+        // Add campus boundary
+        const campusBoundary = [
+          [8.4850, 124.6540], // TOP-LEFT corner (extended)
+          [8.4845, 124.6600], // TOP-RIGHT corner
+          [8.4875, 124.6600], // BOTTOM-RIGHT corner
+          [8.4875, 124.6550]  // BOTTOM-LEFT corner
+        ];
+        
+        const boundaryPolygon = L.polygon(campusBoundary, {
+          color: '#FF0000',
+          weight: 3,
+          fillColor: '#FF0000',
+          fillOpacity: 0.05,
+          dashArray: '10, 5' // Dashed line
+        }).addTo(map);
+
+        // Add boundary corner indicators
+        const boundaryCornerLabels = ['TL', 'TR', 'BR', 'BL']; // Top-Left, Top-Right, Bottom-Right, Bottom-Left
+        campusBoundary.forEach((coord, index) => {
+          const cornerIcon = L.divIcon({
+            className: 'boundary-corner-marker',
+            html: \`<div style="
+              background: #FF0000;
+              border: 3px solid #FFFFFF;
+              border-radius: 50%;
+              width: 32px;
+              height: 32px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-weight: bold;
+              font-size: 12px;
+              font-family: Arial, sans-serif;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            ">\${boundaryCornerLabels[index]}</div>\`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+          });
+          
+          L.marker(coord, { icon: cornerIcon }).addTo(map);
+        });
+
+        // Add building polygons
+        buildings.forEach(building => {
+          const polygon = L.polygon(building.coordinates, {
+            color: '#3B82F6',
+            weight: 2,
+            fillColor: '#3B82F6',
+            fillOpacity: 0.1
+          }).addTo(map);
+
+          // Add corner numbers
+          const cornerLabels = ['1', '2', '3', '4'];
+          building.coordinates.forEach((coord, index) => {
+            if (index < 4) { // Only show first 4 corners
+              const cornerIcon = L.divIcon({
+                className: 'corner-marker',
+                html: \`<div style="
+                  background: #EF4444;
+                  border: 2px solid #DC2626;
+                  border-radius: 50%;
+                  width: 24px;
+                  height: 24px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: white;
+                  font-weight: bold;
+                  font-size: 12px;
+                  font-family: Arial, sans-serif;
+                ">\${cornerLabels[index]}</div>\`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+              });
+              
+              L.marker(coord, { icon: cornerIcon }).addTo(map);
+            }
+          });
+        });
+
         let marker;
         map.on('click', function (e) {
           if (marker) map.removeLayer(marker);
-          marker = L.marker(e.latlng).addTo(map);
+          
+          // Create a custom pin icon with better visibility
+          const pinIcon = L.divIcon({
+            className: 'custom-pin',
+            html: \`<div style="
+              background: #EF4444;
+              border: 3px solid #DC2626;
+              border-radius: 50% 50% 50% 0;
+              width: 30px;
+              height: 30px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-weight: bold;
+              font-size: 16px;
+              font-family: Arial, sans-serif;
+              transform: rotate(-45deg);
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            ">📍</div>\`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 30]
+          });
+          
+          marker = L.marker(e.latlng, { icon: pinIcon }).addTo(map);
           selectedLatLng = e.latlng;
           document.getElementById('confirmBtn').style.display = 'flex';
         });
