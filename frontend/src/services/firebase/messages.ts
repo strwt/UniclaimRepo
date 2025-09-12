@@ -768,5 +768,121 @@ export const messageService = {
             console.error('❌ Firebase deleteMessage failed:', error);
             throw new Error(error.message || 'Failed to delete message');
         }
+    },
+
+    // Get all conversations for admin (no user filter)
+    async getAllConversations(): Promise<any[]> {
+        try {
+            const q = query(
+                collection(db, 'conversations'),
+                orderBy('createdAt', 'desc')
+            );
+
+            const snapshot = await getDocs(q);
+            const conversations = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            // Filter out conversations with less than 2 participants
+            const validConversations = conversations.filter((conv: any) => {
+                const participantIds = Object.keys(conv.participants || {});
+                return participantIds.length > 1; // Must have at least 2 participants
+            });
+
+            return validConversations;
+        } catch (error: any) {
+            console.error('Error fetching all conversations:', error);
+            throw new Error(error.message || 'Failed to fetch all conversations');
+        }
+    },
+
+    // Get admin message statistics
+    async getAdminMessageStats(): Promise<{
+        totalConversations: number;
+        totalUnreadMessages: number;
+        pendingHandoverRequests: number;
+        pendingClaimRequests: number;
+    }> {
+        try {
+            // Get all conversations
+            const conversations = await this.getAllConversations();
+
+            let totalUnreadMessages = 0;
+            let pendingHandoverRequests = 0;
+            let pendingClaimRequests = 0;
+
+            // Process each conversation to calculate stats
+            for (const conversation of conversations) {
+                // Calculate total unread messages across all users
+                if (conversation.unreadCounts) {
+                    const conversationUnread = Object.values(conversation.unreadCounts).reduce((sum: number, count: any) => {
+                        return sum + (typeof count === 'number' ? count : 0);
+                    }, 0);
+                    totalUnreadMessages += conversationUnread;
+                }
+
+                // Get messages for this conversation to check for pending requests
+                try {
+                    const messagesQuery = query(
+                        collection(db, 'conversations', conversation.id, 'messages'),
+                        orderBy('timestamp', 'desc'),
+                        limit(50) // Only check recent messages for performance
+                    );
+                    const messagesSnapshot = await getDocs(messagesQuery);
+
+                    for (const messageDoc of messagesSnapshot.docs) {
+                        const messageData = messageDoc.data();
+
+                        // Check for pending handover requests
+                        if (messageData.messageType === 'handover_request' &&
+                            messageData.handoverData?.status === 'pending') {
+                            pendingHandoverRequests++;
+                        }
+
+                        // Check for pending claim requests
+                        if (messageData.messageType === 'claim_request' &&
+                            messageData.claimData?.status === 'pending') {
+                            pendingClaimRequests++;
+                        }
+                    }
+                } catch (messageError) {
+                    console.warn(`Failed to fetch messages for conversation ${conversation.id}:`, messageError);
+                    // Continue processing other conversations
+                }
+            }
+
+            return {
+                totalConversations: conversations.length,
+                totalUnreadMessages,
+                pendingHandoverRequests,
+                pendingClaimRequests
+            };
+        } catch (error: any) {
+            console.error('Error fetching admin message stats:', error);
+            throw new Error(error.message || 'Failed to fetch admin message statistics');
+        }
+    },
+
+    // Delete entire conversation (admin only)
+    async deleteConversation(conversationId: string): Promise<void> {
+        try {
+            // First, delete all messages in the conversation
+            const messagesQuery = query(collection(db, 'conversations', conversationId, 'messages'));
+            const messagesSnapshot = await getDocs(messagesQuery);
+
+            // Delete all messages
+            for (const messageDoc of messagesSnapshot.docs) {
+                await deleteDoc(doc(db, 'conversations', conversationId, 'messages', messageDoc.id));
+            }
+
+            // Then delete the conversation document
+            await deleteDoc(doc(db, 'conversations', conversationId));
+
+            console.log(`✅ Conversation ${conversationId} and all its messages deleted successfully`);
+        } catch (error: any) {
+            console.error('❌ Failed to delete conversation:', error);
+            throw new Error(error.message || 'Failed to delete conversation');
+        }
     }
 };

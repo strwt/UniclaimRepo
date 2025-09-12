@@ -96,11 +96,24 @@ export default function AdminSideNav({
             />
 
             <NavText
+              icon={<HiOutlineEnvelope className="size-6 stroke-[1.5px]" />}
+              label="Messages"
+              to="/admin/messages"
+              isOpen={isOpen}
+              className="mt-2 hover:bg-gray-100"
+              iconClassName="text-black"
+              textClassName="text-black"
+              tooltipIconClassName="text-navyblue text-xl"
+              tooltipTextClassName="text-navyblue text-base"
+              hoverContainerBgClass="bg-gray-100"
+            />
+
+            <NavText
               icon={<HiOutlineCog className="size-6 stroke-[1.5px]" />}
               label="System Cleanup"
               to="/admin/cleanup"
               isOpen={isOpen}
-              className="mt-2 hover:bg-gray-100"
+              className="hover:bg-gray-100"
               iconClassName="text-black"
               textClassName="text-black"
               tooltipIconClassName="text-navyblue text-xl"
@@ -160,6 +173,17 @@ export default function AdminSideNav({
                   icon={<HiOutlineUsers className="size-6 stroke-[1.5px]" />}
                   label="Manage Users"
                   to="/admin/users"
+                  isOpen={isOpen}
+                  onClick={onMobNavClose}
+                  className="hover:bg-gray-50 rounded pl-4 justify-start"
+                  iconClassName="text-black"
+                  textClassName="font-manrope"
+                />
+
+                <NavText
+                  icon={<HiOutlineEnvelope className="size-6 stroke-[1.5px]" />}
+                  label="Messages"
+                  to="/admin/messages"
                   isOpen={isOpen}
                   onClick={onMobNavClose}
                   className="hover:bg-gray-50 rounded pl-4 justify-start"

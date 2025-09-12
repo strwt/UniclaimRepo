@@ -5,6 +5,7 @@ import AdminLogin from "../routes/admin-routes/AdminLogin";
 import AdminHomePage from "../routes/admin-routes/AdminHomePage";
 import AdminProfile from "../routes/admin-routes/AdminProfile";
 import AdminUserManagement from "../routes/admin-routes/AdminUserManagement";
+import AdminMessagesPage from "../routes/admin-routes/AdminMessagesPage";
 import ConversationCleanupAdmin from "../components/ConversationCleanupAdmin";
 
 import Login from "../routes/user-routes/Login";
@@ -202,6 +203,14 @@ function AppRoutesWithAuth() {
             element={
               <PageWrapper title="User Management">
                 <AdminUserManagement />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="messages"
+            element={
+              <PageWrapper title="Admin Messages">
+                <AdminMessagesPage />
               </PageWrapper>
             }
           />
