@@ -222,10 +222,10 @@ export default function ReportPage() {
         images: selectedFiles,
         dateTime: selectedDateTime,
         creatorId: shouldTransferToCampusSecurity
-          ? campusSecurityUserId
+          ? campusSecurityUserId!
           : userData.uid, // Transfer ownership if needed
         user: shouldTransferToCampusSecurity
-          ? campusSecurityData
+          ? campusSecurityData!
           : {
               firstName: userData?.firstName || "",
               lastName: userData?.lastName || "",
@@ -279,7 +279,7 @@ export default function ReportPage() {
       const { postService } = await import("../../utils/firebase");
       const postId = await postService.createPost(
         createdPost,
-        shouldTransferToCampusSecurity ? campusSecurityUserId : userData.uid
+        shouldTransferToCampusSecurity ? campusSecurityUserId! : userData.uid
       );
 
       console.log("Post created successfully with ID:", postId);

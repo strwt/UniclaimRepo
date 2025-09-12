@@ -11,7 +11,7 @@ interface EmailVerificationRouteProps {
 }
 
 export default function EmailVerificationRoute({ children }: EmailVerificationRouteProps) {
-  const { isAuthenticated, loading, needsEmailVerification, userData, user } = useAuth();
+  const { isAuthenticated, loading, needsEmailVerification, user } = useAuth();
   const { isViewingAsUser } = useAdminView();
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
