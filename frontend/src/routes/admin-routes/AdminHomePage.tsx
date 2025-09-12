@@ -15,7 +15,6 @@ import { useAdminPosts, useResolvedPosts } from "@/hooks/usePosts";
 import { useToast } from "@/context/ToastContext";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { useAuth } from "@/context/AuthContext";
-import { useAdminMessageStats } from "@/hooks/useAdminMessageStats";
 
 function fuzzyMatch(text: string, query: string): boolean {
   const cleanedText = text.toLowerCase();
@@ -32,10 +31,6 @@ export default function AdminHomePage() {
   const { showToast } = useToast();
   const { userData } = useAuth();
   const navigate = useNavigate();
-  const { stats: messageStats, loading: messageStatsLoading } = useAdminMessageStats();
-
-
-
 
   const [viewType, setViewType] = useState<"all" | "lost" | "found" | "unclaimed" | "completed" | "turnover">("all");
   const [lastDescriptionKeyword, setLastDescriptionKeyword] = useState("");
@@ -545,111 +540,6 @@ export default function AdminHomePage() {
                 p.turnoverDetails.turnoverAction === "turnover to OSA").length || 0}
             </div>
             <div className="text-sm text-gray-600">OSA Turnover Items</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Messages Overview Widget */}
-      <div className="px-6 mb-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Messages Overview</h3>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              <span>Real-time updates</span>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Total Conversations */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-600">Total Conversations</p>
-                  <p className="text-2xl font-bold text-blue-700">
-                    {messageStatsLoading ? (
-                      <div className="animate-pulse bg-blue-200 h-8 w-12 rounded"></div>
-                    ) : (
-                      messageStats.totalConversations
-                    )}
-                  </p>
-                </div>
-                <div className="bg-blue-100 p-2 rounded-full">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Unread Messages */}
-            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-red-600">Unread Messages</p>
-                  <p className="text-2xl font-bold text-red-700">
-                    {messageStatsLoading ? (
-                      <div className="animate-pulse bg-red-200 h-8 w-12 rounded"></div>
-                    ) : (
-                      messageStats.totalUnreadMessages
-                    )}
-                  </p>
-                </div>
-                <div className="bg-red-100 p-2 rounded-full">
-                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 00-15 0v5h5l-5 5-5-5h5v-5a7.5 7.5 0 0115 0v5z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Pending Requests */}
-            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-yellow-600">Pending Requests</p>
-                  <p className="text-2xl font-bold text-yellow-700">
-                    {messageStatsLoading ? (
-                      <div className="animate-pulse bg-yellow-200 h-8 w-12 rounded"></div>
-                    ) : (
-                      messageStats.pendingHandoverRequests + messageStats.pendingClaimRequests
-                    )}
-                  </p>
-                  {!messageStatsLoading && (messageStats.pendingHandoverRequests > 0 || messageStats.pendingClaimRequests > 0) && (
-                    <p className="text-xs text-yellow-600 mt-1">
-                      {messageStats.pendingHandoverRequests} handover, {messageStats.pendingClaimRequests} claim
-                    </p>
-                  )}
-                </div>
-                <div className="bg-yellow-100 p-2 rounded-full">
-                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-600">Quick Actions</p>
-                  <button 
-                    onClick={() => navigate('/admin/messages')}
-                    className="mt-2 px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                  >
-                    View Messages
-                  </button>
-                </div>
-                <div className="bg-green-100 p-2 rounded-full">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
