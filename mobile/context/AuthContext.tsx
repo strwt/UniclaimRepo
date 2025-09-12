@@ -99,8 +99,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const fetchedUserData = await authService.getUserData(firebaseUser.uid);
           setUserData(fetchedUserData);
 
-          // Check ban status efficiently
-          if (fetchedUserData && fetchedUserData.status === 'banned') {
+          // Check deactivation status efficiently (with backward compatibility)
+          if (fetchedUserData && (fetchedUserData.status === 'deactivated' || fetchedUserData.status === 'banned')) {
             setIsBanned(true);
             setBanInfo(fetchedUserData.banInfo || {});
           } else {
@@ -131,8 +131,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 if (docSnapshot.exists()) {
                   const userData = docSnapshot.data() as UserData;
 
-                  // Check if user just got banned
-                  if (userData.status === 'banned') {
+                  // Check if user just got deactivated (with backward compatibility)
+                  if ((userData.status === 'deactivated' || userData.status === 'banned') || userData.status === 'banned') {
                     console.log('User banned detected in real-time (mobile)');
 
                     // IMMEDIATELY stop listening to prevent permission errors
@@ -274,7 +274,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Get user data to check ban status
       const userData = await authService.getUserData(user.uid);
       
-      if (userData && userData.status === 'banned') {
+      if (userData && (userData.status === 'deactivated' || userData.status === 'banned')) {
         // User is banned, logout immediately
         await authService.logout();
         setIsBanned(true);
@@ -364,8 +364,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const fetchedUserData = await authService.getUserData(user.uid);
         setUserData(fetchedUserData);
         
-        // Update ban status when refreshing user data
-        if (fetchedUserData && fetchedUserData.status === 'banned') {
+        // Update deactivation status when refreshing user data (with backward compatibility)
+        if (fetchedUserData && (fetchedUserData.status === 'deactivated' || fetchedUserData.status === 'banned')) {
           setIsBanned(true);
           setBanInfo(fetchedUserData.banInfo || {});
         } else {
@@ -457,7 +457,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       try {
         const userData = await authService.getUserData(auth.currentUser.uid);
-        if (userData && userData.status === 'banned') {
+        if (userData && (userData.status === 'deactivated' || userData.status === 'banned')) {
           console.log('Ban detected via periodic check (mobile)');
           clearInterval(intervalId);
           handleImmediateBanLogout(userData);
@@ -496,7 +496,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       try {
         const userData = await authService.getUserData(auth.currentUser.uid);
-        if (userData && userData.status === 'banned') {
+        if (userData && (userData.status === 'deactivated' || userData.status === 'banned')) {
           console.log('Ban detected via periodic check (mobile)');
           clearInterval(intervalId);
           handleImmediateBanLogout(userData);

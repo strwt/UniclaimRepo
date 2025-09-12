@@ -24,7 +24,7 @@ service cloud.firestore {
       // Allow users to write their own document (but not when banned)
       // Handle cases where status field might not exist yet (new users)
       allow write: if request.auth != null && request.auth.uid == userId &&
-        (resource.data.status == null || resource.data.status != 'banned');
+        (resource.data.status == null || (resource.data.status != 'deactivated' && resource.data.status != 'banned'));
 
       // Allow admins to update user status (for banning/unbanning)
       allow update: if request.auth != null && isAdmin();
@@ -166,7 +166,7 @@ service cloud.firestore {
     function isUserBanned() {
       return request.auth != null &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'banned';
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'deactivated' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'banned');
     }
   }
 }
