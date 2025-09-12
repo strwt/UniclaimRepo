@@ -528,8 +528,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65619, 8.48664], // BOTTOM-RIGHT corner
             [124.65609, 8.48660]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
+
     },
     {
         name: "Study Shed 6",
@@ -540,8 +539,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65624, 8.48505],  // BOTTOM-LEFT corner
             [124.65609, 8.48517],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
+
     },
     {
         name: "ITB Building",
@@ -553,8 +551,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65804, 8.48622],
             [124.65819, 8.48623],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
+
     },
     {
         name: "SPED Center",
@@ -564,8 +561,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65835, 8.48588], // BOTTOM-RIGHT corner
             [124.65824, 8.48588]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
+
     },
 
 
