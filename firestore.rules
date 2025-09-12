@@ -50,6 +50,12 @@ service cloud.firestore {
       allow update: if request.auth != null
         && request.auth.uid != null
         && (resource.data.user.email.lower() == request.auth.token.email.lower() || isAdmin());
+      
+      // Allow any authenticated user to flag posts (for flagging system)
+      // This allows users to add/update flagging fields on any post
+      allow update: if request.auth != null
+        && request.auth.uid != null
+        && request.resource.data.keys().hasAny(['isFlagged', 'flagReason', 'flaggedBy', 'flaggedAt', 'isHidden']);
 
       // Users can delete their own posts, or admins can delete any post
       // FIXED: Case-insensitive email comparison for consistency
@@ -168,5 +174,6 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'deactivated' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'banned');
     }
+    
   }
 }

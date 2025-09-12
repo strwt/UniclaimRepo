@@ -65,6 +65,16 @@ debug-*.tsx
 debug-*.ts
 debug-*.jsx
 
+# Additional test and documentation patterns
+*_TEST_*.md
+*_DEBUG_*.md
+*_GUIDE_*.md
+*_REFERENCE_*.md
+*_PLAN_*.md
+*_DOCS_*.md
+*_SETUP_*.md
+*_INSTRUCTIONS_*.md
+
 # Temporary files
 *.tmp
 *.temp
@@ -87,6 +97,25 @@ README_*.md
 *_MONITORING.md
 *_SERVICE.md
 *_MANAGER.md
+
+# Flagging System Documentation and Test Files
+FLAGGING_SYSTEM_*.md
+*_TEST_PLAN.md
+*_TEST_GUIDE.md
+*_DOCUMENTATION.md
+*_QUICK_REFERENCE.md
+*_CHANGELOG.md
+*_DEBUG.md
+*_TEST.md
+
+# Other system documentation files
+EMAIL_VERIFICATION_*.md
+NOTIFICATION_*.md
+TURNOVER_*.md
+PERFORMANCE_*.md
+CLAIM_*.md
+SCROLL_*.md
+REFACTORING_*.md
 
 # Project-specific dev docs and test components
 mobile/README_*.md

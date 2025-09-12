@@ -12,6 +12,9 @@ interface AdminPostCardProps {
   onActivateTicket?: (post: Post) => void;
   onRevertResolution?: (post: Post) => void;
   onConfirmTurnover?: (post: Post, status: "confirmed" | "not_received") => void;
+  onUnflagPost?: (post: Post) => void;
+  onHidePost?: (post: Post) => void;
+  onUnhidePost?: (post: Post) => void;
   isDeleting?: boolean;
 }
 
@@ -55,6 +58,9 @@ function AdminPostCard({
   onActivateTicket,
   onRevertResolution,
   onConfirmTurnover,
+  onUnflagPost,
+  onHidePost,
+  onUnhidePost,
   isDeleting = false
 }: AdminPostCardProps) {
   const previewUrl = useMemo(() => {
@@ -99,7 +105,9 @@ function AdminPostCard({
   };
 
   return (
-    <div className="bg-white rounded shadow/2 cursor-pointer overflow-hidden hover:shadow-md/5 transition">
+    <div className={`bg-white rounded shadow/2 cursor-pointer overflow-hidden hover:shadow-md/5 transition ${
+      post.isFlagged ? 'ring-2 ring-red-500 border-red-500' : ''
+    }`}>
       {previewUrl ? (
         <img
           src={previewUrl}
@@ -129,6 +137,13 @@ function AdminPostCard({
             >
               {post.type}
             </span>
+
+            {/* Flag Indicator */}
+            {post.isFlagged && (
+              <span className="px-2 py-1 rounded-[3px] font-medium bg-red-100 text-red-700 text-xs">
+                🚩 FLAGGED
+              </span>
+            )}
           </div>
           
                      {/* Admin Controls */}
@@ -170,6 +185,46 @@ function AdminPostCard({
                  title="Edit Post - Modify title, description, or images"
                >
                  Edit
+               </button>
+             )}
+
+             {/* Flag Management Buttons */}
+             {post.isFlagged && onUnflagPost && (
+               <button
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   onUnflagPost(post);
+                 }}
+                 className="px-2 py-1 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600 transition"
+                 title="Unflag Post - Remove flag from this post"
+               >
+                 Unflag
+               </button>
+             )}
+
+             {post.isFlagged && !post.isHidden && onHidePost && (
+               <button
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   onHidePost(post);
+                 }}
+                 className="px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition"
+                 title="Hide Post - Hide from public view"
+               >
+                 Hide
+               </button>
+             )}
+
+             {post.isHidden && onUnhidePost && (
+               <button
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   onUnhidePost(post);
+                 }}
+                 className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition"
+                 title="Unhide Post - Make visible to public"
+               >
+                 Unhide
                </button>
              )}
              

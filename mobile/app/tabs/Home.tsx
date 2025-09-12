@@ -39,6 +39,9 @@ export default function Home() {
       // Filter out unclaimed posts
       if (post.movedToUnclaimed) return false;
       
+      // Filter out hidden posts (flagged posts that admin chose to hide)
+      if (post.isHidden === true) return false;
+      
       // Filter out items with turnoverStatus: "declared" ONLY for OSA turnover (awaiting OSA confirmation)
       // Campus Security items with "transferred" status should be visible
       if (post.turnoverDetails && 

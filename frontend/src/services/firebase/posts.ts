@@ -221,6 +221,9 @@ export const postService = {
                 // Exclude resolved posts from active sections
                 if (post.status === 'resolved') return false;
 
+                // Exclude hidden posts (flagged posts that admin chose to hide)
+                if (post.isHidden === true) return false;
+
                 // Exclude items with turnoverStatus: "declared" ONLY for OSA turnover (awaiting OSA confirmation)
                 // Campus Security items with "transferred" status should be visible
                 if (post.turnoverDetails &&
@@ -353,8 +356,8 @@ export const postService = {
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
 
-            // Filter out resolved posts from active sections
-            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+            // Filter out resolved posts and hidden posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved' && post.isHidden !== true);
 
             // Sort posts by createdAt in JavaScript instead
             const sortedPosts = filteredPosts.sort((a, b) => {
@@ -427,8 +430,8 @@ export const postService = {
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
 
-            // Filter out resolved posts from active sections
-            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+            // Filter out resolved posts and hidden posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved' && post.isHidden !== true);
 
             // Sort posts by createdAt in JavaScript instead
             const sortedPosts = filteredPosts.sort((a, b) => {
@@ -877,10 +880,12 @@ export const postService = {
 
             const searchTermLower = searchTerm.toLowerCase();
             return posts.filter(post =>
-                post.title.toLowerCase().includes(searchTermLower) ||
-                post.description.toLowerCase().includes(searchTermLower) ||
-                post.category.toLowerCase().includes(searchTermLower) ||
-                post.location.toLowerCase().includes(searchTermLower)
+                post.isHidden !== true && (
+                    post.title.toLowerCase().includes(searchTermLower) ||
+                    post.description.toLowerCase().includes(searchTermLower) ||
+                    post.category.toLowerCase().includes(searchTermLower) ||
+                    post.location.toLowerCase().includes(searchTermLower)
+                )
             );
         } catch (error: any) {
             console.error('Error searching posts:', error);
@@ -903,8 +908,8 @@ export const postService = {
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
 
-            // Filter out resolved posts from active sections
-            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+            // Filter out resolved posts and hidden posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved' && post.isHidden !== true);
 
             // Sort posts by createdAt in JavaScript instead
             const sortedPosts = filteredPosts.sort((a, b) => {
@@ -1129,6 +1134,139 @@ export const postService = {
         } catch (error: any) {
             console.error('❌ Firebase cleanupClaimDetailsAndPhotos failed:', error);
             throw new Error(error.message || 'Failed to cleanup claim details and photos');
+        }
+    },
+
+    // Flag a post
+    async flagPost(postId: string, userId: string, reason: string): Promise<void> {
+        try {
+            const postRef = doc(db, 'posts', postId);
+            const postDoc = await getDoc(postRef);
+
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            const postData = postDoc.data() as Post;
+
+            // Check if post is already flagged by this user
+            if (postData.isFlagged && postData.flaggedBy === userId) {
+                throw new Error('You have already flagged this post');
+            }
+
+            // Update post with flag information
+            await updateDoc(postRef, {
+                isFlagged: true,
+                flagReason: reason,
+                flaggedBy: userId,
+                flaggedAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`✅ Post ${postId} flagged by user ${userId} for reason: ${reason}`);
+        } catch (error: any) {
+            console.error('❌ Firebase flagPost failed:', error);
+            throw new Error(error.message || 'Failed to flag post');
+        }
+    },
+
+    // Unflag a post (admin only)
+    async unflagPost(postId: string): Promise<void> {
+        try {
+            const postRef = doc(db, 'posts', postId);
+            const postDoc = await getDoc(postRef);
+
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            // Clear flag information
+            await updateDoc(postRef, {
+                isFlagged: false,
+                flagReason: null,
+                flaggedBy: null,
+                flaggedAt: null,
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`✅ Post ${postId} unflagged`);
+        } catch (error: any) {
+            console.error('❌ Firebase unflagPost failed:', error);
+            throw new Error(error.message || 'Failed to unflag post');
+        }
+    },
+
+    // Hide a post (admin only)
+    async hidePost(postId: string): Promise<void> {
+        try {
+            const postRef = doc(db, 'posts', postId);
+            const postDoc = await getDoc(postRef);
+
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            // Hide the post
+            await updateDoc(postRef, {
+                isHidden: true,
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`✅ Post ${postId} hidden from public view`);
+        } catch (error: any) {
+            console.error('❌ Firebase hidePost failed:', error);
+            throw new Error(error.message || 'Failed to hide post');
+        }
+    },
+
+    // Unhide a post (admin only)
+    async unhidePost(postId: string): Promise<void> {
+        try {
+            const postRef = doc(db, 'posts', postId);
+            const postDoc = await getDoc(postRef);
+
+            if (!postDoc.exists()) {
+                throw new Error('Post not found');
+            }
+
+            // Unhide the post
+            await updateDoc(postRef, {
+                isHidden: false,
+                updatedAt: serverTimestamp()
+            });
+
+            console.log(`✅ Post ${postId} unhidden and visible to public`);
+        } catch (error: any) {
+            console.error('❌ Firebase unhidePost failed:', error);
+            throw new Error(error.message || 'Failed to unhide post');
+        }
+    },
+
+    // Get flagged posts (admin only)
+    async getFlaggedPosts(): Promise<Post[]> {
+        try {
+            const postsRef = collection(db, 'posts');
+            const q = query(postsRef, where('isFlagged', '==', true));
+            const querySnapshot = await getDocs(q);
+
+            const flaggedPosts: Post[] = [];
+            querySnapshot.forEach((doc) => {
+                flaggedPosts.push(doc.data() as Post);
+            });
+
+            // Sort by flaggedAt (most recently flagged first)
+            flaggedPosts.sort((a, b) => {
+                if (!a.flaggedAt || !b.flaggedAt) return 0;
+                const aTime = a.flaggedAt instanceof Date ? a.flaggedAt.getTime() : new Date(a.flaggedAt).getTime();
+                const bTime = b.flaggedAt instanceof Date ? b.flaggedAt.getTime() : new Date(b.flaggedAt).getTime();
+                return bTime - aTime;
+            });
+
+            console.log(`✅ Retrieved ${flaggedPosts.length} flagged posts`);
+            return flaggedPosts;
+        } catch (error: any) {
+            console.error('❌ Firebase getFlaggedPosts failed:', error);
+            throw new Error(error.message || 'Failed to get flagged posts');
         }
     }
 };
