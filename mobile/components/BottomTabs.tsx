@@ -34,15 +34,19 @@ export default function CustomTabs() {
   const [isInitialized, setIsInitialized] = useState(false);
   const { isBanned, userData } = useAuth();
   const { getUnreadConversationCount } = useMessage();
-  
+
   // Calculate unread conversation count for badge
-  const unreadCount = userData?.uid ? getUnreadConversationCount(userData.uid) : 0;
+  const unreadCount = userData?.uid
+    ? getUnreadConversationCount(userData.uid)
+    : 0;
 
   // NEW: Redirect banned users to login
   useEffect(() => {
     if (isBanned) {
       // User is banned, but don't try to navigate since the parent components handle this
-      console.log('User is banned in BottomTabs, redirecting via parent components');
+      console.log(
+        "User is banned in BottomTabs, redirecting via parent components"
+      );
     }
   }, [isBanned]);
 
@@ -93,12 +97,12 @@ export default function CustomTabs() {
   useEffect(() => {
     const loadSavedTab = async () => {
       try {
-        const savedTab = await AsyncStorage.getItem('lastActiveTab');
-        if (savedTab && tabs.some(tab => tab.key === savedTab)) {
+        const savedTab = await AsyncStorage.getItem("lastActiveTab");
+        if (savedTab && tabs.some((tab) => tab.key === savedTab)) {
           setCurrentTab(savedTab);
         }
       } catch (error) {
-        console.log('Failed to load saved tab:', error);
+        console.log("Failed to load saved tab:", error);
       }
     };
 
@@ -109,7 +113,7 @@ export default function CustomTabs() {
   // Save tab state when it changes
   useEffect(() => {
     if (isInitialized && currentTab !== previousTabRef.current) {
-      AsyncStorage.setItem('lastActiveTab', currentTab);
+      AsyncStorage.setItem("lastActiveTab", currentTab);
       previousTabRef.current = currentTab;
     }
   }, [currentTab, isInitialized]);
@@ -120,7 +124,8 @@ export default function CustomTabs() {
   };
 
   // Get current tab component
-  const CurrentTabComponent = tabs.find(tab => tab.key === currentTab)?.component || HomeScreen;
+  const CurrentTabComponent =
+    tabs.find((tab) => tab.key === currentTab)?.component || HomeScreen;
 
   // Render only the active tab component to prevent background processing
   const renderActiveTab = () => {
@@ -157,7 +162,10 @@ export default function CustomTabs() {
   // Don't render content until tab state is loaded
   if (!isInitialized) {
     return (
-      <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+      <SafeAreaView
+        className="flex-1 bg-white"
+        edges={["top", "left", "right"]}
+      >
         <View className="flex-1 items-center justify-center">
           <Text>Loading...</Text>
         </View>
@@ -168,9 +176,7 @@ export default function CustomTabs() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
       {/* Main Content - All tabs mounted but only current one visible */}
-      <View className="flex-1">
-        {renderActiveTab()}
-      </View>
+      <View className="flex-1">{renderActiveTab()}</View>
 
       {/* Bottom Tabs — hidden when keyboard is visible */}
       {!isKeyboardVisible && (
@@ -188,7 +194,7 @@ export default function CustomTabs() {
         >
           <View
             style={{ height: TAB_BAR_HEIGHT }}
-            className="flex-row items-center justify-around mx-4 mb-14"
+            className="flex-row items-center justify-around mx-4 mb-5"
           >
             {tabs.map((tab) => {
               const isActive = currentTab === tab.key;
@@ -215,7 +221,7 @@ export default function CustomTabs() {
                     {tab.key === "Messages" && unreadCount > 0 && (
                       <View className="absolute -top-2 -right-2 bg-red-500 rounded-full min-w-[18px] h-[18px] items-center justify-center">
                         <Text className="text-white text-xs font-bold">
-                          {unreadCount > 99 ? '99+' : unreadCount}
+                          {unreadCount > 99 ? "99+" : unreadCount}
                         </Text>
                       </View>
                     )}

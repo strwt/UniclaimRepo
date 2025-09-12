@@ -34,16 +34,18 @@ export default function Login() {
   const [generalError, setGeneralError] = useState("");
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState<'success' | 'error' | 'warning' | 'info'>('error');
+  const [toastType, setToastType] = useState<
+    "success" | "error" | "warning" | "info"
+  >("error");
 
   // NEW: Get ban details for display
   const getBanDetails = () => {
-    if (!banInfo) return { reason: 'No reason provided', duration: 'Unknown' };
-    
-    const reason = banInfo.reason || 'No reason provided';
-    const duration = banInfo.duration || 'Unknown';
+    if (!banInfo) return { reason: "No reason provided", duration: "Unknown" };
+
+    const reason = banInfo.reason || "No reason provided";
+    const duration = banInfo.duration || "Unknown";
     const endDate = banInfo.banEndDate;
-    
+
     return { reason, duration, endDate };
   };
 
@@ -52,7 +54,10 @@ export default function Login() {
   const validateEmail = (value: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-  const showToastMessage = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+  const showToastMessage = (
+    message: string,
+    type: "success" | "error" | "warning" | "info"
+  ) => {
     setToastMessage(message);
     setToastType(type);
     setShowToast(true);
@@ -85,13 +90,16 @@ export default function Login() {
     try {
       setIsLoading(true);
       await login(email, password);
-      
+
       // Check if user got banned during login
       if (isBanned) {
-        showToastMessage('This account has been banned. Please contact an administrator or try a different account.', 'warning');
+        showToastMessage(
+          "This account has been banned. Please contact an administrator or try a different account.",
+          "warning"
+        );
         return;
       }
-      
+
       // Navigation will be handled automatically by Navigation component based on auth state
       // No manual navigation needed - the Navigation component will show RootBottomTabs when authenticated
     } catch (error: any) {
@@ -131,12 +139,14 @@ export default function Login() {
             </Text>
             {endDate && (
               <Text className="text-xs font-manrope-medium text-gray-700">
-                <Text className="font-manrope-bold">Until:</Text> {new Date(endDate.seconds * 1000).toLocaleDateString()}
+                <Text className="font-manrope-bold">Until:</Text>{" "}
+                {new Date(endDate.seconds * 1000).toLocaleDateString()}
               </Text>
             )}
           </View>
           <Text className="text-xs font-manrope-medium text-red-600 mt-2 text-center">
-            You can login with a different account, or contact an administrator if you believe this was an error.
+            You can login with a different account, or contact an administrator
+            if you believe this was an error.
           </Text>
         </View>
       )}
@@ -173,7 +183,7 @@ export default function Login() {
               emailError
                 ? "border-red-500"
                 : emailFocused
-                  ? "border-teal-500"
+                  ? "border-yellow-500"
                   : "border-gray-300"
             }`}
           />
@@ -194,7 +204,7 @@ export default function Login() {
               passwordError
                 ? "border-red-500"
                 : passwordFocused
-                  ? "border-teal-500"
+                  ? "border-yellow-500"
                   : "border-gray-300"
             }`}
           >

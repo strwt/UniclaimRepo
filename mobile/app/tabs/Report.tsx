@@ -21,14 +21,16 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 export default function Report() {
   const { user, userData } = useAuth();
   const { coordinates, setCoordinates } = useCoordinates();
-  
+
   // Form state
   const [activeTab, setActiveTab] = useState<"item" | "contact">("item");
   const [images, setImages] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [reportType, setReportType] = useState<"lost" | "found" | null>(null);
-  const [foundAction, setFoundAction] = useState<"keep" | "turnover to OSA" | "turnover to Campus Security" | null>(null);
+  const [foundAction, setFoundAction] = useState<
+    "keep" | "turnover to OSA" | "turnover to Campus Security" | null
+  >(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -71,31 +73,29 @@ export default function Report() {
     const validationErrors = validateForm();
 
     if (validationErrors.length > 0) {
-      Alert.alert(
-        "Validation Error",
-        validationErrors.join("\n"),
-        [{ text: "OK" }]
-      );
+      Alert.alert("Validation Error", validationErrors.join("\n"), [
+        { text: "OK" },
+      ]);
       return;
     }
 
     if (!userData || !reportType || !user) return;
 
     setIsSubmitting(true);
-    
 
     try {
       // Check if this should be transferred to Campus Security
-      const shouldTransferToCampusSecurity = reportType === "found" && foundAction === "turnover to Campus Security";
-      
+      const shouldTransferToCampusSecurity =
+        reportType === "found" && foundAction === "turnover to Campus Security";
+
       // Get real Campus Security user data
       let campusSecurityData = null;
       let campusSecurityUserId = null;
-      
+
       if (shouldTransferToCampusSecurity) {
         const { userService } = await import("../../utils/firebase/auth");
         const campusSecurityUser = await userService.getCampusSecurityUser();
-        
+
         if (campusSecurityUser) {
           campusSecurityData = {
             firstName: campusSecurityUser.firstName,
@@ -103,7 +103,7 @@ export default function Report() {
             email: campusSecurityUser.email,
             contactNum: campusSecurityUser.contactNum,
             studentId: campusSecurityUser.studentId,
-            profilePicture: campusSecurityUser.profilePicture || null
+            profilePicture: campusSecurityUser.profilePicture || null,
           };
           campusSecurityUserId = campusSecurityUser.uid;
         } else {
@@ -114,14 +114,14 @@ export default function Report() {
             email: "cs@uniclaim.com",
             contactNum: "",
             studentId: "",
-            profilePicture: null
+            profilePicture: null,
           };
           campusSecurityUserId = "hedUWuv96VWQek5OucPzXTCkpQU2";
         }
       }
 
       // Build post data conditionally to avoid undefined values in Firebase
-      const postData: Omit<Post, 'id' | 'createdAt'> = {
+      const postData: Omit<Post, "id" | "createdAt"> = {
         title: title.trim(),
         description: description.trim(),
         category: selectedCategory!,
@@ -129,17 +129,23 @@ export default function Report() {
         type: reportType,
         images: images,
         dateTime: selectedDate!.toISOString(),
-        user: shouldTransferToCampusSecurity ? campusSecurityData : {
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          email: userData.email,
-          contactNum: userData.contactNum,
-          studentId: userData.studentId,
-          profilePicture: userData.profilePicture || null, // Ensure it's never undefined
-          role: userData.role || 'user', // Include user role
-        },
-        creatorId: shouldTransferToCampusSecurity ? campusSecurityUserId : user.uid, // Transfer ownership if needed
-        postedById: shouldTransferToCampusSecurity ? campusSecurityUserId : user.uid, // Use Firebase user ID for messaging
+        user: shouldTransferToCampusSecurity
+          ? campusSecurityData
+          : {
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              email: userData.email,
+              contactNum: userData.contactNum,
+              studentId: userData.studentId,
+              profilePicture: userData.profilePicture || null, // Ensure it's never undefined
+              role: userData.role || "user", // Include user role
+            },
+        creatorId: shouldTransferToCampusSecurity
+          ? campusSecurityUserId
+          : user.uid, // Transfer ownership if needed
+        postedById: shouldTransferToCampusSecurity
+          ? campusSecurityUserId
+          : user.uid, // Use Firebase user ID for messaging
         status: "pending",
       };
 
@@ -147,18 +153,22 @@ export default function Report() {
       if (coordinates) {
         postData.coordinates = {
           lat: coordinates.latitude,
-          lng: coordinates.longitude
+          lng: coordinates.longitude,
         };
       }
-      
+
       // Only add foundAction for found items that have a selected action
       if (reportType === "found" && foundAction) {
         postData.foundAction = foundAction;
       }
 
       // Add turnover details for both OSA and Campus Security turnover
-      if (reportType === "found" && foundAction && 
-          (foundAction === "turnover to OSA" || foundAction === "turnover to Campus Security")) {
+      if (
+        reportType === "found" &&
+        foundAction &&
+        (foundAction === "turnover to OSA" ||
+          foundAction === "turnover to Campus Security")
+      ) {
         postData.turnoverDetails = {
           originalFinder: {
             uid: user.uid,
@@ -171,40 +181,34 @@ export default function Report() {
           },
           turnoverAction: foundAction,
           turnoverDecisionAt: new Date(), // Will be converted to Firebase timestamp
-          turnoverStatus: foundAction === "turnover to OSA" ? "declared" : "transferred", // Different statuses for different workflows
+          turnoverStatus:
+            foundAction === "turnover to OSA" ? "declared" : "transferred", // Different statuses for different workflows
           // Note: turnoverReason is optional and not included if undefined
         };
       }
 
       await postService.createPost(postData);
 
-
-      
-      Alert.alert(
-        "Success",
-        "Your report has been submitted successfully!",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              // Reset form
-              setTitle("");
-              setDescription("");
-              setReportType(null);
-              setFoundAction(null);
-              setSelectedDate(null);
-              setSelectedLocation(null);
-              setSelectedCategory(null);
-              setCoordinates({ latitude: 0, longitude: 0 });
-              setImages([]);
-              setActiveTab("item");
-
-            },
+      Alert.alert("Success", "Your report has been submitted successfully!", [
+        {
+          text: "OK",
+          onPress: () => {
+            // Reset form
+            setTitle("");
+            setDescription("");
+            setReportType(null);
+            setFoundAction(null);
+            setSelectedDate(null);
+            setSelectedLocation(null);
+            setSelectedCategory(null);
+            setCoordinates({ latitude: 0, longitude: 0 });
+            setImages([]);
+            setActiveTab("item");
           },
-        ]
-      );
+        },
+      ]);
     } catch (error: any) {
-      console.error('Error creating post:', error);
+      console.error("Error creating post:", error);
 
       Alert.alert(
         "Error",
@@ -305,13 +309,11 @@ export default function Report() {
         </ScrollView>
 
         {/* Submit Button */}
-        <View className="absolute bg-teal-50 bottom-0 left-0 w-full p-4">
-
-          
+        <View className="absolute bg-yellow-50 bottom-0 left-0 w-full p-4">
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={isSubmitting}
-            className={`py-4 rounded-lg ${isSubmitting ? 'bg-gray-400' : 'bg-brand'}`}
+            className={`py-4 rounded-lg ${isSubmitting ? "bg-gray-400" : "bg-brand"}`}
           >
             <Text className="text-white text-center text-base font-manrope-semibold">
               {isSubmitting ? "Submitting..." : "Submit Report"}

@@ -8,7 +8,7 @@ module.exports = {
       colors: {
         background: "#FBFDFC",
         navyblue: "#0A193A",
-        brand: "#12C3B4",
+        brand: "#eab308",
         muted: "#EFEFEF",
       },
       fontFamily: {
