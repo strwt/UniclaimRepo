@@ -65,7 +65,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   // Intersection observer to detect when message comes into view
   useEffect(() => {
-    if (!messageRef.current || !onMessageSeen || hasBeenSeen || isOwnMessage) return;
+    if (!messageRef.current || !onMessageSeen || hasBeenSeen || isOwnMessage)
+      return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -284,10 +285,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       await confirmClaimIdPhoto(conversationId, message.id);
       // Call the callback to update UI
       onClaimResponse?.(message.id, "accepted");
-      
+
       // Show success message
       alert("✅ Claim ID photo confirmed successfully!");
-      
+
       // Clear conversation to show "Select a conversation" screen
       onClearConversation?.();
     } catch (error: any) {
@@ -548,8 +549,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     const claimData = message.claimData;
     if (!claimData) return null;
 
-
-
     // Show different UI based on status and user role
     const canRespond = claimData.status === "pending" && !isOwnMessage;
     const canConfirm =
@@ -576,13 +575,17 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {/* Show claimer's ID photo if uploaded */}
         {claimData.idPhotoUrl && (
           <div className="mb-3 p-2 bg-white rounded border">
-            <div className="text-xs text-gray-600 mb-1 font-medium">Claimer ID Photo:</div>
+            <div className="text-xs text-gray-600 mb-1 font-medium">
+              Claimer ID Photo:
+            </div>
             <div className="relative">
               <img
                 src={claimData.idPhotoUrl}
                 alt="Claimer ID Photo"
                 className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
-                onClick={() => handleImageClick(claimData.idPhotoUrl!, 'Claimer ID Photo')}
+                onClick={() =>
+                  handleImageClick(claimData.idPhotoUrl!, "Claimer ID Photo")
+                }
                 title="Click to view full size"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
@@ -600,13 +603,17 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {/* Show owner's ID photo if uploaded */}
         {claimData.ownerIdPhoto && (
           <div className="mb-3 p-2 bg-white rounded border">
-            <div className="text-xs text-gray-600 mb-1 font-medium">Owner ID Photo:</div>
+            <div className="text-xs text-gray-600 mb-1 font-medium">
+              Owner ID Photo:
+            </div>
             <div className="relative">
               <img
                 src={claimData.ownerIdPhoto}
                 alt="Owner ID Photo"
                 className="w-24 h-16 rounded object-cover cursor-pointer hover:opacity-90 transition-opacity group"
-                onClick={() => handleImageClick(claimData.ownerIdPhoto!, 'Owner ID Photo')}
+                onClick={() =>
+                  handleImageClick(claimData.ownerIdPhoto!, "Owner ID Photo")
+                }
                 title="Click to view full size"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all rounded flex items-center justify-center pointer-events-none">
@@ -854,7 +861,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         <div
           className={`px-4 py-2 rounded-lg ${
             isOwnMessage
-              ? "bg-brand text-white rounded-br-md"
+              ? "bg-navyblue text-white rounded-br-md"
               : "bg-gray-200 text-gray-800 rounded-bl-md"
           }`}
         >
@@ -880,15 +887,31 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <span className="ml-1">
                   {message.readBy && message.readBy.length > 1 ? (
                     <span className="text-blue-500" title="Seen">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <svg
+                        className="w-3 h-3"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
                         <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                        <path
+                          fillRule="evenodd"
+                          d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </span>
                   ) : (
                     <span className="text-gray-400" title="Delivered">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <svg
+                        className="w-3 h-3"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </span>
                   )}

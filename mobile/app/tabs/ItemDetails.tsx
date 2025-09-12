@@ -2,7 +2,7 @@
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   Pressable,
@@ -12,11 +12,11 @@ import {
   TextInput,
 } from "react-native";
 import CustomDropdown from "../../components/Dropdown";
-import CustomDropdownWithSearch from "../../components/DropdownWithSearch";
 import ImageUpload from "../../components/ImageUpload";
 import Info from "../../components/Info";
 import { useCoordinates } from "../../context/CoordinatesContext";
-import { USTP_LOCATIONS, ITEM_CATEGORIES } from "../../constants";
+import { ITEM_CATEGORIES } from "../../constants";
+import { detectLocationFromCoordinates } from "../../utils/locationDetection";
 
 // navigation
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -91,6 +91,26 @@ export default function ItemDetails({
     setReportType(type);
     if (type === "found") setIsModalVisible(true);
   };
+
+  // Detect location when coordinates change
+  useEffect(() => {
+    if (coordinates && coordinates.latitude !== 0 && coordinates.longitude !== 0) {
+      // Use detected location from coordinates if available
+      if (coordinates.detectedLocation) {
+        setSelectedLocation(coordinates.detectedLocation);
+      } else {
+        // Fallback to detection logic
+        const detectionResult = detectLocationFromCoordinates(coordinates);
+        if (detectionResult.location && detectionResult.confidence >= 80) {
+          setSelectedLocation(detectionResult.location);
+        } else {
+          setSelectedLocation(null);
+        }
+      }
+    } else {
+      setSelectedLocation(null);
+    }
+  }, [coordinates]);
 
   return (
     <View className="flex-1">
@@ -239,32 +259,41 @@ export default function ItemDetails({
         )}
       </View>
 
-      {/* last known location */}
-      <View>
-        <CustomDropdownWithSearch
-          label="Last Known Location"
-          data={USTP_LOCATIONS}
-          selected={selectedLocation}
-          setSelected={setSelectedLocation}
-          placeholder="Select a place"
-        />
-      </View>
-
-      {/* Pin a location */}
+      {/* Location */}
       <View className="mb-4">
-        <Text className="text-sm font-manrope-semibold text-gray-700 mb-2">
-          Pin a Location
+        <Text className="text-base font-manrope-semibold mb-2">
+          Location
         </Text>
+        <Text className="text-sm text-gray-600 mb-3">
+          Pin a location on the map to automatically detect the building or area
+        </Text>
+
+        {/* Detected Location Display */}
+        {selectedLocation && (
+          <View className="mb-3 p-3 bg-green-50 border border-green-200 rounded-md">
+            <View className="flex-row items-center">
+              <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+              <Text className="text-green-800 font-medium">
+                Detected Location: {selectedLocation}
+              </Text>
+            </View>
+          </View>
+        )}
 
         <View className="flex-row items-center border border-gray-300 rounded-md px-3 h-[3.3rem] bg-white">
           <Text className="flex-1 font-manrope text-base text-gray-700">
-            {coordinates
-              ? `${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}`
-              : "Pin a location to show coordinates"}
+            {selectedLocation
+              ? `${selectedLocation} (${coordinates?.latitude.toFixed(5)}, ${coordinates?.longitude.toFixed(5)})`
+              : coordinates
+                ? `Coordinates: ${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}`
+                : "Pin a location on the map to detect building/area"}
           </Text>
           {coordinates && (
             <Pressable
-              onPress={() => setCoordinates({ latitude: 0, longitude: 0 })}
+              onPress={() => {
+                setCoordinates({ latitude: 0, longitude: 0, detectedLocation: null });
+                setSelectedLocation(null);
+              }}
               hitSlop={10}
             >
               <Ionicons name="close-outline" size={20} color="#4B5563" />
@@ -280,6 +309,24 @@ export default function ItemDetails({
             Open USTP CDO Map
           </Text>
         </TouchableOpacity>
+
+        {/* Instructions */}
+        <View className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <View className="flex-row items-start">
+            <View className="w-2 h-2 bg-blue-500 rounded-full mr-2 mt-2" />
+            <View className="flex-1">
+              <Text className="text-blue-800 text-sm font-medium mb-1">
+                How to use:
+              </Text>
+              <Text className="text-blue-700 text-xs">
+                • Click on the map to pin a location{"\n"}
+                • Make sure to pin within a building or campus area{"\n"}
+                • The system will automatically detect the location name{"\n"}
+                • If no location is detected, try pinning more precisely within a building
+              </Text>
+            </View>
+          </View>
+        </View>
       </View>
 
       <View className="w-full flex-row gap-2 justify-center bg-orange-50 rounded-md py-4">

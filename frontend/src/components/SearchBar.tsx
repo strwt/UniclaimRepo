@@ -59,7 +59,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         />
         <button
           onClick={handleSearch}
-          className="px-3 py-2 bg-brand hover:bg-teal-600 text-white rounded lg:block transition-colors duration-300"
+          className="px-3 py-2 bg-brand hover:bg-yellow-600 text-white rounded lg:block transition-colors duration-200"
         >
           Search
         </button>

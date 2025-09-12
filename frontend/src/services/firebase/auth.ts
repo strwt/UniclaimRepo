@@ -24,6 +24,7 @@ import {
 
 // Import Firebase instances and types
 import { auth, db } from './config';
+import { notificationSubscriptionService } from './notificationSubscriptions';
 import type { UserData } from './types';
 
 // Auth utility functions
@@ -73,6 +74,18 @@ export const authService = {
             }
 
             await setDoc(doc(db, 'users', user.uid), userData);
+
+            // Create notification subscription for the new user
+            try {
+                await notificationSubscriptionService.createSubscription({
+                    userId: user.uid,
+                    isActive: true
+                });
+                console.log('✅ Created notification subscription for new user:', user.uid);
+            } catch (subscriptionError) {
+                console.error('❌ Failed to create notification subscription:', subscriptionError);
+                // Don't fail registration if subscription creation fails
+            }
 
             // Send email verification
             await sendEmailVerification(user);
@@ -199,6 +212,18 @@ export const authService = {
 
             await setDoc(doc(db, 'users', user.uid), userData);
 
+            // Create notification subscription for the new admin user
+            try {
+                await notificationSubscriptionService.createSubscription({
+                    userId: user.uid,
+                    isActive: true
+                });
+                console.log('✅ Created notification subscription for new admin user:', user.uid);
+            } catch (subscriptionError) {
+                console.error('❌ Failed to create notification subscription for admin:', subscriptionError);
+                // Don't fail admin creation if subscription creation fails
+            }
+
             return { user, userData };
         } catch (error: any) {
             throw new Error(error.message || 'Admin user creation failed');
@@ -249,6 +274,18 @@ export const authService = {
             }
 
             await setDoc(doc(db, 'users', user.uid), userData);
+
+            // Create notification subscription for the new campus security user
+            try {
+                await notificationSubscriptionService.createSubscription({
+                    userId: user.uid,
+                    isActive: true
+                });
+                console.log('✅ Created notification subscription for new campus security user:', user.uid);
+            } catch (subscriptionError) {
+                console.error('❌ Failed to create notification subscription for campus security:', subscriptionError);
+                // Don't fail campus security creation if subscription creation fails
+            }
 
             return { user, userData };
         } catch (error: any) {

@@ -209,43 +209,47 @@ const TicketModal = ({
   ];
 
   // Admin-only fields
-  const adminFields = isAdmin ? [
-    {
-      type: "select",
-      value: editedStatus,
-      placeholder: "Status",
-      options: [
-        { value: "pending", label: "Pending" },
-        { value: "resolved", label: "Resolved" },
-        { value: "unclaimed", label: "Unclaimed" },
-      ],
-      onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
-        setEditedStatus(e.target.value as "pending" | "resolved" | "unclaimed"),
-    },
-    {
-      type: "select",
-      value: editedCategory,
-      placeholder: "Category",
-      options: [
-        { value: "Student Essentials", label: "Student Essentials" },
-        { value: "Gadgets", label: "Gadgets" },
-        { value: "Personal Belongings", label: "Personal Belongings" },
-      ],
-      onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
-        setEditedCategory(e.target.value),
-    },
-    {
-      type: "select",
-      value: editedType,
-      placeholder: "Type",
-      options: [
-        { value: "lost", label: "Lost" },
-        { value: "found", label: "Found" },
-      ],
-      onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
-        setEditedType(e.target.value as "lost" | "found"),
-    },
-  ] : [];
+  const adminFields = isAdmin
+    ? [
+        {
+          type: "select",
+          value: editedStatus,
+          placeholder: "Status",
+          options: [
+            { value: "pending", label: "Pending" },
+            { value: "resolved", label: "Resolved" },
+            { value: "unclaimed", label: "Unclaimed" },
+          ],
+          onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+            setEditedStatus(
+              e.target.value as "pending" | "resolved" | "unclaimed"
+            ),
+        },
+        {
+          type: "select",
+          value: editedCategory,
+          placeholder: "Category",
+          options: [
+            { value: "Student Essentials", label: "Student Essentials" },
+            { value: "Gadgets", label: "Gadgets" },
+            { value: "Personal Belongings", label: "Personal Belongings" },
+          ],
+          onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+            setEditedCategory(e.target.value),
+        },
+        {
+          type: "select",
+          value: editedType,
+          placeholder: "Type",
+          options: [
+            { value: "lost", label: "Lost" },
+            { value: "found", label: "Found" },
+          ],
+          onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+            setEditedType(e.target.value as "lost" | "found"),
+        },
+      ]
+    : [];
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
@@ -282,7 +286,7 @@ const TicketModal = ({
                   <>
                     <button
                       onClick={handleEditClick}
-                      className="bg-brand text-white text-xs px-3 p-2 rounded hover:bg-teal-600"
+                      className="bg-brand text-white text-xs px-3 p-2 rounded hover:bg-yellow-600"
                     >
                       Edit Ticket
                     </button>
@@ -554,7 +558,7 @@ const TicketModal = ({
                   <img
                     src={img}
                     alt={`Uploaded ${idx}`}
-                    className="object-contain max-h-60 w-full rounded"
+                    className="w-full h-auto object-cover rounded cursor-pointer"
                   />
                   <button
                     className={`absolute top-1 right-1 p-1 rounded transition-all ${
@@ -589,17 +593,29 @@ const TicketModal = ({
               </div>
             )}
 
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleUploadMore}
-              className="mt-4"
-            />
+            <div className="mt-4 flex items-center justify-center">
+              {/* Hidden file input */}
+              <input
+                id="upload-input"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleUploadMore}
+                className="hidden"
+              />
+
+              {/* Custom button */}
+              <label
+                htmlFor="upload-input"
+                className="flex items-center justify-center px-4 py-2 border border-navyblue text-navyblue text-sm w-full rounded-sm cursor-pointer hover:border-blue-900 hover:text-blue-900 transition-colors"
+              >
+                Add an image
+              </label>
+            </div>
 
             <div className="flex justify-end mt-4">
               <button
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-500"
+                className="p-2 w-full bg-green-600 text-white rounded-sm hover:bg-green-500"
                 onClick={handleSaveImages}
               >
                 Save

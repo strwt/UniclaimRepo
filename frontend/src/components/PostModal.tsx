@@ -22,7 +22,11 @@ function formatDateTime(datetime: string | Date) {
   });
 }
 
-export default function PostModal({ post, onClose, hideSendMessage }: PostModalProps) {
+export default function PostModal({
+  post,
+  onClose,
+  hideSendMessage,
+}: PostModalProps) {
   const { userData } = useAuth(); // Get current user data
   const navigate = useNavigate(); // Add navigation hook
   const { createConversation } = useMessage(); // Add message context
@@ -31,7 +35,9 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
   const [showOverlay, setShowOverlay] = useState(true);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
-  const [imageLoadingError, setImageLoadingError] = useState<string | null>(null);
+  const [imageLoadingError, setImageLoadingError] = useState<string | null>(
+    null
+  );
   const inactivityIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastInteractionTimeRef = useRef<number>(Date.now());
 
@@ -99,7 +105,7 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
         });
       };
     } catch (error) {
-      console.error('Error processing images:', error);
+      console.error("Error processing images:", error);
       setImageLoadingError("Failed to load images");
     }
   }, [post.images]);
@@ -124,7 +130,7 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
   const handleSendMessage = async () => {
     if (!userData) {
       // If user is not logged in, redirect to login
-      navigate('/login');
+      navigate("/login");
       return;
     }
 
@@ -136,10 +142,10 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
 
     try {
       setIsCreatingConversation(true);
-      
+
       // Get the post owner ID - try multiple sources for compatibility
       const postOwnerId = post.creatorId || post.postedById;
-      
+
       if (!postOwnerId) {
         throw new Error("Cannot identify post owner");
       }
@@ -157,9 +163,8 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
       // Close modal and navigate to messages page with the specific conversation
       onClose();
       navigate(`/messages?conversation=${conversationId}`);
-      
     } catch (error: any) {
-      console.error('Error creating conversation:', error);
+      console.error("Error creating conversation:", error);
       alert(`Failed to start conversation: ${error.message}`);
     } finally {
       setIsCreatingConversation(false);
@@ -170,12 +175,12 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="bg-white rounded p-4 shadow w-[25rem] sm:w-[26rem] md:w-[32rem] lg:w-[42rem] xl:w-[60rem] max-w-full max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
         <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-              <ProfilePicture
-                src={post.user?.profilePicture}
-                alt="user profile"
-                size="md"
-              />
+          <div className="flex items-center gap-3">
+            <ProfilePicture
+              src={post.user?.profilePicture}
+              alt="user profile"
+              size="md"
+            />
             <div className="flex flex-col">
               <p className="text-xs text-gray-500">Posted by:</p>
               <p className="text-sm">
@@ -187,10 +192,10 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
           </div>
           <div className="flex items-center gap-3">
             {!isCurrentUserCreator && !hideSendMessage && (
-              <button 
+              <button
                 onClick={handleSendMessage}
                 disabled={isCreatingConversation}
-                className="text-[12px] bg-brand py-2 px-3 rounded cursor-pointer hover:bg-teal-600 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="text-[12px] bg-brand py-2 px-3 rounded cursor-pointer hover:bg-yellow-600 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors duration-300"
               >
                 {isCreatingConversation ? (
                   <>
@@ -198,7 +203,7 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
                     Starting...
                   </>
                 ) : (
-                  'Send Message'
+                  "Send Message"
                 )}
               </button>
             )}
@@ -244,7 +249,9 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <span className="text-red-600 text-sm">⚠️ {imageLoadingError}</span>
+                <span className="text-red-600 text-sm">
+                  ⚠️ {imageLoadingError}
+                </span>
               </div>
               <button
                 onClick={() => {
@@ -281,23 +288,25 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
             >
               {post.type}
             </span>
-            
+
             {/* Found Action Badge - only show for found items with action */}
             {post.type === "found" && post.foundAction && (
               <span className="px-2 py-1 rounded-[3px] font-medium bg-blue-100 text-blue-700">
-                {post.foundAction === "keep" ? "Keep" : 
-                 post.foundAction === "turnover to OSA" ? "OSA" : 
-                 "Campus Security"}
+                {post.foundAction === "keep"
+                  ? "Keep"
+                  : post.foundAction === "turnover to OSA"
+                  ? "OSA"
+                  : "Campus Security"}
               </span>
             )}
-            
+
             {/* Status Badge - show when post is resolved or unclaimed */}
-            {post.status === 'resolved' && (
+            {post.status === "resolved" && (
               <span className="px-2 py-1 rounded-[3px] font-medium bg-green-100 text-green-700">
                 ✅ RESOLVED
               </span>
             )}
-            {post.status === 'unclaimed' && (
+            {post.status === "unclaimed" && (
               <span className="px-2 py-1 rounded-[3px] font-medium bg-orange-100 text-orange-700">
                 ⏰ UNCLAIMED
               </span>
@@ -327,12 +336,11 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
                 <p className="text-[13px] mt-3 mb-2">Found Item Action</p>
                 <div className="bg-blue-50 border border-blue-200 rounded py-2 px-2">
                   <p className="text-[13px] text-blue-700 font-medium">
-                    {post.foundAction === "keep" 
+                    {post.foundAction === "keep"
                       ? "The finder will keep this item and return it themselves"
                       : post.foundAction === "turnover to OSA"
                       ? "This item will be turned over to the OSA office"
-                      : "This item will be turned over to Campus Security"
-                    }
+                      : "This item will be turned over to Campus Security"}
                   </p>
                 </div>
               </>
@@ -381,27 +389,31 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
         </div>
 
         {/* Show claim details if post is resolved and has claim details */}
-        {post.status === 'resolved' && post.claimDetails && (
-          <ClaimDetailsDisplay 
-            claimDetails={post.claimDetails} 
+        {post.status === "resolved" && post.claimDetails && (
+          <ClaimDetailsDisplay
+            claimDetails={post.claimDetails}
             conversationData={post.conversationData}
           />
         )}
 
         {/* Show handover details if post is resolved and no claim details */}
-        {post.status === 'resolved' && post.handoverDetails && !post.claimDetails && (
-          <HandoverDetailsDisplay 
-            handoverDetails={post.handoverDetails} 
-            conversationData={post.conversationData}
-          />
-        )}
+        {post.status === "resolved" &&
+          post.handoverDetails &&
+          !post.claimDetails && (
+            <HandoverDetailsDisplay
+              handoverDetails={post.handoverDetails}
+              conversationData={post.conversationData}
+            />
+          )}
 
         {/* Show turnover information if this post was turned over */}
         {post.turnoverDetails && (
           <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-blue-600 text-lg">🔄</span>
-              <h4 className="text-sm font-semibold text-blue-800">Turnover Information</h4>
+              <h4 className="text-sm font-semibold text-blue-800">
+                Turnover Information
+              </h4>
             </div>
             <div className="text-sm text-blue-700 space-y-2">
               <div className="flex items-center gap-2">
@@ -413,28 +425,33 @@ export default function PostModal({ post, onClose, hideSendMessage }: PostModalP
                   className="border-blue-300"
                 />
                 <span>
-                  {post.turnoverDetails.originalFinder.firstName} {post.turnoverDetails.originalFinder.lastName}
+                  {post.turnoverDetails.originalFinder.firstName}{" "}
+                  {post.turnoverDetails.originalFinder.lastName}
                 </span>
               </div>
               <div>
-                <span className="font-medium">Student ID:</span> {post.turnoverDetails.originalFinder.studentId || 'N/A'}
+                <span className="font-medium">Student ID:</span>{" "}
+                {post.turnoverDetails.originalFinder.studentId || "N/A"}
               </div>
               <div>
-                <span className="font-medium">Email:</span> {post.turnoverDetails.originalFinder.email}
+                <span className="font-medium">Email:</span>{" "}
+                {post.turnoverDetails.originalFinder.email}
               </div>
               {post.turnoverDetails.originalFinder.contactNum && (
                 <div>
-                  <span className="font-medium">Contact:</span> {post.turnoverDetails.originalFinder.contactNum}
+                  <span className="font-medium">Contact:</span>{" "}
+                  {post.turnoverDetails.originalFinder.contactNum}
                 </div>
               )}
               <div>
                 <span className="font-medium">Turned over to:</span>{" "}
-                {post.turnoverDetails.turnoverAction === "turnover to OSA" ? "OSA" : "Campus Security"}
+                {post.turnoverDetails.turnoverAction === "turnover to OSA"
+                  ? "OSA"
+                  : "Campus Security"}
               </div>
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

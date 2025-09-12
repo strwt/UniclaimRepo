@@ -26,7 +26,7 @@ export default function Register() {
 
   // for errors
   const [regError, setRegError] = useState<FormErrors>({});
-  
+
   // Firebase auth and navigation
   const { register, loading } = useAuth();
   const navigate = useNavigate();
@@ -42,21 +42,22 @@ export default function Register() {
     if (!email.trim()) newErrors.email = "Email is required";
     else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email.trim())) newErrors.email = "Invalid email format";
+      if (!emailRegex.test(email.trim()))
+        newErrors.email = "Invalid email format";
     }
-    
+
     if (!contactNum.trim()) newErrors.contactNum = "Contact number is required";
     else if (!/^\d{11}$/.test(contactNum))
       newErrors.contactNum = "Contact number must be 11 digits";
-      
+
     if (!studentId.trim()) newErrors.studentId = "Student ID is required";
     else if (!/^\d{10}$/.test(studentId.trim()))
       newErrors.studentId = "Student ID must be 10 digits";
-      
+
     if (!password.trim()) newErrors.password = "Password is required";
     else if (password.length < 8)
       newErrors.password = "Password must be at least 8 characters";
-      
+
     if (!confirmPassword.trim())
       newErrors.confirmPassword = "This field is required";
     else if (confirmPassword !== password)
@@ -78,7 +79,9 @@ export default function Register() {
       } catch (error: any) {
         // Handle Firebase registration errors
         if (error.message.includes("email-already-in-use")) {
-          setRegError({ email: "An account already exists with this email address." });
+          setRegError({
+            email: "An account already exists with this email address.",
+          });
         } else {
           setRegError({ email: error.message });
         }
@@ -258,9 +261,9 @@ export default function Register() {
             <button
               type="submit"
               className={`w-full mt-4 text-white py-2 rounded-lg transition-all ${
-                loading 
-                  ? "bg-gray-400 cursor-not-allowed" 
-                  : "bg-brand hover:bg-teal-600"
+                loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-brand hover:bg-yellow-600"
               }`}
               disabled={loading}
             >

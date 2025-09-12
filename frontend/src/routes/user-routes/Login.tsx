@@ -171,7 +171,7 @@ export default function Login() {
                   className={`w-full py-2 text-white rounded-lg transition-all duration-200 ${
                     loading || isRedirecting
                       ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-brand hover:bg-teal-600 hover:cursor-pointer"
+                      : "bg-brand hover:bg-yellow-600 hover:cursor-pointer"
                   }`}
                   type="submit"
                   disabled={loading || isRedirecting}
@@ -193,7 +193,7 @@ export default function Login() {
 
                 <Link
                   to="/adminlogin"
-                  className="block w-full border text-center text-brand hover:text-teal-600 hover:border-teal-600 py-2 border-brand rounded-lg"
+                  className="block w-full border text-center text-brand hover:text-yellow-600 hover:border-yellow-600 py-2 border-brand rounded-lg"
                 >
                   Login as admin
                 </Link>

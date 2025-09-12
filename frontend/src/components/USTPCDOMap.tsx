@@ -5,13 +5,16 @@ import View from "ol/View";
 import { fromLonLat, toLonLat, transformExtent } from "ol/proj";
 import TileLayer from "ol/layer/Tile";
 import OSM from "ol/source/OSM";
-import { Icon, Style } from "ol/style";
+import { Icon, Style, Fill, Stroke, Text } from "ol/style";
 import { Feature } from "ol";
 import Point from "ol/geom/Point";
+import Polygon from "ol/geom/Polygon";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import { Modify } from "ol/interaction";
 import { defaults as defaultControls } from "ol/control";
+import { detectLocationFromCoordinates } from "@/utils/locationDetection";
+import { USTP_CAMPUS_LOCATIONS } from "@/utils/campusCoordinates";
 
 interface Props {
   locationError?: boolean;
@@ -30,6 +33,7 @@ const USTPLocationPicker: React.FC<Props> = ({
   const [mapInstance, setMapInstance] = useState<Map | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [localError, setLocalError] = useState(false);
+  const [detectedLocation, setDetectedLocation] = useState<string | null>(null);
 
   const { showToast } = useToast();
 
@@ -40,6 +44,7 @@ const USTPLocationPicker: React.FC<Props> = ({
 
   const markerSourceRef = useRef<VectorSource>(new VectorSource());
   const markerFeatureRef = useRef<Feature<Point> | null>(null);
+  const buildingSourceRef = useRef<VectorSource>(new VectorSource());
 
   const fromLonLatExtent = (extent: [number, number, number, number]) =>
     transformExtent(extent, "EPSG:4326", "EPSG:3857");
@@ -52,13 +57,56 @@ const USTPLocationPicker: React.FC<Props> = ({
       : fromLonLat([124.6570494294046, 8.485713351944865]);
 
     const markerSource = markerSourceRef.current;
-    // markerSource.clear();
+    const buildingSource = buildingSourceRef.current;
 
+    // Create building boundary layer (hidden)
+    const buildingLayer = new VectorLayer({
+      source: buildingSource,
+      style: () => {
+        // No visual styling - buildings are invisible
+        return new Style({
+          fill: new Fill({
+            color: 'transparent' // Invisible fill
+          }),
+          stroke: new Stroke({
+            color: 'transparent', // Invisible border
+            width: 0
+          })
+        });
+      }
+    });
+
+    // Create corner indicator layer (hidden)
+    const cornerSource = new VectorSource();
+    const cornerLayer = new VectorLayer({
+      source: cornerSource,
+      style: () => {
+        // No visual styling - corners are invisible
+        return new Style({
+          image: new Icon({
+            src: 'data:image/svg+xml;base64,' + btoa(`
+              <svg width="1" height="1" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="0.5" cy="0.5" r="0.5" fill="transparent"/>
+              </svg>
+            `),
+            scale: 0.1,
+            anchor: [0.5, 0.5]
+          })
+        });
+      }
+    });
+
+    // Create marker layer
     const markerLayer = new VectorLayer({ source: markerSource });
 
     const map = new Map({
       target: mapRef.current,
-      layers: [new TileLayer({ source: new OSM() }), markerLayer],
+      layers: [
+        new TileLayer({ source: new OSM() }), 
+        buildingLayer, 
+        cornerLayer,
+        markerLayer
+      ],
       view: new View({
         center: initialCenter,
         zoom: 19,
@@ -66,6 +114,28 @@ const USTPLocationPicker: React.FC<Props> = ({
       }),
 
       controls: defaultControls({ attribution: false }),
+    });
+
+    // Add building polygons to the map using coordinates from campusCoordinates.ts
+    USTP_CAMPUS_LOCATIONS.forEach(building => {
+      const coordinates = building.coordinates.map(coord => fromLonLat(coord));
+      const polygon = new Polygon([coordinates]);
+      const feature = new Feature({
+        geometry: polygon,
+        name: building.name
+      });
+      buildingSource.addFeature(feature);
+
+      // Add corner indicators
+      const cornerLabels = ['1', '2', '3', '4']; // TOP-LEFT, TOP-RIGHT, BOTTOM-RIGHT, BOTTOM-LEFT
+      building.coordinates.forEach((coord, index) => {
+        const point = new Point(fromLonLat(coord));
+        const cornerFeature = new Feature({
+          geometry: point,
+          cornerLabel: cornerLabels[index]
+        });
+        cornerSource.addFeature(cornerFeature);
+      });
     });
 
     if (coordinates && !markerFeatureRef.current) {
@@ -93,6 +163,10 @@ const USTPLocationPicker: React.FC<Props> = ({
       const [lng, lat] = toLonLat(e.coordinate);
       const point = new Point(fromLonLat([lng, lat]));
 
+      // Detect location from coordinates
+      const detectionResult = detectLocationFromCoordinates({ lat, lng });
+      setDetectedLocation(detectionResult.location);
+
       let feature = markerFeatureRef.current;
       if (!feature) {
         feature = new Feature({ geometry: point });
@@ -117,6 +191,23 @@ const USTPLocationPicker: React.FC<Props> = ({
       const updated = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
       setCoordinatesExternal?.(updated);
       setLocalError(false);
+
+      // Show feedback based on detection result
+      if (detectionResult.location && detectionResult.confidence >= 80) {
+        showToast(
+          "success",
+          "Location Detected",
+          `${detectionResult.location} detected`,
+          3000
+        );
+      } else {
+        showToast(
+          "error",
+          "No Location Detected",
+          "Please pin within a campus building or area. Make sure you're within the campus boundaries.",
+          4000
+        );
+      }
     });
 
     const modify = new Modify({ source: markerSource });
@@ -125,6 +216,11 @@ const USTPLocationPicker: React.FC<Props> = ({
     modify.on("modifyend", (e) => {
       const geom = (e.features.item(0).getGeometry() as Point).getCoordinates();
       const [lng, lat] = toLonLat(geom);
+      
+      // Detect location from new coordinates
+      const detectionResult = detectLocationFromCoordinates({ lat, lng });
+      setDetectedLocation(detectionResult.location);
+      
       const updated = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
       setCoordinatesExternal?.(updated);
       setLocalError(false);
@@ -177,13 +273,21 @@ const USTPLocationPicker: React.FC<Props> = ({
         <input
           type="text"
           readOnly
-          value={coordinates ? `${coordinates.lat}, ${coordinates.lng}` : ""}
+          value={
+            detectedLocation 
+              ? `${detectedLocation} (${coordinates?.lat.toFixed(5)}, ${coordinates?.lng.toFixed(5)})`
+              : coordinates 
+                ? `Coordinates: ${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)}`
+                : ""
+          }
           className={`w-full p-3 rounded focus:outline-none text-sm font-medium ${
             locationError || localError
               ? "border-2 border-red-500"
-              : "border border-gray-500"
+              : detectedLocation
+                ? "border-2 border-green-500 bg-green-50"
+                : "border border-gray-500"
           }`}
-          placeholder="Pin a location on the map to get coordinates"
+          placeholder="Pin a location on the map to detect building/area"
         />
         {!showMap && (
           <button
@@ -197,6 +301,7 @@ const USTPLocationPicker: React.FC<Props> = ({
 
       {showMap && (
         <>
+
           <div
             ref={mapRef}
             className="w-full h-96 rounded shadow-amber-200 mt-4"

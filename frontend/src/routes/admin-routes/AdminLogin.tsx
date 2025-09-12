@@ -83,16 +83,15 @@ export default function AdminLogin() {
     // gamiton ang mga errors
     setAdminError(newError);
 
-    const isValid =
-      !newError.adminEmail && !newError.adminPassword;
-    
+    const isValid = !newError.adminEmail && !newError.adminPassword;
+
     if (isValid) {
       try {
         setIsLoading(true);
-        
+
         // Use real Firebase authentication
         await authService.login(trimmedAdminEmail, trimmedAdminPassword);
-        
+
         // Check if user is admin
         const currentUser = authService.getCurrentUser();
         if (currentUser) {
@@ -100,17 +99,17 @@ export default function AdminLogin() {
           if (isAdmin) {
             navigate("/admin");
           } else {
-            setAdminError(prev => ({
+            setAdminError((prev) => ({
               ...prev,
-              adminGeneral: "Access denied. This account is not an admin."
+              adminGeneral: "Access denied. This account is not an admin.",
             }));
           }
         }
-        
       } catch (error: any) {
-        setAdminError(prev => ({
+        setAdminError((prev) => ({
           ...prev,
-          adminGeneral: error.message || "Login failed. Please check your credentials."
+          adminGeneral:
+            error.message || "Login failed. Please check your credentials.",
         }));
       } finally {
         setIsLoading(false);
@@ -192,9 +191,9 @@ export default function AdminLogin() {
               <button
                 onClick={handleLogin}
                 className={`w-full py-2 text-white rounded-lg transition-all duration-200 ${
-                  isLoading 
-                    ? "bg-gray-400 cursor-not-allowed" 
-                    : "bg-brand hover:bg-teal-600 hover:cursor-pointer"
+                  isLoading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-brand hover:bg-yellow-600 hover:cursor-pointer"
                 }`}
                 type="submit"
                 disabled={isLoading}
@@ -211,12 +210,10 @@ export default function AdminLogin() {
 
               <Link
                 to="/login"
-                className="block w-full border text-center text-brand hover:text-teal-600 hover:border-teal-600 py-2 border-brand rounded-lg"
+                className="block w-full border text-center text-brand hover:text-yellow-600 hover:border-yellow-600 py-2 border-brand rounded-lg"
               >
                 Login as user
               </Link>
-
-
             </div>
           </div>
         </div>

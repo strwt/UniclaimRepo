@@ -176,16 +176,18 @@ export default function ReportPage() {
       }
 
       // Check if this should be transferred to Campus Security
-      const shouldTransferToCampusSecurity = selectedReport === "found" && selectedFoundAction === "turnover to Campus Security";
-      
+      const shouldTransferToCampusSecurity =
+        selectedReport === "found" &&
+        selectedFoundAction === "turnover to Campus Security";
+
       // Get real Campus Security user data
       let campusSecurityData = null;
       let campusSecurityUserId = null;
-      
+
       if (shouldTransferToCampusSecurity) {
         const { authService } = await import("../../services/firebase/auth");
         const campusSecurityUser = await authService.getCampusSecurityUser();
-        
+
         if (campusSecurityUser) {
           campusSecurityData = {
             firstName: campusSecurityUser.firstName,
@@ -193,7 +195,7 @@ export default function ReportPage() {
             email: campusSecurityUser.email,
             contactNum: campusSecurityUser.contactNum,
             studentId: campusSecurityUser.studentId,
-            profilePicture: campusSecurityUser.profilePicture || null
+            profilePicture: campusSecurityUser.profilePicture || null,
           };
           campusSecurityUserId = campusSecurityUser.uid;
         } else {
@@ -204,7 +206,7 @@ export default function ReportPage() {
             email: "cs@uniclaim.com",
             contactNum: "",
             studentId: "",
-            profilePicture: null
+            profilePicture: null,
           };
           campusSecurityUserId = "hedUWuv96VWQek5OucPzXTCkpQU2";
         }
@@ -219,16 +221,20 @@ export default function ReportPage() {
         type: selectedReport,
         images: selectedFiles,
         dateTime: selectedDateTime,
-        creatorId: shouldTransferToCampusSecurity ? campusSecurityUserId : userData.uid, // Transfer ownership if needed
-        user: shouldTransferToCampusSecurity ? campusSecurityData : {
-          firstName: userData?.firstName || "",
-          lastName: userData?.lastName || "",
-          email: userData?.email || "",
-          contactNum: userData?.contactNum || "",
-          studentId: userData?.studentId || "",
-          profilePicture: userData?.profilePicture || null, // Ensure it's never undefined
-          role: userData?.role || 'user', // Include user role
-        },
+        creatorId: shouldTransferToCampusSecurity
+          ? campusSecurityUserId
+          : userData.uid, // Transfer ownership if needed
+        user: shouldTransferToCampusSecurity
+          ? campusSecurityData
+          : {
+              firstName: userData?.firstName || "",
+              lastName: userData?.lastName || "",
+              email: userData?.email || "",
+              contactNum: userData?.contactNum || "",
+              studentId: userData?.studentId || "",
+              profilePicture: userData?.profilePicture || null, // Ensure it's never undefined
+              role: userData?.role || "user", // Include user role
+            },
         status: "pending",
       };
 
@@ -238,8 +244,12 @@ export default function ReportPage() {
       }
 
       // Add turnover details for both OSA and Campus Security turnover
-      if (selectedReport === "found" && selectedFoundAction && 
-          (selectedFoundAction === "turnover to OSA" || selectedFoundAction === "turnover to Campus Security")) {
+      if (
+        selectedReport === "found" &&
+        selectedFoundAction &&
+        (selectedFoundAction === "turnover to OSA" ||
+          selectedFoundAction === "turnover to Campus Security")
+      ) {
         createdPost.turnoverDetails = {
           originalFinder: {
             uid: userData.uid,
@@ -252,7 +262,10 @@ export default function ReportPage() {
           },
           turnoverAction: selectedFoundAction,
           turnoverDecisionAt: new Date(), // Will be converted to Firebase timestamp
-          turnoverStatus: selectedFoundAction === "turnover to OSA" ? "declared" : "transferred", // Different statuses for different workflows
+          turnoverStatus:
+            selectedFoundAction === "turnover to OSA"
+              ? "declared"
+              : "transferred", // Different statuses for different workflows
           // Note: turnoverReason is optional and not included if undefined
         };
       }
@@ -264,7 +277,10 @@ export default function ReportPage() {
 
       // Use Firebase service to create post
       const { postService } = await import("../../utils/firebase");
-      const postId = await postService.createPost(createdPost, shouldTransferToCampusSecurity ? campusSecurityUserId : userData.uid);
+      const postId = await postService.createPost(
+        createdPost,
+        shouldTransferToCampusSecurity ? campusSecurityUserId : userData.uid
+      );
 
       console.log("Post created successfully with ID:", postId);
 
@@ -473,7 +489,7 @@ export default function ReportPage() {
             className={`w-full text-white rounded p-3 block cursor-pointer transition-colors ${
               isSubmitting
                 ? "bg-gray-400 cursor-not-allowed"
-                : "bg-brand hover:bg-teal-600"
+                : "bg-brand hover:bg-yellow-600"
             }`}
           >
             {isSubmitting ? "Submitting..." : "Submit report"}

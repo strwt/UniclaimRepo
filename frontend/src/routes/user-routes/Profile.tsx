@@ -7,7 +7,10 @@ import { cloudinaryService } from "@/utils/cloudinary";
 import { imageService } from "@/utils/firebase";
 import { postUpdateService } from "@/utils/postUpdateService";
 import ProfilePicture from "@/components/ProfilePicture";
-import { validateProfilePicture, isCloudinaryImage } from "@/utils/profilePictureUtils";
+import {
+  validateProfilePicture,
+  isCloudinaryImage,
+} from "@/utils/profilePictureUtils";
 
 const Profile = () => {
   const { userData, loading, refreshUserData } = useAuth();
@@ -28,13 +31,20 @@ const Profile = () => {
   });
 
   const [initialUserInfo, setInitialUserInfo] = useState(userInfo);
-  
+
   // State for local file storage (deferred upload approach)
-  const [selectedProfileFile, setSelectedProfileFile] = useState<File | null>(null);
-  const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] = useState<string | null>(null);
+  const [selectedProfileFile, setSelectedProfileFile] = useState<File | null>(
+    null
+  );
+  const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] = useState<
+    string | null
+  >(null);
 
   // State for pending deletion (Option 1: Immediate Preview + Deferred Action)
-  const [isProfilePictureMarkedForDeletion, setIsProfilePictureMarkedForDeletion] = useState(false);
+  const [
+    isProfilePictureMarkedForDeletion,
+    setIsProfilePictureMarkedForDeletion,
+  ] = useState(false);
 
   // Update local state when Firebase data loads
   useEffect(() => {
@@ -93,32 +103,41 @@ const Profile = () => {
     setUserInfo((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePictureUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Validate file using utility function
     const validation = validateProfilePicture(file);
     if (!validation.isValid) {
-      showToast("error", "Invalid File", validation.error || "Please select a valid image file.");
+      showToast(
+        "error",
+        "Invalid File",
+        validation.error || "Please select a valid image file."
+      );
       return;
     }
 
     try {
       // Store the file locally instead of uploading immediately
       setSelectedProfileFile(file);
-      
+
       // Create a preview URL from the local file
       const previewUrl = URL.createObjectURL(file);
       setProfilePicturePreviewUrl(previewUrl);
-      
     } catch (error: any) {
-      console.error('Profile picture selection error:', error);
-      showToast("error", "Selection Failed", "Failed to process the selected image. Please try again.");
+      console.error("Profile picture selection error:", error);
+      showToast(
+        "error",
+        "Selection Failed",
+        "Failed to process the selected image. Please try again."
+      );
     } finally {
       // Reset file input
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     }
   };
@@ -126,7 +145,8 @@ const Profile = () => {
   const handleRemoveProfilePicture = async () => {
     try {
       // Check if there's a current profile picture to mark for deletion
-      const hasCurrentPicture = userInfo.profilePicture && userInfo.profilePicture.trim() !== '';
+      const hasCurrentPicture =
+        userInfo.profilePicture && userInfo.profilePicture.trim() !== "";
 
       if (hasCurrentPicture) {
         // Mark the current profile picture for deletion on save
@@ -137,17 +157,28 @@ const Profile = () => {
         cleanupPreviewUrl();
 
         // Update the displayed profile picture to show default immediately
-        setUserInfo(prev => ({ ...prev, profilePicture: '' }));
+        setUserInfo((prev) => ({ ...prev, profilePicture: "" }));
 
-        showToast("success", "Profile Picture Marked for Removal", "Your profile picture will be removed when you save changes.");
+        showToast(
+          "success",
+          "Profile Picture Marked for Removal",
+          "Your profile picture will be removed when you save changes."
+        );
       } else {
         // No current picture to remove
-        showToast("info", "No Profile Picture", "You don't have a profile picture to remove.");
+        showToast(
+          "info",
+          "No Profile Picture",
+          "You don't have a profile picture to remove."
+        );
       }
-
     } catch (error: any) {
       console.error("Error marking profile picture for removal:", error);
-      showToast("error", "Removal Failed", "Failed to mark profile picture for removal. Please try again.");
+      showToast(
+        "error",
+        "Removal Failed",
+        "Failed to mark profile picture for removal. Please try again."
+      );
     }
   };
 
@@ -170,7 +201,10 @@ const Profile = () => {
     }
 
     // Check if values actually changed (including profile picture)
-    const hasProfilePictureChanged = selectedProfileFile !== null || profilePicturePreviewUrl !== null || isProfilePictureMarkedForDeletion;
+    const hasProfilePictureChanged =
+      selectedProfileFile !== null ||
+      profilePicturePreviewUrl !== null ||
+      isProfilePictureMarkedForDeletion;
     const isChanged =
       firstName !== initialUserInfo.firstName ||
       lastName !== initialUserInfo.lastName ||
@@ -200,7 +234,7 @@ const Profile = () => {
     // Update all user data across collections
     try {
       setIsUpdating(true);
-      
+
       if (userData?.uid) {
         let finalProfilePicture = userInfo.profilePicture;
         let oldProfilePicture = initialUserInfo.profilePicture; // Use initial value, not current value
@@ -208,20 +242,32 @@ const Profile = () => {
         // Handle profile picture changes if there's a new file
         if (selectedProfileFile) {
           try {
-    
-            
             // Upload new profile picture to Cloudinary
-            const imageUrls = await cloudinaryService.uploadImages([selectedProfileFile], 'profiles');
+            const imageUrls = await cloudinaryService.uploadImages(
+              [selectedProfileFile],
+              "profiles"
+            );
             finalProfilePicture = imageUrls[0];
-            
+
             // Delete the old profile picture if it exists and is different from the new one
-            if (oldProfilePicture && oldProfilePicture !== "" && oldProfilePicture !== finalProfilePicture) {
+            if (
+              oldProfilePicture &&
+              oldProfilePicture !== "" &&
+              oldProfilePicture !== finalProfilePicture
+            ) {
               if (isCloudinaryImage(oldProfilePicture)) {
                 try {
-                  await imageService.deleteProfilePicture(oldProfilePicture, userData.uid);
+                  await imageService.deleteProfilePicture(
+                    oldProfilePicture,
+                    userData.uid
+                  );
                 } catch (deleteError: any) {
                   // Don't fail the save operation - continue with profile update
-                  showToast("warning", "Cleanup Warning", "New profile picture uploaded successfully, but there was an issue removing the old one from storage.");
+                  showToast(
+                    "warning",
+                    "Cleanup Warning",
+                    "New profile picture uploaded successfully, but there was an issue removing the old one from storage."
+                  );
                 }
               } else {
                 // Old profile picture is not a Cloudinary image, skipping deletion
@@ -229,24 +275,37 @@ const Profile = () => {
             } else {
               // No old profile picture to delete or same image
             }
-            
           } catch (uploadError: any) {
-            console.error('Failed to upload profile picture:', uploadError);
-            showToast("error", "Upload Failed", "Failed to upload profile picture. Please try again.");
+            console.error("Failed to upload profile picture:", uploadError);
+            showToast(
+              "error",
+              "Upload Failed",
+              "Failed to upload profile picture. Please try again."
+            );
             return; // Don't proceed with save if upload fails
           } finally {
-    
           }
         } else if (isProfilePictureMarkedForDeletion) {
           // Profile picture was marked for deletion (Option 1 behavior)
           if (oldProfilePicture && oldProfilePicture !== "") {
             if (isCloudinaryImage(oldProfilePicture)) {
               try {
-                await imageService.deleteProfilePicture(oldProfilePicture, userData.uid);
-                showToast("success", "Profile Picture Removed", "Your profile picture has been successfully removed.");
+                await imageService.deleteProfilePicture(
+                  oldProfilePicture,
+                  userData.uid
+                );
+                showToast(
+                  "success",
+                  "Profile Picture Removed",
+                  "Your profile picture has been successfully removed."
+                );
               } catch (deleteError: any) {
                 // Don't fail the save operation - continue with profile update
-                showToast("warning", "Cleanup Warning", "Profile picture removed from profile, but there was an issue deleting it from storage.");
+                showToast(
+                  "warning",
+                  "Cleanup Warning",
+                  "Profile picture removed from profile, but there was an issue deleting it from storage."
+                );
               }
             }
           }
@@ -266,28 +325,40 @@ const Profile = () => {
         // Update all existing posts with the new profile picture (or removal)
         if (finalProfilePicture !== initialUserInfo.profilePicture) {
           try {
-            await postUpdateService.updateUserPostsWithProfilePicture(userData.uid, finalProfilePicture);
+            await postUpdateService.updateUserPostsWithProfilePicture(
+              userData.uid,
+              finalProfilePicture
+            );
           } catch (postUpdateError: any) {
-            console.error('Failed to update posts with profile picture change:', postUpdateError.message);
+            console.error(
+              "Failed to update posts with profile picture change:",
+              postUpdateError.message
+            );
             // Don't fail the save operation - profile was updated successfully
           }
         }
 
         // Update local state and clear preview
-        setUserInfo(prev => ({ ...prev, profilePicture: finalProfilePicture }));
-        setInitialUserInfo(prev => ({ ...prev, profilePicture: finalProfilePicture }));
+        setUserInfo((prev) => ({
+          ...prev,
+          profilePicture: finalProfilePicture,
+        }));
+        setInitialUserInfo((prev) => ({
+          ...prev,
+          profilePicture: finalProfilePicture,
+        }));
         setSelectedProfileFile(null);
         cleanupPreviewUrl();
-        
+
         // Refresh user data to ensure UI shows updated profile picture
         await refreshUserData();
-        
-        console.log('Profile update completed:', {
+
+        console.log("Profile update completed:", {
           finalProfilePicture,
           userInfoProfilePicture: userInfo.profilePicture,
-          refreshedUserData: userData?.profilePicture
+          refreshedUserData: userData?.profilePicture,
         });
-        
+
         showToast(
           "success",
           "Profile Updated Successfully!",
@@ -342,7 +413,7 @@ const Profile = () => {
                 size="5xl"
                 className="lg:left-6"
                 priority={true}
-                key={userInfo.profilePicture || 'default'} // Force re-render when profile picture changes
+                key={userInfo.profilePicture || "default"} // Force re-render when profile picture changes
               />
               {isEdit && (
                 <div className="absolute -bottom-2 -right-2 flex gap-1">
@@ -353,13 +424,38 @@ const Profile = () => {
                     title="Upload new profile picture"
                   >
                     {isUpdating ? (
-                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="w-3 h-3 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                     ) : (
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                        />
                       </svg>
                     )}
                   </button>
@@ -370,19 +466,48 @@ const Profile = () => {
                         disabled={isUpdating}
                         className={`text-white rounded-full p-2 disabled:cursor-not-allowed ${
                           isProfilePictureMarkedForDeletion
-                            ? 'bg-orange-500 hover:bg-orange-600 disabled:bg-orange-400'
-                            : 'bg-red-500 hover:bg-red-600 disabled:bg-red-400'
+                            ? "bg-orange-500 hover:bg-orange-600 disabled:bg-orange-400"
+                            : "bg-red-500 hover:bg-red-600 disabled:bg-red-400"
                         }`}
-                        title={isProfilePictureMarkedForDeletion ? "Profile picture marked for removal" : "Remove profile picture"}
+                        title={
+                          isProfilePictureMarkedForDeletion
+                            ? "Profile picture marked for removal"
+                            : "Remove profile picture"
+                        }
                       >
                         {isUpdating ? (
-                          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          <svg
+                            className="w-3 h-3 animate-spin"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
                           </svg>
                         ) : (
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
                           </svg>
                         )}
                       </button>
@@ -417,7 +542,7 @@ const Profile = () => {
           {!isEdit ? (
             <button
               onClick={handleEdit}
-              className="bg-navyblue border border-navyblue mr-4 px-4 text-xs sm:text-sm md:text-base py-2 text-white rounded-sm lg:mr-6"
+              className="bg-navyblue border border-navyblue mr-4 px-4 text-xs sm:text-sm md:text-base py-2 text-white rounded-sm lg:mr-6 cursor-pointer hover:bg-blue-900 hover:border-blue-900"
             >
               Edit Profile
             </button>
@@ -433,10 +558,12 @@ const Profile = () => {
                 onClick={handleSave}
                 disabled={isUpdating}
                 className={`border border-navyblue mr-4 px-5 text-xs sm:text-sm md:text-base py-2 text-white rounded-sm lg:mr-6 ${
-                  isUpdating ? 'bg-gray-400 cursor-not-allowed' : 'bg-navyblue hover:bg-blue-700'
+                  isUpdating
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-navyblue border-navyblue border hover:bg-blue-900 hover:border-blue-900"
                 }`}
               >
-                {isUpdating ? 'Updating...' : 'Save edit'}
+                {isUpdating ? "Updating..." : "Save edit"}
               </button>
             </div>
           )}
@@ -446,13 +573,15 @@ const Profile = () => {
           <h1 className="text-xl font-semibold">
             {userInfo.firstName} {userInfo.lastName}
           </h1>
-          <p className="text-sm text-gray-600">Student ID: {userInfo.studentId}</p>
+          <p className="text-sm text-gray-600">
+            Student ID: {userInfo.studentId}
+          </p>
         </div>
 
         {/* account details */}
         <div className="mx-7 mt-10 md:mt-20 lg:mt-25">
           <h1 className="text-[16px] lg:text-base my-5">Account Details</h1>
-          
+
           {/* read-only inputs and edit inputs */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <div className="space-y-5">
@@ -476,9 +605,7 @@ const Profile = () => {
               {/* Email */}
               <div className="bg-gray-100 border border-gray-700 flex items-center justify-between  rounded px-4 py-2.5">
                 <h1 className="text-sm text-gray-600">Email</h1>
-                <span className="text-gray-800 text-sm">
-                  {userInfo.email}
-                </span>
+                <span className="text-gray-800 text-sm">{userInfo.email}</span>
               </div>
             </div>
 

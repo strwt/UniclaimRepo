@@ -72,7 +72,7 @@ export default function SideNav({
               to="/report"
               isOpen={isOpen}
               className={clsx(
-                "bg-brand px-4 rounded-lg hover:bg-teal-600",
+                "bg-brand px-4 rounded-lg hover:bg-yellow-600",
                 isOpen && "my-1 mb-3"
               )}
               iconClassName="text-navyblue"
@@ -184,7 +184,7 @@ export default function SideNav({
 
             <div className="px-6 font-manrope">
               <div className="w-fit mt-2 mb-6">
-                <div className="flex items-center justify-center bg-brand font-albert-sans gap-2 py-3 px-4 rounded-md hover:bg-teal-600 transition-colors duration-300">
+                <div className="flex items-center justify-center bg-brand font-albert-sans gap-2 py-3 px-4 rounded-md hover:bg-yellow-600 transition-colors duration-300">
                   <HiOutlinePencil className="size-5" />
                   <Link to="/report" onClick={onMobNavClose}>
                     Report an item

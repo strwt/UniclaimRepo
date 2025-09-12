@@ -114,7 +114,8 @@ export default function MyTicket() {
   // Filter posts based on selected tab
   const tabFilteredPosts = rawUserPosts.filter((post) => {
     if (activeTab === "all_tickets") return true;
-    if (activeTab === "active_tickets") return post.status === "pending" || post.status === "unclaimed";
+    if (activeTab === "active_tickets")
+      return post.status === "pending" || post.status === "unclaimed";
     if (activeTab === "completed_tickets") return post.status === "resolved";
     return false;
   });
@@ -147,7 +148,7 @@ export default function MyTicket() {
               placeholder="Search a ticket"
               className="w-full md:max-w-sm border px-3 py-2 rounded placeholder:text-sm"
             />
-            <button className="bg-brand rounded text-white text-sm lg:text-base px-3 py-2 hover:bg-teal-600 transition-colors">
+            <button className="bg-brand rounded text-white text-sm lg:text-base px-3 py-2 hover:bg-yellow-600 transition-colors">
               Search
             </button>
             <button
