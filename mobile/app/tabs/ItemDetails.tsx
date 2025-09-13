@@ -94,7 +94,11 @@ export default function ItemDetails({
 
   // Detect location when coordinates change
   useEffect(() => {
-    if (coordinates && coordinates.latitude !== 0 && coordinates.longitude !== 0) {
+    if (
+      coordinates &&
+      coordinates.latitude !== 0 &&
+      coordinates.longitude !== 0
+    ) {
       // Use detected location from coordinates if available
       if (coordinates.detectedLocation) {
         setSelectedLocation(coordinates.detectedLocation);
@@ -123,37 +127,6 @@ export default function ItemDetails({
         {showFoundInfo && (
           <Info type="found" onClose={() => setShowFoundInfo(false)} />
         )}
-      </View>
-
-      <ImageUpload images={images} setImages={setImages} />
-
-      {/* Title Input */}
-      <View className="mb-4">
-        <Text className="text-base font-manrope-semibold mb-2 mt-3">
-          Item Title
-        </Text>
-        <TextInput
-          className="bg-white border border-gray-300 rounded-md px-3 py-3 text-base font-manrope"
-          placeholder="Enter item title (e.g., Blue Jansport Backpack)"
-          value={title}
-          onChangeText={setTitle}
-          multiline={false}
-        />
-      </View>
-
-      {/* Description Input */}
-      <View className="">
-        <Text className="text-base font-manrope-semibold mb-2">
-          Description
-        </Text>
-        <TextInput
-          className="bg-white border border-gray-300 rounded-md px-3 py-3 text-base font-manrope h-24"
-          placeholder="Describe the item in detail..."
-          value={description}
-          onChangeText={setDescription}
-          multiline={true}
-          textAlignVertical="top"
-        />
       </View>
 
       {/* Report Type */}
@@ -190,8 +163,39 @@ export default function ItemDetails({
         </View>
       </View>
 
+      <ImageUpload images={images} setImages={setImages} />
+
+      {/* Title Input */}
+      <View className="mb-4">
+        <Text className="text-base font-manrope-semibold mb-2 mt-3">
+          Item Title
+        </Text>
+        <TextInput
+          className="bg-white border border-gray-300 rounded-md px-3 py-3 text-base font-manrope"
+          placeholder="Enter item title (e.g., Blue Jansport Backpack)"
+          value={title}
+          onChangeText={setTitle}
+          multiline={false}
+        />
+      </View>
+
+      {/* Description Input */}
+      <View className="">
+        <Text className="text-base font-manrope-semibold mb-2">
+          Description
+        </Text>
+        <TextInput
+          className="bg-white border border-gray-300 rounded-md px-3 py-3 text-base font-manrope h-24"
+          placeholder="Describe the item in detail..."
+          value={description}
+          onChangeText={setDescription}
+          multiline={true}
+          textAlignVertical="top"
+        />
+      </View>
+
       {/* item category dropdown */}
-      <View>
+      <View className="mt-3">
         <CustomDropdown
           label="Item Category"
           data={ITEM_CATEGORIES}
@@ -261,9 +265,7 @@ export default function ItemDetails({
 
       {/* Location */}
       <View className="mb-4">
-        <Text className="text-base font-manrope-semibold mb-2">
-          Location
-        </Text>
+        <Text className="text-base font-manrope-semibold mb-2">Location</Text>
         <Text className="text-sm text-gray-600 mb-3">
           Pin a location on the map to automatically detect the building or area
         </Text>
@@ -291,7 +293,11 @@ export default function ItemDetails({
           {coordinates && (
             <Pressable
               onPress={() => {
-                setCoordinates({ latitude: 0, longitude: 0, detectedLocation: null });
+                setCoordinates({
+                  latitude: 0,
+                  longitude: 0,
+                  detectedLocation: null,
+                });
                 setSelectedLocation(null);
               }}
               hitSlop={10}
@@ -319,10 +325,10 @@ export default function ItemDetails({
                 How to use:
               </Text>
               <Text className="text-blue-700 text-xs">
-                • Click on the map to pin a location{"\n"}
-                • Make sure to pin within a building or campus area{"\n"}
-                • The system will automatically detect the location name{"\n"}
-                • If no location is detected, try pinning more precisely within a building
+                • Click on the map to pin a location{"\n"}• Make sure to pin
+                within a building or campus area{"\n"}• The system will
+                automatically detect the location name{"\n"}• If no location is
+                detected, try pinning more precisely within a building
               </Text>
             </View>
           </View>

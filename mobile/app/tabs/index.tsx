@@ -30,7 +30,7 @@ export default function Index({ onContinue }: { onContinue: () => void }) {
         {/* image container */}
         <View className="flex justify-center items-center w-full">
           <Image
-            source={require("../../assets/images/opening_image.jpeg")}
+            source={require("../../assets/images/opening_image.png")}
             className="w-[21rem] h-[18rem] object-cover rounded-md"
           />
 
