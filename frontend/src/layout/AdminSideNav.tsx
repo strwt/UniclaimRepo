@@ -6,6 +6,7 @@ import {
   HiOutlineTicket,
   HiOutlineChartBar,
   HiOutlineCog,
+  HiOutlineFlag,
 } from "react-icons/hi";
 import { HiOutlineEnvelope } from "react-icons/hi2";
 import { LuLayoutDashboard } from "react-icons/lu";
@@ -109,6 +110,19 @@ export default function AdminSideNav({
             />
 
             <NavText
+              icon={<HiOutlineFlag className="size-6 stroke-[1.5px]" />}
+              label="Flagged Posts"
+              to="/admin/flagged-posts"
+              isOpen={isOpen}
+              className="hover:bg-gray-100"
+              iconClassName="text-black"
+              textClassName="text-black"
+              tooltipIconClassName="text-navyblue text-xl"
+              tooltipTextClassName="text-navyblue text-base"
+              hoverContainerBgClass="bg-gray-100"
+            />
+
+            <NavText
               icon={<HiOutlineCog className="size-6 stroke-[1.5px]" />}
               label="System Cleanup"
               to="/admin/cleanup"
@@ -184,6 +198,17 @@ export default function AdminSideNav({
                   icon={<HiOutlineEnvelope className="size-6 stroke-[1.5px]" />}
                   label="Messages"
                   to="/admin/messages"
+                  isOpen={isOpen}
+                  onClick={onMobNavClose}
+                  className="hover:bg-gray-50 rounded pl-4 justify-start"
+                  iconClassName="text-black"
+                  textClassName="font-manrope"
+                />
+
+                <NavText
+                  icon={<HiOutlineFlag className="size-6 stroke-[1.5px]" />}
+                  label="Flagged Posts"
+                  to="/admin/flagged-posts"
                   isOpen={isOpen}
                   onClick={onMobNavClose}
                   className="hover:bg-gray-50 rounded pl-4 justify-start"
