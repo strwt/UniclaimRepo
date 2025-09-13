@@ -6,6 +6,7 @@ import AdminHomePage from "../routes/admin-routes/AdminHomePage";
 import AdminProfile from "../routes/admin-routes/AdminProfile";
 import AdminUserManagement from "../routes/admin-routes/AdminUserManagement";
 import AdminMessagesPage from "../routes/admin-routes/AdminMessagesPage";
+import AdminAnnouncementsPage from "../routes/admin-routes/AdminAnnouncementsPage";
 import FlaggedPostsPage from "../routes/admin-routes/FlaggedPostsPage";
 import ConversationCleanupAdmin from "../components/ConversationCleanupAdmin";
 
@@ -212,6 +213,14 @@ function AppRoutesWithAuth() {
             element={
               <PageWrapper title="Admin Messages">
                 <AdminMessagesPage />
+              </PageWrapper>
+            }
+          />
+          <Route
+            path="announcements"
+            element={
+              <PageWrapper title="Announcements">
+                <AdminAnnouncementsPage />
               </PageWrapper>
             }
           />

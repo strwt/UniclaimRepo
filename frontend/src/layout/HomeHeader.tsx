@@ -12,9 +12,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useAdminView } from "@/context/AdminViewContext";
 import { useNotifications } from "@/context/NotificationContext";
+import { useCurrentAnnouncement } from "@/context/AnnouncementContext";
 import ProfilePicture from "@/components/ProfilePicture";
 import NotificationPreferencesModal from "@/components/NotificationPreferences";
 import PostModal from "@/components/PostModal";
+import AnnouncementBanner from "@/components/AnnouncementBanner";
 import { postService } from "@/services/firebase/posts";
 import type { Post } from "@/types/Post";
 import { authService } from "@/utils/firebase";
@@ -40,6 +42,7 @@ export default function HomeHeader({
   const { logout, userData, user } = useAuth();
   const { isViewingAsUser, switchToAdminView } = useAdminView();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications();
+  const { currentAnnouncement, hasActiveAnnouncements, loading: announcementLoading } = useCurrentAnnouncement();
   const [isAdmin, setIsAdmin] = useState(false);
 
   const navigate = useNavigate();
@@ -93,7 +96,7 @@ export default function HomeHeader({
       <div className="">
         {/* header-container */}
         <div className="">
-          <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-navyblue px-5 py-4">
+          <div className="fixed left-0 right-0 z-40 flex items-center justify-between bg-navyblue px-5 py-4 top-0">
             {/* logo-w-text-container */}
             <div className="flex items-center gap-1">
               <img
@@ -118,6 +121,13 @@ export default function HomeHeader({
                 />
               )}
             </div>
+
+            {/* Announcement Banner - positioned between menu and notifications */}
+            <AnnouncementBanner
+              message={currentAnnouncement?.message || ''}
+              isVisible={hasActiveAnnouncements && !announcementLoading}
+              priority={currentAnnouncement?.priority || 'normal'}
+            />
 
             {/* notification-bell-w-profile-container */}
             <div className="flex items-center gap-4 relative">
@@ -184,9 +194,9 @@ export default function HomeHeader({
 
         {/* notification dropdown */}
         <div
-          className={`fixed font-manrope p-3 top-0 right-0 h-full bg-white shadow-lg transition-transform duration-300 z-40 ${
+          className={`fixed font-manrope p-3 right-0 h-full bg-white shadow-lg transition-transform duration-300 z-40 ${
             showNotif ? "translate-x-0" : "translate-x-full"
-          } w-full md:w-2/3 lg:w-1/3`}
+          } w-full md:w-2/3 lg:w-1/3 top-0`}
         >
           <div className="p-4 flex justify-between items-center border-b border-gray-200">
             <div className="flex items-center">
