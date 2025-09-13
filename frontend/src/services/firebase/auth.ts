@@ -25,6 +25,7 @@ import {
 // Import Firebase instances and types
 import { auth, db } from './config';
 import { notificationSubscriptionService } from './notificationSubscriptions';
+import { getFirebaseErrorMessage } from './utils';
 import type { UserData } from './types';
 
 // Auth utility functions
@@ -92,7 +93,7 @@ export const authService = {
 
             return { user, userData };
         } catch (error: any) {
-            throw new Error(error.message || 'Registration failed');
+            throw new Error(getFirebaseErrorMessage(error));
         }
     },
 
@@ -106,7 +107,7 @@ export const authService = {
             );
             return userCredential.user;
         } catch (error: any) {
-            throw new Error(error.message || 'Login failed');
+            throw new Error(getFirebaseErrorMessage(error));
         }
     },
 
@@ -115,7 +116,7 @@ export const authService = {
         try {
             await signOut(auth);
         } catch (error: any) {
-            throw new Error(error.message || 'Logout failed');
+            throw new Error(getFirebaseErrorMessage(error));
         }
     },
 
@@ -124,7 +125,7 @@ export const authService = {
         try {
             await sendPasswordResetEmail(auth, email);
         } catch (error: any) {
-            throw new Error(error.message || 'Failed to send password reset email');
+            throw new Error(getFirebaseErrorMessage(error));
         }
     },
 

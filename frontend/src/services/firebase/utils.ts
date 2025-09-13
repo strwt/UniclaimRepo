@@ -13,6 +13,8 @@ export const getFirebaseErrorMessage = (error: any): string => {
             return 'Password should be at least 6 characters long.';
         case 'auth/invalid-email':
             return 'Please enter a valid email address.';
+        case 'auth/invalid-credential':
+            return 'Invalid email or password. Please check your credentials and try again.';
         case 'auth/too-many-requests':
             return 'Too many failed login attempts. Please try again later.';
         case 'auth/network-request-failed':
