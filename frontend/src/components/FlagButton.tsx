@@ -25,6 +25,7 @@ export default function FlagButton({
 
   const handleFlagClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the post card click
+    e.preventDefault(); // Prevent default button behavior
     if (!user) {
       alert("Please log in to flag posts");
       return;

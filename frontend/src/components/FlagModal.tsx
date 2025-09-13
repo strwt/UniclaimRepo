@@ -24,6 +24,7 @@ export default function FlagModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event from bubbling up to PostCard
     const reason = selectedReason === "Other" ? customReason : selectedReason;
     if (reason.trim()) {
       onSubmit(reason.trim());
@@ -31,6 +32,7 @@ export default function FlagModal({
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event from bubbling up to PostCard
     if (e.target === e.currentTarget) {
       onClose();
     }
@@ -88,7 +90,10 @@ export default function FlagModal({
           <div className="flex justify-end space-x-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent event from bubbling up to PostCard
+                onClose();
+              }}
               disabled={isLoading}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
             >
@@ -96,6 +101,7 @@ export default function FlagModal({
             </button>
             <button
               type="submit"
+              onClick={(e) => e.stopPropagation()} // Prevent event from bubbling up to PostCard
               disabled={
                 !selectedReason ||
                 (selectedReason === "Other" && !customReason.trim()) ||
