@@ -1,6 +1,6 @@
 import React from "react";
 import CategoryButton from "../components/ItemCategory";
-import SearchableLocationDropdown from "./SearchableLocationDropdown";
+import { FiChevronDown } from "react-icons/fi";
 import { USTP_LOCATIONS, CATEGORIES_WITH_COLORS } from "@/constants";
 
 interface FiltersProps {
@@ -51,11 +51,21 @@ const Filters: React.FC<FiltersProps> = ({
           {/* Location dropdown */}
           <div className="w-full space-y-3 lg:max-w-md">
             <h1 className="text-sm">Last seen location</h1>
-            <SearchableLocationDropdown
-              value={location}
-              onChange={setLocation}
-              placeholder="All locations"
-            />
+            <div className="relative">
+              <select
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="border appearance-none px-3 py-2 w-full rounded-md text-sm"
+              >
+                <option value="">All locations</option>
+                {USTP_LOCATIONS.map((loc: string) => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </select>
+              <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
+            </div>
           </div>
 
           {/* Description input */}
