@@ -15,7 +15,7 @@ export default function FlaggedPostsPage() {
   // Confirmation modal states
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'approve' | 'hide' | 'delete';
+    type: 'approve' | 'hide' | 'unhide' | 'delete';
     post: Post | null;
   } | null>(null);
 
@@ -23,7 +23,7 @@ export default function FlaggedPostsPage() {
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
   const [showBulkConfirmModal, setShowBulkConfirmModal] = useState(false);
   const [bulkAction, setBulkAction] = useState<{
-    type: 'approve' | 'hide' | 'delete';
+    type: 'approve' | 'hide' | 'unhide' | 'delete';
     count: number;
   } | null>(null);
 
@@ -46,7 +46,7 @@ export default function FlaggedPostsPage() {
     }
   };
 
-  const handleActionClick = (action: 'approve' | 'hide' | 'delete', post: Post) => {
+  const handleActionClick = (action: 'approve' | 'hide' | 'unhide' | 'delete', post: Post) => {
     setConfirmAction({ type: action, post });
     setShowConfirmModal(true);
   };
@@ -71,6 +71,11 @@ export default function FlaggedPostsPage() {
           setFlaggedPosts(prev => prev.filter(p => p.id !== postId));
           showToast('Post hidden from public view successfully', 'success');
           break;
+        case 'unhide':
+          await postService.unhidePost(postId);
+          setFlaggedPosts(prev => prev.filter(p => p.id !== postId));
+          showToast('Post unhidden and visible to public successfully', 'success');
+          break;
         case 'delete':
           await postService.deletePost(postId);
           setFlaggedPosts(prev => prev.filter(p => p.id !== postId));
@@ -78,7 +83,7 @@ export default function FlaggedPostsPage() {
           break;
       }
     } catch (err: any) {
-      const actionText = type === 'approve' ? 'approve' : type === 'hide' ? 'hide' : 'delete';
+      const actionText = type === 'approve' ? 'approve' : type === 'hide' ? 'hide' : type === 'unhide' ? 'unhide' : 'delete';
       showToast(err.message || `Failed to ${actionText} post`, 'error');
     } finally {
       setActionLoading(null);
@@ -113,7 +118,7 @@ export default function FlaggedPostsPage() {
     }
   };
 
-  const handleBulkActionClick = (action: 'approve' | 'hide' | 'delete') => {
+  const handleBulkActionClick = (action: 'approve' | 'hide' | 'unhide' | 'delete') => {
     if (selectedPosts.size === 0) {
       showToast('Please select posts to perform bulk action', 'warning');
       return;
@@ -141,6 +146,9 @@ export default function FlaggedPostsPage() {
               break;
             case 'hide':
               await postService.hidePost(postId);
+              break;
+            case 'unhide':
+              await postService.unhidePost(postId);
               break;
             case 'delete':
               await postService.deletePost(postId);
@@ -331,6 +339,11 @@ export default function FlaggedPostsPage() {
                         <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
                           {post.category}
                         </span>
+                        {post.isHidden && (
+                          <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                            Hidden
+                          </span>
+                        )}
                       </div>
                     </div>
                     
@@ -404,11 +417,17 @@ export default function FlaggedPostsPage() {
                       
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleActionClick('hide', post)}
+                          onClick={() => handleActionClick(post.isHidden ? 'unhide' : 'hide', post)}
                           disabled={actionLoading === post.id}
-                          className="flex-1 px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+                          className={`flex-1 px-3 py-2 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors ${
+                            post.isHidden 
+                              ? 'bg-green-600 hover:bg-green-700' 
+                              : 'bg-yellow-600 hover:bg-yellow-700'
+                          }`}
                         >
-                          {actionLoading === post.id ? 'Processing...' : '👁️ Hide'}
+                          {actionLoading === post.id ? 'Processing...' : 
+                            post.isHidden ? '👁️ Unhide' : '👁️ Hide'
+                          }
                         </button>
                         
                         <button
@@ -438,6 +457,7 @@ export default function FlaggedPostsPage() {
                 <h3 className="text-xl font-semibold text-gray-900">
                   {confirmAction.type === 'approve' && 'Approve Post'}
                   {confirmAction.type === 'hide' && 'Hide Post'}
+                  {confirmAction.type === 'unhide' && 'Unhide Post'}
                   {confirmAction.type === 'delete' && 'Delete Post'}
                 </h3>
                 <button
@@ -467,6 +487,7 @@ export default function FlaggedPostsPage() {
                   <p className="text-sm text-yellow-800">
                     {confirmAction.type === 'approve' && 'This will remove the flag and make the post visible to all users again.'}
                     {confirmAction.type === 'hide' && 'This will hide the post from public view but keep it in the system. It can be unhidden later.'}
+                    {confirmAction.type === 'unhide' && 'This will make the post visible to all users again. The post will remain flagged until approved.'}
                     {confirmAction.type === 'delete' && 'This will permanently delete the post and all associated data. This action cannot be undone.'}
                   </p>
                 </div>
@@ -488,12 +509,15 @@ export default function FlaggedPostsPage() {
                       ? 'bg-green-600 hover:bg-green-700' 
                       : confirmAction.type === 'hide'
                       ? 'bg-yellow-600 hover:bg-yellow-700'
+                      : confirmAction.type === 'unhide'
+                      ? 'bg-green-600 hover:bg-green-700'
                       : 'bg-red-600 hover:bg-red-700'
                   }`}
                 >
                   {actionLoading === confirmAction.post.id ? 'Processing...' : 
                     confirmAction.type === 'approve' ? 'Approve Post' :
-                    confirmAction.type === 'hide' ? 'Hide Post' : 'Delete Post'
+                    confirmAction.type === 'hide' ? 'Hide Post' :
+                    confirmAction.type === 'unhide' ? 'Unhide Post' : 'Delete Post'
                   }
                 </button>
               </div>
@@ -512,6 +536,7 @@ export default function FlaggedPostsPage() {
                 <h3 className="text-xl font-semibold text-gray-900">
                   {bulkAction.type === 'approve' && 'Approve Multiple Posts'}
                   {bulkAction.type === 'hide' && 'Hide Multiple Posts'}
+                  {bulkAction.type === 'unhide' && 'Unhide Multiple Posts'}
                   {bulkAction.type === 'delete' && 'Delete Multiple Posts'}
                 </h3>
                 <button
@@ -535,6 +560,7 @@ export default function FlaggedPostsPage() {
                   <p className="text-sm text-yellow-800">
                     {bulkAction.type === 'approve' && 'This will remove flags from all selected posts and make them visible to all users again.'}
                     {bulkAction.type === 'hide' && 'This will hide all selected posts from public view but keep them in the system. They can be unhidden later.'}
+                    {bulkAction.type === 'unhide' && 'This will make all selected posts visible to all users again. The posts will remain flagged until approved.'}
                     {bulkAction.type === 'delete' && 'This will permanently delete all selected posts and all associated data. This action cannot be undone.'}
                   </p>
                 </div>
@@ -562,12 +588,15 @@ export default function FlaggedPostsPage() {
                       ? 'bg-green-600 hover:bg-green-700' 
                       : bulkAction.type === 'hide'
                       ? 'bg-yellow-600 hover:bg-yellow-700'
+                      : bulkAction.type === 'unhide'
+                      ? 'bg-green-600 hover:bg-green-700'
                       : 'bg-red-600 hover:bg-red-700'
                   }`}
                 >
                   {actionLoading === 'bulk' ? 'Processing...' : 
                     bulkAction.type === 'approve' ? `Approve ${bulkAction.count} Posts` :
-                    bulkAction.type === 'hide' ? `Hide ${bulkAction.count} Posts` : `Delete ${bulkAction.count} Posts`
+                    bulkAction.type === 'hide' ? `Hide ${bulkAction.count} Posts` :
+                    bulkAction.type === 'unhide' ? `Unhide ${bulkAction.count} Posts` : `Delete ${bulkAction.count} Posts`
                   }
                 </button>
               </div>
