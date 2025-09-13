@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { postService } from '@/services/firebase/posts';
-import { useAuth } from '@/context/AuthContext';
-import FlagModal from './FlagModal';
+import { useState } from "react";
+import { postService } from "@/services/firebase/posts";
+import { useAuth } from "@/context/AuthContext";
+import FlagModal from "./FlagModal";
+import { IoFlagOutline } from "react-icons/io5";
 
 interface FlagButtonProps {
   postId: string;
@@ -11,12 +12,12 @@ interface FlagButtonProps {
   className?: string;
 }
 
-export default function FlagButton({ 
-  postId, 
-  isFlagged = false, 
-  flaggedBy, 
+export default function FlagButton({
+  postId,
+  isFlagged = false,
+  flaggedBy,
   onFlagSuccess,
-  className = ""
+  className = "",
 }: FlagButtonProps) {
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +26,7 @@ export default function FlagButton({
   const handleFlagClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the post card click
     if (!user) {
-      alert('Please log in to flag posts');
+      alert("Please log in to flag posts");
       return;
     }
     setShowFlagModal(true);
@@ -33,14 +34,14 @@ export default function FlagButton({
 
   const handleFlagSubmit = async (reason: string) => {
     if (!user) return;
-    
+
     setIsLoading(true);
     try {
       await postService.flagPost(postId, user.uid, reason);
       setShowFlagModal(false);
       onFlagSuccess?.();
     } catch (error: any) {
-      alert(error.message || 'Failed to flag post');
+      alert(error.message || "Failed to flag post");
     } finally {
       setIsLoading(false);
     }
@@ -57,13 +58,18 @@ export default function FlagButton({
         className={`
           flex items-center gap-1 px-2 py-1 rounded text-xs font-medium
           transition-colors duration-200
-          ${isAlreadyFlaggedByUser 
-            ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
-            : 'bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700'
+          ${
+            isAlreadyFlaggedByUser
+              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+              : "bg-red-500 text-white hover:bg-red-700"
           }
           ${className}
         `}
-        title={isAlreadyFlaggedByUser ? 'You have already flagged this post' : 'Flag this post'}
+        title={
+          isAlreadyFlaggedByUser
+            ? "You have already flagged this post"
+            : "Flag this post"
+        }
       >
         {isLoading ? (
           <>
@@ -72,8 +78,8 @@ export default function FlagButton({
           </>
         ) : (
           <>
-            <span>🚩</span>
-            <span>{isAlreadyFlaggedByUser ? 'Flagged' : 'Flag'}</span>
+            <IoFlagOutline className="size-4 stroke-[1px]" />
+            <span>{isAlreadyFlaggedByUser ? "Flagged" : "Flag Post"}</span>
           </>
         )}
       </button>
