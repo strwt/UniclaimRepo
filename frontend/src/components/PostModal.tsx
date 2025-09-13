@@ -7,6 +7,7 @@ import { useMessage } from "@/context/MessageContext";
 import ProfilePicture from "./ProfilePicture";
 import HandoverDetailsDisplay from "./HandoverDetailsDisplay";
 import ClaimDetailsDisplay from "./ClaimDetailsDisplay";
+import FlagButton from "./FlagButton";
 
 interface PostModalProps {
   post: Post;
@@ -206,6 +207,13 @@ export default function PostModal({
                   "Send Message"
                 )}
               </button>
+            )}
+            {!isCurrentUserCreator && (
+              <FlagButton
+                postId={post.id}
+                isFlagged={post.isFlagged}
+                flaggedBy={post.flaggedBy}
+              />
             )}
             <button className="" onClick={onClose}>
               <FiX className="size-5 stroke-[1.5px]" />

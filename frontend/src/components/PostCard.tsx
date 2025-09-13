@@ -2,7 +2,6 @@ import { useEffect, useMemo, memo } from "react";
 import type { Post } from "@/types/Post";
 import ProfilePicture from "./ProfilePicture";
 import { useAdminStatus } from "@/hooks/useAdminStatus";
-import FlagButton from "./FlagButton";
 
 interface PostCardProps {
   post: Post;
@@ -203,14 +202,6 @@ function PostCard({
               )}
             </div>
           </div>
-
-          {/* Flag Button */}
-          <FlagButton
-            postId={post.id}
-            isFlagged={post.isFlagged}
-            flaggedBy={post.flaggedBy}
-            className="ml-auto"
-          />
         </div>
 
         <h1 className="text-lg font-semibold my-2 truncate max-w-[12rem]">

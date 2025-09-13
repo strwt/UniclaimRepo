@@ -57,7 +57,7 @@ export default function FlagButton({
         onClick={handleFlagClick}
         disabled={isAlreadyFlaggedByUser || isLoading}
         className={`
-          flex items-center gap-1 px-2 py-1 rounded text-xs font-medium
+          flex items-center justify-center p-2 rounded
           transition-colors duration-200
           ${
             isAlreadyFlaggedByUser
@@ -73,15 +73,9 @@ export default function FlagButton({
         }
       >
         {isLoading ? (
-          <>
-            <div className="w-3 h-3 border border-red-600 border-t-transparent rounded-full animate-spin" />
-            <span>Flagging...</span>
-          </>
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
         ) : (
-          <>
-            <IoFlagOutline className="size-4 stroke-[1px]" />
-            <span>{isAlreadyFlaggedByUser ? "Flagged" : "Flag Post"}</span>
-          </>
+          <IoFlagOutline className="size-5 stroke-[1px]" />
         )}
       </button>
 
