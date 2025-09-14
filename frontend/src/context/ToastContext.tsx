@@ -90,7 +90,7 @@ export const ToastProvider = ({
     <ToastContext.Provider value={{ showToast }}>
       {children}
       <div
-        className={`fixed ${containerPosition} z-40 flex flex-col gap-y-3 pointer-events-none px-4
+        className={`fixed ${containerPosition} z-[60] flex flex-col gap-y-3 pointer-events-none px-4
     ${position === "bottom-left" ? "items-start" : "items-end"}`}
       >
         {toasts.map((toast) => (

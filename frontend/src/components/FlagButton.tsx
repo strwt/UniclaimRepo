@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { postService } from "@/services/firebase/posts";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import FlagModal from "./FlagModal";
 import { IoFlagOutline } from "react-icons/io5";
 
@@ -22,6 +23,7 @@ export default function FlagButton({
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const handleFlagClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the post card click
@@ -40,6 +42,7 @@ export default function FlagButton({
     try {
       await postService.flagPost(postId, user.uid, reason);
       setShowFlagModal(false);
+      showToast("success", "Post has been flagged for review");
       onFlagSuccess?.();
     } catch (error: any) {
       alert(error.message || "Failed to flag post");
