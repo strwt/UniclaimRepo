@@ -1,7 +1,7 @@
 // Notification preferences component for web app
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { notificationService } from '../services/firebase/notifications';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { notificationService } from "../services/firebase/notifications";
 
 // Inline type definition to avoid import issues
 interface NotificationPreferences {
@@ -18,15 +18,24 @@ interface NotificationPreferences {
   };
   soundEnabled: boolean;
 }
-import { HiBell, HiClock, HiLocationMarker, HiTag, HiVolumeUp, HiVolumeOff } from 'react-icons/hi';
-import { FiX } from 'react-icons/fi';
-import { SoundUtils } from '../utils/soundUtils';
+import {
+  HiBell,
+  HiClock,
+  HiLocationMarker,
+  HiTag,
+  HiVolumeUp,
+  HiVolumeOff,
+} from "react-icons/hi";
+import { FiX } from "react-icons/fi";
+import { SoundUtils } from "../utils/soundUtils";
 
 interface NotificationPreferencesComponentProps {
   onClose: () => void;
 }
 
-export default function NotificationPreferencesModal({ onClose }: NotificationPreferencesComponentProps) {
+export default function NotificationPreferencesModal({
+  onClose,
+}: NotificationPreferencesComponentProps) {
   const { userData } = useAuth();
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     newPosts: true,
@@ -38,9 +47,9 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
     quietHours: {
       enabled: false,
       start: "22:00",
-      end: "08:00"
+      end: "08:00",
     },
-    soundEnabled: true
+    soundEnabled: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -50,8 +59,16 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
 
   // Available categories for filtering
   const availableCategories = [
-    'Electronics', 'Clothing', 'Accessories', 'Books', 'Bags', 
-    'Keys', 'Documents', 'Jewelry', 'Sports Equipment', 'Other'
+    "Electronics",
+    "Clothing",
+    "Accessories",
+    "Books",
+    "Bags",
+    "Keys",
+    "Documents",
+    "Jewelry",
+    "Sports Equipment",
+    "Other",
   ];
 
   useEffect(() => {
@@ -77,10 +94,10 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
       if (success) {
         setError(null);
       } else {
-        setError('Test sound failed - check your browser audio settings');
+        setError("Test sound failed - check your browser audio settings");
       }
     } catch (err: any) {
-      setError('Test sound failed: ' + (err.message || 'Unknown error'));
+      setError("Test sound failed: " + (err.message || "Unknown error"));
     } finally {
       setTestingSound(false);
     }
@@ -91,10 +108,11 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
 
     try {
       setLoading(true);
-      const userPreferences = await notificationService.getNotificationPreferences(userData.uid);
+      const userPreferences =
+        await notificationService.getNotificationPreferences(userData.uid);
       setPreferences(userPreferences);
     } catch (err: any) {
-      setError(err.message || 'Failed to load preferences');
+      setError(err.message || "Failed to load preferences");
     } finally {
       setLoading(false);
     }
@@ -106,38 +124,44 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
     try {
       setSaving(true);
       setError(null);
-      await notificationService.updateNotificationPreferences(userData.uid, preferences);
+      await notificationService.updateNotificationPreferences(
+        userData.uid,
+        preferences
+      );
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to save preferences');
+      setError(err.message || "Failed to save preferences");
     } finally {
       setSaving(false);
     }
   };
 
   const handleToggle = (key: keyof NotificationPreferences) => {
-    setPreferences(prev => ({
+    setPreferences((prev) => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: !prev[key],
     }));
   };
 
   const handleCategoryToggle = (category: string) => {
-    setPreferences(prev => ({
+    setPreferences((prev) => ({
       ...prev,
       categoryFilter: prev.categoryFilter.includes(category)
-        ? prev.categoryFilter.filter(c => c !== category)
-        : [...prev.categoryFilter, category]
+        ? prev.categoryFilter.filter((c) => c !== category)
+        : [...prev.categoryFilter, category],
     }));
   };
 
-  const handleQuietHoursChange = (field: 'enabled' | 'start' | 'end', value: boolean | string) => {
-    setPreferences(prev => ({
+  const handleQuietHoursChange = (
+    field: "enabled" | "start" | "end",
+    value: boolean | string
+  ) => {
+    setPreferences((prev) => ({
       ...prev,
       quietHours: {
         ...prev.quietHours,
-        [field]: value
-      }
+        [field]: value,
+      },
     }));
   };
 
@@ -155,11 +179,11 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-            <HiBell className="mr-2 text-blue-600" />
+          <h2 className="text-xl font-bold text-gray-900 flex items-center">
+            <HiBell className="mr-2 text-yellow-500" />
             Notification Preferences
           </h2>
           <button
@@ -179,69 +203,71 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
         <div className="space-y-6">
           {/* Notification Types */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Notification Types</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Notification Types
+            </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <HiBell className="mr-2 text-green-600" />
-                  <span className="text-gray-700">New Posts</span>
+                  <span className="text-gray-700 text-sm">New Posts</span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     checked={preferences.newPosts}
-                    onChange={() => handleToggle('newPosts')}
+                    onChange={() => handleToggle("newPosts")}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-1 peer-focus:ring-navyblue rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-navyblue"></div>
                 </label>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <HiBell className="mr-2 text-blue-600" />
-                  <span className="text-gray-700">Messages</span>
+                  <span className="text-gray-700 text-sm">Messages</span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     checked={preferences.messages}
-                    onChange={() => handleToggle('messages')}
+                    onChange={() => handleToggle("messages")}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-1 peer-focus:ring-navyblue rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-navyblue"></div>
                 </label>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <HiBell className="mr-2 text-yellow-600" />
-                  <span className="text-gray-700">Claim Updates</span>
+                  <span className="text-gray-700 text-sm">Claim Updates</span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     checked={preferences.claimUpdates}
-                    onChange={() => handleToggle('claimUpdates')}
+                    onChange={() => handleToggle("claimUpdates")}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-1 peer-focus:ring-navyblue rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-navyblue"></div>
                 </label>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <HiBell className="mr-2 text-red-600" />
-                  <span className="text-gray-700">Admin Alerts</span>
+                  <span className="text-gray-700 text-sm">Admin Alerts</span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     checked={preferences.adminAlerts}
-                    onChange={() => handleToggle('adminAlerts')}
+                    onChange={() => handleToggle("adminAlerts")}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-1 peer-focus:ring-navyblue rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-navyblue"></div>
                 </label>
               </div>
             </div>
@@ -250,14 +276,15 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
           {/* Category Filter */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <HiTag className="mr-2 text-purple-600" />
+              <HiTag className="mr-2 text-yellow-500" />
               Category Filter
             </h3>
             <p className="text-sm text-gray-600 mb-3">
-              Only receive notifications for posts in these categories (leave empty for all categories)
+              Only receive notifications for posts in these categories (leave
+              empty for all categories)
             </p>
             <div className="grid grid-cols-2 gap-2">
-              {availableCategories.map(category => (
+              {availableCategories.map((category) => (
                 <label key={category} className="flex items-center">
                   <input
                     type="checkbox"
@@ -273,7 +300,9 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
 
           {/* Sound Settings */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Sound Settings</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Sound Settings
+            </h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
@@ -288,10 +317,10 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
                   <input
                     type="checkbox"
                     checked={preferences.soundEnabled}
-                    onChange={() => handleToggle('soundEnabled')}
+                    onChange={() => handleToggle("soundEnabled")}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-1 peer-focus:ring-navyblue rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-navyblue"></div>
                 </label>
               </div>
 
@@ -299,19 +328,42 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
               {audioStatus && (
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Audio System Status</span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      audioStatus.isReady ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {audioStatus.isReady ? 'Ready' : 'Not Ready'}
+                    <span className="text-sm font-medium text-gray-700">
+                      Audio System Status
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        audioStatus.isReady
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {audioStatus.isReady ? "Ready" : "Not Ready"}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 mb-3">{audioStatus.message}</p>
+                  <p className="text-sm text-gray-600 mb-3">
+                    {audioStatus.message}
+                  </p>
                   <div className="text-xs text-gray-500 space-y-1">
-                    <div>Browser: {audioStatus.browserInfo?.name} {audioStatus.browserInfo?.version}</div>
-                    <div>Web Audio API: {audioStatus.browserInfo?.supportsWebAudio ? 'Supported' : 'Not Supported'}</div>
-                    <div>Autoplay Policy: {audioStatus.browserInfo?.autoplayPolicy}</div>
-                    <div>Requires User Gesture: {audioStatus.browserInfo?.requiresUserGesture ? 'Yes' : 'No'}</div>
+                    <div>
+                      Browser: {audioStatus.browserInfo?.name}{" "}
+                      {audioStatus.browserInfo?.version}
+                    </div>
+                    <div>
+                      Web Audio API:{" "}
+                      {audioStatus.browserInfo?.supportsWebAudio
+                        ? "Supported"
+                        : "Not Supported"}
+                    </div>
+                    <div>
+                      Autoplay Policy: {audioStatus.browserInfo?.autoplayPolicy}
+                    </div>
+                    <div>
+                      Requires User Gesture:{" "}
+                      {audioStatus.browserInfo?.requiresUserGesture
+                        ? "Yes"
+                        : "No"}
+                    </div>
                   </div>
                 </div>
               )}
@@ -320,18 +372,20 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-gray-700">Test Notification Sound</span>
-                  <p className="text-sm text-gray-500">Click to test if notification sounds are working</p>
+                  <p className="text-sm text-gray-500">
+                    Click to test if notification sounds are working
+                  </p>
                 </div>
                 <button
                   onClick={testNotificationSound}
                   disabled={testingSound || !preferences.soundEnabled}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     testingSound || !preferences.soundEnabled
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-yellow-500 text-white hover:bg-yellow-600"
                   }`}
                 >
-                  {testingSound ? 'Testing...' : 'Test Sound'}
+                  {testingSound ? "Testing..." : "Test Sound"}
                 </button>
               </div>
             </div>
@@ -350,10 +404,12 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
                   <input
                     type="checkbox"
                     checked={preferences.quietHours.enabled}
-                    onChange={(e) => handleQuietHoursChange('enabled', e.target.checked)}
+                    onChange={(e) =>
+                      handleQuietHoursChange("enabled", e.target.checked)
+                    }
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-1 peer-focus:ring-navyblue rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-navyblue"></div>
                 </label>
               </div>
 
@@ -366,7 +422,9 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
                     <input
                       type="time"
                       value={preferences.quietHours.start}
-                      onChange={(e) => handleQuietHoursChange('start', e.target.value)}
+                      onChange={(e) =>
+                        handleQuietHoursChange("start", e.target.value)
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -377,7 +435,9 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
                     <input
                       type="time"
                       value={preferences.quietHours.end}
-                      onChange={(e) => handleQuietHoursChange('end', e.target.value)}
+                      onChange={(e) =>
+                        handleQuietHoursChange("end", e.target.value)
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -398,7 +458,7 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
           <button
             onClick={savePreferences}
             disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+            className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
           >
             {saving ? (
               <>
@@ -406,7 +466,7 @@ export default function NotificationPreferencesModal({ onClose }: NotificationPr
                 Saving...
               </>
             ) : (
-              'Save Preferences'
+              "Save Preferences"
             )}
           </button>
         </div>

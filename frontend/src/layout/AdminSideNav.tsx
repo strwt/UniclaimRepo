@@ -187,8 +187,8 @@ export default function AdminSideNav({
 
             <div className="px-6 font-manrope">
               <div className="w-fit mt-2 mb-6">
-                <div className="flex items-center justify-center bg-brand font-albert-sans gap-2 py-3 px-4 rounded-md hover:bg-teal-600 transition-colors duration-300">
-                  <HiOutlineHome className="size-5" />
+                <div className="flex items-center justify-center bg-brand font-albert-sans gap-2 py-3 px-4 rounded-md hover:bg-yellow-600 transition-colors duration-300">
+                  <LuLayoutDashboard className="size-6 stroke-[1.5px]" />
                   <Link to="/admin" onClick={onMobNavClose}>
                     Dashboard
                   </Link>
@@ -219,7 +219,9 @@ export default function AdminSideNav({
                 />
 
                 <NavText
-                  icon={<HiOutlineSpeakerWave className="size-6 stroke-[1.5px]" />}
+                  icon={
+                    <HiOutlineSpeakerWave className="size-6 stroke-[1.5px]" />
+                  }
                   label="Announcements"
                   to="/admin/announcements"
                   isOpen={isOpen}
