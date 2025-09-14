@@ -12,7 +12,9 @@ const AdminMessagesPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isGoingBack, setIsGoingBack] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "unread" | "handover" | "claim">("all");
+  const [filterType, setFilterType] = useState<
+    "all" | "unread" | "handover" | "claim"
+  >("all");
 
   // Handle URL changes and clear selected conversation when no conversation is specified
   useEffect(() => {
@@ -50,17 +52,19 @@ const AdminMessagesPage: React.FC = () => {
       <div className="">
         <div className="w-full mx-auto">
           {/* Page Header */}
-          <div className="hidden px-4 py-3 sm:px-6 lg:px-8 lg:flex items-center justify-between fixed left-20 top-18 right-0 z-10 bg-gray-50 border-b border-zinc-200">
-            <div className="">
-              <h1 className="text-base font-medium text-gray-900">Admin Messages</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Monitor and manage all user conversations
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+          <div className="hidden p-4 sm:px-6 lg:px-8 lg:flex items-center justify-between fixed left-20 top-18 right-0 z-10 bg-gray-50 border-b border-zinc-200">
+            <div className="flex flex-row gap-3 items-center">
+              <h1 className="text-base font-medium text-gray-900">
+                Admin Messages
+              </h1>
+              <div className="bg-blue-100 text-blue-800 text-[10px] py-1 px-2 rounded-full">
                 Admin View
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-gray-500 mt-1">
+                Monitor and manage all user conversations
+              </p>
             </div>
           </div>
 
@@ -76,10 +80,14 @@ const AdminMessagesPage: React.FC = () => {
             <div className="hidden lg:flex w-full">
               {/* Conversations List - Desktop */}
               <div className="w-1/3 border-r border-gray-200 bg-white">
-                <div className="p-4 border-b border-gray-200 bg-gray-50">
-                  <h2 className="text-lg font-semibold text-gray-800">All Conversations</h2>
-                  <p className="text-sm text-gray-500">Admin oversight of user communications</p>
-                  
+                <div className="p-7 border-gray-200 bg-gray-50">
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    All Conversations
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    Admin oversight of user communications
+                  </p>
+
                   {/* Search and Filter Controls */}
                   <div className="mt-4 space-y-3">
                     {/* Search Input */}
@@ -89,17 +97,17 @@ const AdminMessagesPage: React.FC = () => {
                         placeholder="Search conversations..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-navyblue focus:border-transparent"
                       />
                     </div>
-                    
+
                     {/* Filter Buttons */}
-                    <div className="flex gap-2">
+                    <div className="flex flex-row gap-1">
                       <button
                         onClick={() => setFilterType("all")}
                         className={`px-3 py-1 text-xs rounded-full transition-colors ${
                           filterType === "all"
-                            ? "bg-blue-100 text-blue-800"
+                            ? "bg-navyblue text-white"
                             : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                         }`}
                       >
@@ -151,13 +159,13 @@ const AdminMessagesPage: React.FC = () => {
               {/* Chat Window - Desktop */}
               <div className="flex-1 bg-white">
                 {selectedConversation ? (
-                    <AdminChatWindow
-                      conversation={selectedConversation}
-                      onClearConversation={() => {
-                        setSelectedConversation(null);
-                        setSearchParams({});
-                      }}
-                    />
+                  <AdminChatWindow
+                    conversation={selectedConversation}
+                    onClearConversation={() => {
+                      setSelectedConversation(null);
+                      setSearchParams({});
+                    }}
+                  />
                 ) : (
                   <div className="flex items-center justify-center h-full bg-gray-50">
                     <div className="text-center">
@@ -174,7 +182,9 @@ const AdminMessagesPage: React.FC = () => {
                           d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                         />
                       </svg>
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No conversation selected</h3>
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">
+                        No conversation selected
+                      </h3>
                       <p className="mt-1 text-sm text-gray-500">
                         Choose a conversation from the list to view messages
                       </p>
@@ -190,8 +200,12 @@ const AdminMessagesPage: React.FC = () => {
                 /* Mobile Conversations List */
                 <div className="w-full bg-white">
                   <div className="p-4 border-b border-gray-200 bg-gray-50">
-                    <h2 className="text-lg font-semibold text-gray-800">All Conversations</h2>
-                    <p className="text-sm text-gray-500">Admin oversight of user communications</p>
+                    <h2 className="text-lg font-semibold text-gray-800">
+                      All Conversations
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      Admin oversight of user communications
+                    </p>
                   </div>
                   <div className="flex-1 overflow-y-auto">
                     <AdminConversationList

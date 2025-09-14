@@ -559,7 +559,7 @@ const Profile = () => {
                 disabled={isUpdating}
                 className={`border border-navyblue mr-4 px-5 text-xs sm:text-sm md:text-base py-2 text-white rounded-sm lg:mr-6 ${
                   isUpdating
-                    ? "bg-gray-400 cursor-not-allowed"
+                    ? "bg-blue-800 border-blue-800 cursor-not-allowed"
                     : "bg-navyblue border-navyblue border hover:bg-blue-900 hover:border-blue-900"
                 }`}
               >

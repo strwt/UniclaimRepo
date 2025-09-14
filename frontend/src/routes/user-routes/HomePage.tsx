@@ -33,6 +33,9 @@ export default function HomePage() {
   const [rawResults, setRawResults] = useState<Post[] | null>(null); // store-search-result-without-viewType-filter
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // ✅ New state for instant category filtering
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("All");
 
   // e modify rani siya sa backend django
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -76,7 +79,7 @@ export default function HomePage() {
   //   (post) => post.type === viewType
   // );
 
-  // Determine which posts to display based on viewType
+  // Determine which posts to display based on viewType and category filter
   const getPostsToDisplay = () => {
     const basePosts = rawResults ?? (viewType === "completed" ? resolvedPosts : posts) ?? [];
 
@@ -99,9 +102,20 @@ export default function HomePage() {
       return true;
     });
 
-    if (viewType === "all") return filteredPosts;
-    if (viewType === "completed") return filteredPosts; // resolvedPosts already filtered
-    return filteredPosts.filter((post) => post.type.toLowerCase() === viewType);
+    // Apply view type filtering
+    let viewFilteredPosts;
+    if (viewType === "all") viewFilteredPosts = filteredPosts;
+    else if (viewType === "completed") viewFilteredPosts = filteredPosts; // resolvedPosts already filtered
+    else viewFilteredPosts = filteredPosts.filter((post) => post.type.toLowerCase() === viewType);
+
+    // ✅ Apply instant category filtering
+    if (selectedCategoryFilter && selectedCategoryFilter !== "All") {
+      return viewFilteredPosts.filter((post) => 
+        post.category && post.category.toLowerCase() === selectedCategoryFilter.toLowerCase()
+      );
+    }
+
+    return viewFilteredPosts;
   };
 
   const postsToDisplay = getPostsToDisplay();
@@ -132,10 +146,14 @@ export default function HomePage() {
               setRawResults(null);
               setLastDescriptionKeyword("");
               setSearchQuery("");
+              setSelectedCategoryFilter("All"); // ✅ Reset category filter when clearing
               setCurrentPage(1); // Reset pagination when clearing search
             }}
             query={searchQuery}
             setQuery={setSearchQuery}
+            // ✅ Pass instant category filtering props
+            selectedCategoryFilter={selectedCategoryFilter}
+            setSelectedCategoryFilter={setSelectedCategoryFilter}
           />
         </div>
 

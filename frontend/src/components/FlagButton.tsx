@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { postService } from '@/services/firebase/posts';
-import { useAuth } from '@/context/AuthContext';
-import FlagModal from './FlagModal';
+import { useState } from "react";
+import { postService } from "@/services/firebase/posts";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
+import FlagModal from "./FlagModal";
+import { IoFlagOutline } from "react-icons/io5";
 
 interface FlagButtonProps {
   postId: string;
@@ -11,21 +13,23 @@ interface FlagButtonProps {
   className?: string;
 }
 
-export default function FlagButton({ 
-  postId, 
-  isFlagged = false, 
-  flaggedBy, 
+export default function FlagButton({
+  postId,
+  isFlagged = false,
+  flaggedBy,
   onFlagSuccess,
-  className = ""
+  className = "",
 }: FlagButtonProps) {
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const handleFlagClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the post card click
+    e.preventDefault(); // Prevent default button behavior
     if (!user) {
-      alert('Please log in to flag posts');
+      alert("Please log in to flag posts");
       return;
     }
     setShowFlagModal(true);
@@ -33,14 +37,15 @@ export default function FlagButton({
 
   const handleFlagSubmit = async (reason: string) => {
     if (!user) return;
-    
+
     setIsLoading(true);
     try {
       await postService.flagPost(postId, user.uid, reason);
       setShowFlagModal(false);
+      showToast("success", "Post has been flagged for review");
       onFlagSuccess?.();
     } catch (error: any) {
-      alert(error.message || 'Failed to flag post');
+      alert(error.message || "Failed to flag post");
     } finally {
       setIsLoading(false);
     }
@@ -55,26 +60,25 @@ export default function FlagButton({
         onClick={handleFlagClick}
         disabled={isAlreadyFlaggedByUser || isLoading}
         className={`
-          flex items-center gap-1 px-2 py-1 rounded text-xs font-medium
+          flex items-center justify-center p-2 rounded
           transition-colors duration-200
-          ${isAlreadyFlaggedByUser 
-            ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
-            : 'bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700'
+          ${
+            isAlreadyFlaggedByUser
+              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+              : "bg-red-500 text-white hover:bg-red-700"
           }
           ${className}
         `}
-        title={isAlreadyFlaggedByUser ? 'You have already flagged this post' : 'Flag this post'}
+        title={
+          isAlreadyFlaggedByUser
+            ? "You have already flagged this post"
+            : "Flag this post"
+        }
       >
         {isLoading ? (
-          <>
-            <div className="w-3 h-3 border border-red-600 border-t-transparent rounded-full animate-spin" />
-            <span>Flagging...</span>
-          </>
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
         ) : (
-          <>
-            <span>🚩</span>
-            <span>{isAlreadyFlaggedByUser ? 'Flagged' : 'Flag'}</span>
-          </>
+          <IoFlagOutline className="size-5 stroke-[1px]" />
         )}
       </button>
 

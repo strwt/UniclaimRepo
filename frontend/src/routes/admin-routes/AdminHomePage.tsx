@@ -38,6 +38,9 @@ export default function AdminHomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
+  
+  // ✅ New state for instant category filtering
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("All");
 
   // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -456,7 +459,8 @@ export default function AdminHomePage() {
 
 
 
-  const postsToDisplay = (rawResults ?? (viewType === "completed" ? resolvedPosts : posts) ?? []).filter((post) => {
+  // Apply view type filtering first
+  const viewFilteredPosts = (rawResults ?? (viewType === "completed" ? resolvedPosts : posts) ?? []).filter((post) => {
     let shouldShow = false;
 
     if (viewType === "all") {
@@ -482,6 +486,13 @@ export default function AdminHomePage() {
 
     return shouldShow;
   });
+
+  // ✅ Apply instant category filtering
+  const postsToDisplay = selectedCategoryFilter && selectedCategoryFilter !== "All" 
+    ? viewFilteredPosts.filter((post) => 
+        post.category && post.category.toLowerCase() === selectedCategoryFilter.toLowerCase()
+      )
+    : viewFilteredPosts;
 
   // Check if there are more posts to load
   const hasMorePosts = postsToDisplay.length > currentPage * itemsPerPage;
@@ -509,10 +520,14 @@ export default function AdminHomePage() {
               setRawResults(null);
               setLastDescriptionKeyword("");
               setSearchQuery("");
+              setSelectedCategoryFilter("All"); // ✅ Reset category filter when clearing
               setCurrentPage(1); // Reset pagination when clearing search
             }}
             query={searchQuery}
             setQuery={setSearchQuery}
+            // ✅ Pass instant category filtering props
+            selectedCategoryFilter={selectedCategoryFilter}
+            setSelectedCategoryFilter={setSelectedCategoryFilter}
           />
         </div>
 

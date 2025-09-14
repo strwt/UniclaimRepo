@@ -254,9 +254,44 @@ export const messageService: MessageService = {
     },
 
     // Delete message
-    async deleteMessage(conversationId: string, messageId: string): Promise<void> {
+    async deleteMessage(conversationId: string, messageId: string, userId: string): Promise<void> {
         try {
-            await deleteDoc(doc(db, `conversations/${conversationId}/messages`, messageId));
+            // Get message data first to extract images
+            const messageRef = doc(db, `conversations/${conversationId}/messages`, messageId);
+            const messageDoc = await getDoc(messageRef);
+
+            if (!messageDoc.exists()) {
+                throw new Error('Message not found');
+            }
+
+            const messageData = messageDoc.data();
+
+            // Check if user has permission to delete this message
+            if (messageData.senderId !== userId) {
+                throw new Error('You can only delete your own messages');
+            }
+
+            // Extract and delete images from Cloudinary before deleting the message
+            try {
+                const { extractMessageImages, deleteMessageImages } = await import('../cloudinary');
+                const imageUrls = extractMessageImages(messageData);
+
+                console.log(`🗑️ Mobile: Found ${imageUrls.length} images to delete`);
+                if (imageUrls.length > 0) {
+                    console.log('🗑️ Mobile: Images to delete:', imageUrls.map(url => url.split('/').pop()));
+                    const imageDeletionResult = await deleteMessageImages(imageUrls);
+
+                    if (!imageDeletionResult.success) {
+                        console.warn(`⚠️ Mobile: Image deletion completed with some failures. Deleted: ${imageDeletionResult.deleted.length}, Failed: ${imageDeletionResult.failed.length}`);
+                    }
+                }
+            } catch (imageError: any) {
+                console.warn('Mobile: Failed to delete images from Cloudinary, but continuing with message deletion:', imageError.message);
+                // Continue with message deletion even if image deletion fails
+            }
+
+            // Delete the message
+            await deleteDoc(messageRef);
         } catch (error: any) {
             throw new Error(error.message || 'Failed to delete message');
         }

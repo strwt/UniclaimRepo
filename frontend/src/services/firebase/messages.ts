@@ -490,8 +490,8 @@ export const messageService = {
                 senderName,
                 senderProfilePicture,
                 timestamp: serverTimestamp(),
-                type: 'handover-request',
-                handoverRequest: {
+                messageType: 'handover_request',
+                handoverData: {
                     postId,
                     postTitle,
                     handoverReason: handoverReason || 'No reason provided',
@@ -532,16 +532,16 @@ export const messageService = {
             }
 
             const messageData = messageDoc.data();
-            if (messageData.type !== 'handover-request') {
+            if (messageData.messageType !== 'handover_request') {
                 throw new Error('Message is not a handover request');
             }
 
             // Update the handover request status
             await updateDoc(messageRef, {
-                'handoverRequest.status': status,
-                'handoverRequest.respondedAt': serverTimestamp(),
-                'handoverRequest.responderId': userId,
-                'handoverRequest.responderIdPhoto': idPhotoUrl || ''
+                'handoverData.status': status,
+                'handoverData.respondedAt': serverTimestamp(),
+                'handoverData.responderId': userId,
+                'handoverData.responderIdPhoto': idPhotoUrl || ''
             });
 
             // Update conversation status
@@ -580,8 +580,8 @@ export const messageService = {
                 senderName,
                 senderProfilePicture,
                 timestamp: serverTimestamp(),
-                type: 'claim-request',
-                claimRequest: {
+                messageType: 'claim_request',
+                claimData: {
                     postId,
                     postTitle,
                     claimReason: claimReason || 'No reason provided',
@@ -622,16 +622,16 @@ export const messageService = {
             }
 
             const messageData = messageDoc.data();
-            if (messageData.type !== 'claim-request') {
+            if (messageData.messageType !== 'claim_request') {
                 throw new Error('Message is not a claim request');
             }
 
             // Update the claim request status
             await updateDoc(messageRef, {
-                'claimRequest.status': status,
-                'claimRequest.respondedAt': serverTimestamp(),
-                'claimRequest.responderId': userId,
-                'claimRequest.responderIdPhoto': idPhotoUrl || ''
+                'claimData.status': status,
+                'claimData.respondedAt': serverTimestamp(),
+                'claimData.responderId': userId,
+                'claimData.responderIdPhoto': idPhotoUrl || ''
             });
 
             // Update conversation status
@@ -660,15 +660,15 @@ export const messageService = {
             }
 
             const messageData = messageDoc.data();
-            if (messageData.type !== 'handover-request') {
+            if (messageData.messageType !== 'handover_request') {
                 throw new Error('Message is not a handover request');
             }
 
             // Update the handover request with confirmation
             await updateDoc(messageRef, {
-                'handoverRequest.idPhotoConfirmed': true,
-                'handoverRequest.idPhotoConfirmedAt': serverTimestamp(),
-                'handoverRequest.idPhotoConfirmedBy': confirmBy
+                'handoverData.idPhotoConfirmed': true,
+                'handoverData.idPhotoConfirmedAt': serverTimestamp(),
+                'handoverData.idPhotoConfirmedBy': confirmBy
             });
 
             console.log(`✅ Handover ID photo confirmed by ${confirmBy}`);
@@ -692,15 +692,15 @@ export const messageService = {
             }
 
             const messageData = messageDoc.data();
-            if (messageData.type !== 'claim-request') {
+            if (messageData.messageType !== 'claim_request') {
                 throw new Error('Message is not a claim request');
             }
 
             // Update the claim request with confirmation
             await updateDoc(messageRef, {
-                'claimRequest.idPhotoConfirmed': true,
-                'claimRequest.idPhotoConfirmedAt': serverTimestamp(),
-                'claimRequest.idPhotoConfirmedBy': confirmBy
+                'claimData.idPhotoConfirmed': true,
+                'claimData.idPhotoConfirmedAt': serverTimestamp(),
+                'claimData.idPhotoConfirmedBy': confirmBy
             });
 
             console.log(`✅ Claim ID photo confirmed by ${confirmBy}`);
@@ -727,6 +727,25 @@ export const messageService = {
             // Check if user has permission to delete this message
             if (messageData.senderId !== currentUserId) {
                 throw new Error('You can only delete your own messages');
+            }
+
+            // Extract and delete images from Cloudinary before deleting the message
+            try {
+                const { extractMessageImages, deleteMessageImages } = await import('../../utils/cloudinary');
+                const imageUrls = extractMessageImages(messageData);
+
+                console.log(`🗑️ Found ${imageUrls.length} images to delete`);
+                if (imageUrls.length > 0) {
+                    console.log('🗑️ Images to delete:', imageUrls.map(url => url.split('/').pop()));
+                    const imageDeletionResult = await deleteMessageImages(imageUrls);
+
+                    if (!imageDeletionResult.success) {
+                        console.warn(`⚠️ Image deletion completed with some failures. Deleted: ${imageDeletionResult.deleted.length}, Failed: ${imageDeletionResult.failed.length}`);
+                    }
+                }
+            } catch (imageError: any) {
+                console.warn('Failed to delete images from Cloudinary, but continuing with message deletion:', imageError.message);
+                // Continue with message deletion even if image deletion fails
             }
 
             // Delete the message

@@ -18,13 +18,15 @@ const LocationReport = ({
   setCoordinates,
 }: LocationProps) => {
   // Handle coordinate changes and auto-detect location
-  const handleCoordinatesChange = (newCoordinates: { lat: number; lng: number } | null) => {
+  const handleCoordinatesChange = (
+    newCoordinates: { lat: number; lng: number } | null
+  ) => {
     setCoordinates(newCoordinates);
-    
+
     if (newCoordinates) {
       // Detect location from coordinates
       const detectionResult = detectLocationFromCoordinates(newCoordinates);
-      
+
       if (detectionResult.location && detectionResult.confidence >= 80) {
         // High confidence detection - set the location
         setSelectedLocation(detectionResult.location);
@@ -42,9 +44,11 @@ const LocationReport = ({
     <div>
       <h1 className="font-medium">Location</h1>
 
-      <p className="my-3 text-[14px]">
-        Pin a location on the map to automatically detect the building or area
-      </p>
+      <div className="bg-blue-50 border border-blue-500 rounded-md mt-3 px-3 py-2">
+        <p className="text-[14px] text-blue-800">
+          Pin a location on the map to automatically detect the building or area
+        </p>
+      </div>
 
       {/* Show detected location */}
       {selectedLocation && (
@@ -83,12 +87,15 @@ const LocationReport = ({
         <div className="flex items-start">
           <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 mt-2"></div>
           <div className="text-blue-800 text-sm">
-            <p className="font-medium mb-1">How to use:</p>
+            <p className="mb-1 font-medium">How to use:</p>
             <ul className="list-disc list-inside space-y-1 text-xs">
               <li>Click on the map to pin a location</li>
               <li>Make sure to pin within a building or campus area</li>
               <li>The system will automatically detect the location name</li>
-              <li>If no location is detected, try pinning more precisely within a building</li>
+              <li>
+                If no location is detected, try pinning more precisely within a
+                building
+              </li>
             </ul>
           </div>
         </div>

@@ -532,8 +532,8 @@ export const extractMessageImages = (message: any): string[] => {
         }
 
         // Check for owner's ID photo in handover requests
-        if (message.handoverData && message.handoverData.ownerIdPhotoUrl) {
-            const ownerIdPhotoUrl = message.handoverData.ownerIdPhotoUrl;
+        if (message.handoverData && message.handoverData.ownerIdPhoto) {
+            const ownerIdPhotoUrl = message.handoverData.ownerIdPhoto;
 
             // Only include Cloudinary URLs
             if (ownerIdPhotoUrl && typeof ownerIdPhotoUrl === 'string' && ownerIdPhotoUrl.includes('cloudinary.com')) {

@@ -12,9 +12,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useAdminView } from "@/context/AdminViewContext";
 import { useNotifications } from "@/context/NotificationContext";
+import { useCurrentAnnouncement } from "@/context/AnnouncementContext";
 import ProfilePicture from "@/components/ProfilePicture";
 import NotificationPreferencesModal from "@/components/NotificationPreferences";
 import PostModal from "@/components/PostModal";
+import AnnouncementBanner from "@/components/AnnouncementBanner";
 import { postService } from "@/services/firebase/posts";
 import type { Post } from "@/types/Post";
 import { authService } from "@/utils/firebase";
@@ -39,7 +41,19 @@ export default function HomeHeader({
 
   const { logout, userData, user } = useAuth();
   const { isViewingAsUser, switchToAdminView } = useAdminView();
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+  } = useNotifications();
+  const {
+    currentAnnouncement,
+    hasActiveAnnouncements,
+    loading: announcementLoading,
+  } = useCurrentAnnouncement();
   const [isAdmin, setIsAdmin] = useState(false);
 
   const navigate = useNavigate();
@@ -66,7 +80,7 @@ export default function HomeHeader({
     if (!notification.read) {
       markAsRead(notification.id);
     }
-    
+
     // If notification has a postId, fetch the post and open modal
     if (notification.postId) {
       try {
@@ -75,10 +89,10 @@ export default function HomeHeader({
           setSelectedPost(post);
           toggleNotif(); // Close the notification dropdown
         } else {
-          console.error('Post not found:', notification.postId);
+          console.error("Post not found:", notification.postId);
         }
       } catch (error) {
-        console.error('Error fetching post:', error);
+        console.error("Error fetching post:", error);
       }
     }
   };
@@ -93,7 +107,7 @@ export default function HomeHeader({
       <div className="">
         {/* header-container */}
         <div className="">
-          <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-navyblue px-5 py-4">
+          <div className="fixed left-0 right-0 z-40 flex items-center justify-between bg-navyblue px-5 py-4 top-0">
             {/* logo-w-text-container */}
             <div className="flex items-center gap-1">
               <img
@@ -119,6 +133,13 @@ export default function HomeHeader({
               )}
             </div>
 
+            {/* Announcement Banner - positioned between menu and notifications */}
+            <AnnouncementBanner
+              message={currentAnnouncement?.message || ""}
+              isVisible={hasActiveAnnouncements && !announcementLoading}
+              priority={currentAnnouncement?.priority || "normal"}
+            />
+
             {/* notification-bell-w-profile-container */}
             <div className="flex items-center gap-4 relative">
               {/* notification-bell */}
@@ -126,7 +147,7 @@ export default function HomeHeader({
                 <HiOutlineBell className="size-8 text-white stroke-[1.3px] cursor-pointer hover:text-brand" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                    {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
               </button>
@@ -151,7 +172,7 @@ export default function HomeHeader({
                     <HiOutlineUser className="size-4 stroke-[1.5px] mr-3" />
                     <Link to="/profile">My Profile</Link>
                   </button>
-                  
+
                   {/* Show admin switch button only if user is admin and viewing as user */}
                   {isAdmin && isViewingAsUser && (
                     <>
@@ -168,7 +189,7 @@ export default function HomeHeader({
                       </button>
                     </>
                   )}
-                  
+
                   <button
                     onClick={logout}
                     className="flex items-center px-4 py-2 text-red-500 hover:bg-red-50/70 rounded w-full text-sm"
@@ -184,14 +205,14 @@ export default function HomeHeader({
 
         {/* notification dropdown */}
         <div
-          className={`fixed font-manrope p-3 top-0 right-0 h-full bg-white shadow-lg transition-transform duration-300 z-40 ${
+          className={`fixed font-manrope p-3 right-0 h-full bg-white shadow-lg transition-transform duration-300 z-40 ${
             showNotif ? "translate-x-0" : "translate-x-full"
-          } w-full md:w-2/3 lg:w-1/3`}
+          } w-full md:w-2/3 lg:w-1/3 top-0`}
         >
           <div className="p-4 flex justify-between items-center border-b border-gray-200">
             <div className="flex items-center">
               <h2 className="text-lg font-semibold text-navyblue">
-                Notifications
+                Notifications Dummy
               </h2>
               {unreadCount > 0 && (
                 <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">
@@ -215,11 +236,13 @@ export default function HomeHeader({
               </button>
             </div>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="p-4">
-                <p className="text-gray-500 text-center">No notifications yet.</p>
+                <p className="text-gray-500 text-center">
+                  No notifications yet.
+                </p>
               </div>
             ) : (
               <div className="p-2">
@@ -227,9 +250,9 @@ export default function HomeHeader({
                   <div
                     key={notification.id}
                     className={`p-3 mb-2 rounded-lg border-l-4 cursor-pointer transition-colors ${
-                      notification.read 
-                        ? 'bg-gray-50 border-gray-200' 
-                        : 'bg-blue-50 border-blue-500'
+                      notification.read
+                        ? "bg-gray-50 border-gray-200"
+                        : "bg-blue-50 border-blue-500"
                     }`}
                     onClick={() => handleNotificationClick(notification)}
                   >
@@ -242,7 +265,10 @@ export default function HomeHeader({
                           {notification.body}
                         </p>
                         <p className="text-gray-400 text-xs mt-2">
-                          {new Date(notification.createdAt?.toDate?.() || notification.createdAt).toLocaleString()}
+                          {new Date(
+                            notification.createdAt?.toDate?.() ||
+                              notification.createdAt
+                          ).toLocaleString()}
                         </p>
                       </div>
                       <div className="flex items-center ml-2">
@@ -266,7 +292,7 @@ export default function HomeHeader({
               </div>
             )}
           </div>
-          
+
           {notifications.length > 0 && (
             <div className="p-4 border-t border-gray-200 space-y-2">
               <button
@@ -294,15 +320,17 @@ export default function HomeHeader({
 
         {/* Notification Preferences Modal */}
         {showPreferences && (
-          <NotificationPreferencesModal onClose={() => setShowPreferences(false)} />
+          <NotificationPreferencesModal
+            onClose={() => setShowPreferences(false)}
+          />
         )}
       </div>
 
       {/* PostModal for notifications */}
       {selectedPost && (
-        <PostModal 
-          post={selectedPost} 
-          onClose={() => setSelectedPost(null)} 
+        <PostModal
+          post={selectedPost}
+          onClose={() => setSelectedPost(null)}
           hideSendMessage={false}
         />
       )}

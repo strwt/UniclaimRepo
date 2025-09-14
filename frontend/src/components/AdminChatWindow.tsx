@@ -23,18 +23,22 @@ const AdminChatWindow: React.FC<AdminChatWindowProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(
+    null
+  );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const { sendMessage, getConversationMessages, markConversationAsRead } = useMessage();
+  const { sendMessage, getConversationMessages, markConversationAsRead } =
+    useMessage();
   const { userData } = useAuth();
   const { showToast } = useToast();
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      messagesContainerRef.current.scrollTop =
+        messagesContainerRef.current.scrollHeight;
     } else if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "auto" });
     }
@@ -48,11 +52,14 @@ const AdminChatWindow: React.FC<AdminChatWindowProps> = ({
     }
 
     setIsLoading(true);
-    const unsubscribe = getConversationMessages(conversation.id, (loadedMessages) => {
-      setMessages(loadedMessages);
-      setIsLoading(false);
-      scrollToBottom();
-    });
+    const unsubscribe = getConversationMessages(
+      conversation.id,
+      (loadedMessages) => {
+        setMessages(loadedMessages);
+        setIsLoading(false);
+        scrollToBottom();
+      }
+    );
 
     return unsubscribe;
   }, [conversation, getConversationMessages]);
@@ -88,18 +95,26 @@ const AdminChatWindow: React.FC<AdminChatWindowProps> = ({
 
   const handleDeleteMessage = async (messageId: string) => {
     if (!conversation) return;
-    
-    if (!window.confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
+
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this message? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
     setDeletingMessageId(messageId);
     try {
-      await messageService.deleteMessage(conversation.id, messageId, userData!.uid);
-      showToast('Message deleted successfully', 'success');
+      await messageService.deleteMessage(
+        conversation.id,
+        messageId,
+        userData!.uid
+      );
+      showToast("Message deleted successfully", "success");
     } catch (error: any) {
-      console.error('Failed to delete message:', error);
-      showToast('Failed to delete message: ' + error.message, 'error');
+      console.error("Failed to delete message:", error);
+      showToast("Failed to delete message: " + error.message, "error");
     } finally {
       setDeletingMessageId(null);
     }
@@ -107,23 +122,41 @@ const AdminChatWindow: React.FC<AdminChatWindowProps> = ({
 
   const getOtherParticipantName = (conversation: Conversation) => {
     const participantIds = Object.keys(conversation.participants || {});
-    const otherParticipantId = participantIds.find(id => id !== userData?.uid);
-    return conversation.participants[otherParticipantId || '']?.name || 'Unknown User';
+    const otherParticipantId = participantIds.find(
+      (id) => id !== userData?.uid
+    );
+    return (
+      conversation.participants[otherParticipantId || ""]?.name ||
+      "Unknown User"
+    );
   };
 
   const getOtherParticipantProfilePicture = (conversation: Conversation) => {
     const participantIds = Object.keys(conversation.participants || {});
-    const otherParticipantId = participantIds.find(id => id !== userData?.uid);
-    return conversation.participants[otherParticipantId || '']?.profilePicture || null;
+    const otherParticipantId = participantIds.find(
+      (id) => id !== userData?.uid
+    );
+    return (
+      conversation.participants[otherParticipantId || ""]?.profilePicture ||
+      null
+    );
   };
 
   if (!conversation) {
     return (
       <div className="flex items-center justify-center h-full bg-gray-50">
         <div className="text-center">
-          <img src={NoChat} alt="No chat selected" className="mx-auto h-24 w-24 mb-4 opacity-50" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No conversation selected</h3>
-          <p className="text-gray-500">Choose a conversation from the list to view messages</p>
+          <img
+            src={NoChat}
+            alt="No chat selected"
+            className="mx-auto h-24 w-24 mb-4 opacity-50"
+          />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No conversation selected
+          </h3>
+          <p className="text-gray-500">
+            Choose a conversation from the list to view messages
+          </p>
         </div>
       </div>
     );
@@ -160,7 +193,7 @@ const AdminChatWindow: React.FC<AdminChatWindowProps> = ({
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
               Admin View
@@ -171,8 +204,18 @@ const AdminChatWindow: React.FC<AdminChatWindowProps> = ({
                 className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                 title="Close conversation"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             )}
@@ -186,7 +229,8 @@ const AdminChatWindow: React.FC<AdminChatWindowProps> = ({
         className="flex-1 overflow-y-auto p-4 space-y-4"
         onScroll={(e) => {
           const target = e.target as HTMLDivElement;
-          const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
+          const isNearBottom =
+            target.scrollHeight - target.scrollTop - target.clientHeight < 100;
           setShowScrollToBottom(!isNearBottom);
         }}
       >
@@ -212,7 +256,8 @@ const AdminChatWindow: React.FC<AdminChatWindowProps> = ({
                     {message.senderName}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {message.timestamp?.toDate?.()?.toLocaleString() || 'Unknown time'}
+                    {message.timestamp?.toDate?.()?.toLocaleString() ||
+                      "Unknown time"}
                   </span>
                   {message.senderId === userData?.uid && (
                     <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
@@ -226,10 +271,10 @@ const AdminChatWindow: React.FC<AdminChatWindowProps> = ({
                     isOwnMessage={message.senderId === userData?.uid}
                     showSenderName={false}
                     conversationId={conversation.id}
-                    currentUserId={userData?.uid || ''}
+                    currentUserId={userData?.uid || ""}
                     onClearConversation={onClearConversation}
                   />
-                  
+
                   {/* Admin Delete Button */}
                   <button
                     onClick={() => handleDeleteMessage(message.id)}
@@ -240,8 +285,18 @@ const AdminChatWindow: React.FC<AdminChatWindowProps> = ({
                     {deletingMessageId === message.id ? (
                       <div className="w-3 h-3 border border-red-600 border-t-transparent rounded-full animate-spin"></div>
                     ) : (
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     )}
                   </button>

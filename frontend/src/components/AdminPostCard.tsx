@@ -105,7 +105,7 @@ function AdminPostCard({
   };
 
   return (
-    <div className={`bg-white rounded shadow/2 cursor-pointer overflow-hidden hover:shadow-md/5 transition ${
+    <div className={`bg-white rounded shadow/2 cursor-pointer overflow-hidden hover:shadow-md/5 transition relative ${
       post.isFlagged ? 'ring-2 ring-red-500 border-red-500' : ''
     }`}>
       {previewUrl ? (
@@ -117,6 +117,13 @@ function AdminPostCard({
         />
       ) : (
         <div className="bg-gray-300 h-60 w-full" onClick={onClick} />
+      )}
+      
+      {/* Red Flag Icon - Top Right */}
+      {post.isFlagged && (
+        <div className="absolute top-2 right-2 text-2xl drop-shadow-lg">
+          🚩
+        </div>
       )}
 
       <div className="p-3">
@@ -138,12 +145,6 @@ function AdminPostCard({
               {post.type}
             </span>
 
-            {/* Flag Indicator */}
-            {post.isFlagged && (
-              <span className="px-2 py-1 rounded-[3px] font-medium bg-red-100 text-red-700 text-xs">
-                🚩 FLAGGED
-              </span>
-            )}
           </div>
           
                      {/* Admin Controls */}
@@ -188,19 +189,6 @@ function AdminPostCard({
                </button>
              )}
 
-             {/* Flag Management Buttons */}
-             {post.isFlagged && onUnflagPost && (
-               <button
-                 onClick={(e) => {
-                   e.stopPropagation();
-                   onUnflagPost(post);
-                 }}
-                 className="px-2 py-1 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600 transition"
-                 title="Unflag Post - Remove flag from this post"
-               >
-                 Unflag
-               </button>
-             )}
 
              {post.isFlagged && !post.isHidden && onHidePost && (
                <button
