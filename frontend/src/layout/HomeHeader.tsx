@@ -10,12 +10,15 @@ import Logo from "../assets/uniclaim_logo.png";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useAdminView } from "@/context/AdminViewContext";
 import { useNotifications } from "@/context/NotificationContext";
 import ProfilePicture from "@/components/ProfilePicture";
 import NotificationPreferencesModal from "@/components/NotificationPreferences";
 import PostModal from "@/components/PostModal";
 import { postService } from "@/services/firebase/posts";
 import type { Post } from "@/types/Post";
+import { authService } from "@/utils/firebase";
+import { useEffect } from "react";
 
 interface HomeHeaderProps {
   sideNavClick: () => void;
@@ -34,10 +37,29 @@ export default function HomeHeader({
   const toggleProfileMenu = () => setShowProfileMenu((prev) => !prev);
   const toggleNotif = () => setShowNotif((prev) => !prev);
 
-  const { logout, userData } = useAuth();
+  const { logout, userData, user } = useAuth();
+  const { isViewingAsUser, switchToAdminView } = useAdminView();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const navigate = useNavigate();
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (user) {
+        try {
+          const adminStatus = await authService.isAdmin(user.uid);
+          setIsAdmin(adminStatus);
+        } catch (error) {
+          console.error("Error checking admin status:", error);
+          setIsAdmin(false);
+        }
+      }
+    };
+
+    checkAdminStatus();
+  }, [user]);
 
   // Handle notification clicks to open post modal
   const handleNotificationClick = async (notification: any) => {
@@ -129,6 +151,24 @@ export default function HomeHeader({
                     <HiOutlineUser className="size-4 stroke-[1.5px] mr-3" />
                     <Link to="/profile">My Profile</Link>
                   </button>
+                  
+                  {/* Show admin switch button only if user is admin and viewing as user */}
+                  {isAdmin && isViewingAsUser && (
+                    <>
+                      <div className="border-t border-gray-100 my-1"></div>
+                      <button
+                        onClick={() => {
+                          switchToAdminView();
+                          navigate("/admin");
+                        }}
+                        className="flex items-center px-4 py-2 text-blue-600 hover:bg-blue-50 rounded w-full text-sm"
+                      >
+                        <HiOutlineCog className="size-4 stroke-[1.5px] mr-3" />
+                        Switch to Admin
+                      </button>
+                    </>
+                  )}
+                  
                   <button
                     onClick={logout}
                     className="flex items-center px-4 py-2 text-red-500 hover:bg-red-50/70 rounded w-full text-sm"

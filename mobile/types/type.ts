@@ -51,6 +51,13 @@ export interface Post {
   movedToUnclaimed?: boolean; // Boolean flag to track if moved to unclaimed
   originalStatus?: "pending" | "resolved"; // Store the original status before moving to unclaimed
 
+  // Flagging system fields
+  isFlagged?: boolean; // Whether the post has been flagged by a user
+  flagReason?: string; // Reason for flagging (inappropriate content, spam, etc.)
+  flaggedBy?: string; // User ID who flagged the post
+  flaggedAt?: string | Date | any; // When the post was flagged
+  isHidden?: boolean; // Whether admin chose to hide the post from public view
+
   // New fields for handover details (when ID photo is confirmed)
   handoverDetails?: {
     handoverPersonName: string; // Full name of person who handed over

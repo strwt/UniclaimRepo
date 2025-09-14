@@ -10,16 +10,38 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState({ email: "", password: "", general: "" });
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [checkingAdminStatus, setCheckingAdminStatus] = useState(true);
 
-  // const { isAuthenticated, login } = useAuth();
-  // const navigate = useNavigate();
-  const { login, loading } = useAuth();
+  const { login, loading, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // useEffect(() => {
-  //   if (isAuthenticated) navigate("/", { replace: false });
-  // }, [isAuthenticated, navigate]);
+  // Check if user is already logged in as admin and redirect them
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (user && isAuthenticated) {
+        try {
+          const isAdmin = await authService.isAdmin(user.uid);
+          setIsAdminLoggedIn(isAdmin);
+          
+          // If user is admin, redirect them to admin login page
+          if (isAdmin) {
+            console.log("Admin detected on user login page - redirecting to admin login");
+            navigate("/adminlogin", { replace: true });
+            return;
+          }
+        } catch (error) {
+          console.error("Error checking admin status:", error);
+          setIsAdminLoggedIn(false);
+        }
+      } else {
+        setIsAdminLoggedIn(false);
+      }
+      setCheckingAdminStatus(false);
+    };
+
+    checkAdminStatus();
+  }, [user, isAuthenticated, navigate]);
 
   // fix height for mobile screens
   useEffect(() => {
@@ -35,6 +57,15 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Prevent login if user is already authenticated
+    if (isAuthenticated && user) {
+      setError((prev) => ({ 
+        ...prev, 
+        general: "You are already logged in. Please logout first if you want to login with a different account." 
+      }));
+      return;
+    }
 
     const newError = { email: "", password: "", general: "" };
     const trimmedEmail = email.trim();
@@ -61,24 +92,9 @@ export default function Login() {
       try {
         await login(trimmedEmail, trimmedPassword);
 
-        // Check if user is admin and redirect accordingly
-        const currentUser = authService.getCurrentUser();
-        if (currentUser) {
-          const isAdmin = await authService.isAdmin(currentUser.uid);
-          if (isAdmin) {
-            // Admin user - redirect to admin dashboard
-            setIsRedirecting(true);
-            setTimeout(() => {
-              navigate("/admin");
-            }, 1500); // 1.5 second delay to show message
-          } else {
-            // Regular user - redirect to user dashboard
-            navigate("/");
-          }
-        } else {
-          // Fallback to user dashboard
-          navigate("/");
-        }
+        // Always redirect to user dashboard - no automatic admin redirect
+        // Admin can choose to log in as user if they want to test user features
+        navigate("/");
       } catch (error: any) {
         setError((prev) => ({ ...prev, general: error.message }));
       }
@@ -105,8 +121,18 @@ export default function Login() {
               Log in your account
             </h1>
             <p className="text-sm text-gray-600 text-center">
-              Welcome back, it’s good to see you again
+              Welcome back, it's good to see you again
             </p>
+
+            {/* Loading state while checking admin status */}
+            {checkingAdminStatus && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                  <span className="text-sm text-gray-600">Checking authentication status...</span>
+                </div>
+              </div>
+            )}
 
             {/* ✅ Wrap input and button in a <form> to allow Enter key login */}
             <form onSubmit={handleLogin}>
@@ -148,14 +174,6 @@ export default function Login() {
                 </p>
               )}
 
-              {/* Admin redirect message */}
-              {isRedirecting && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                  <p className="text-sm text-blue-800 text-center">
-                    🎉 Welcome Admin! Redirecting you to the admin dashboard...
-                  </p>
-                </div>
-              )}
 
               <div className="flex justify-end">
                 <Link
@@ -169,22 +187,17 @@ export default function Login() {
               <div className="space-y-5">
                 <button
                   className={`w-full py-2 text-white rounded-lg transition-all duration-200 ${
-                    loading || isRedirecting
+                    loading
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-brand hover:bg-yellow-600 hover:cursor-pointer"
                   }`}
                   type="submit"
-                  disabled={loading || isRedirecting}
+                  disabled={loading}
                 >
                   {loading ? (
                     <div className="flex items-center justify-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       <span>Logging in...</span>
-                    </div>
-                  ) : isRedirecting ? (
-                    <div className="flex items-center justify-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Redirecting to Admin Dashboard...</span>
                     </div>
                   ) : (
                     "Login"

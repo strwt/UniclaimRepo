@@ -12,7 +12,7 @@ export interface User {
   profileImageUrl?: string;
   createdAt?: any;
   updatedAt?: any;
-  status?: 'active' | 'banned';
+  status?: 'active' | 'deactivated';
   banInfo?: any;
   role?: 'user' | 'admin';
   emailVerified?: boolean; // Email verification status

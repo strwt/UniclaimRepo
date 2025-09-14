@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import type { Post } from "@/types/Post";
 
 // components
@@ -29,11 +30,9 @@ export default function AdminHomePage() {
   const { posts: resolvedPosts, loading: resolvedLoading, error: resolvedError } = useResolvedPosts();
   const { showToast } = useToast();
   const { userData } = useAuth();
+  const navigate = useNavigate();
 
-
-
-
-  const [viewType, setViewType] = useState<"all" | "lost" | "found" | "unclaimed" | "completed" | "turnover">("all");
+  const [viewType, setViewType] = useState<"all" | "lost" | "found" | "unclaimed" | "completed" | "turnover" | "flagged">("all");
   const [lastDescriptionKeyword, setLastDescriptionKeyword] = useState("");
   const [rawResults, setRawResults] = useState<Post[] | null>(null); // store-search-result-without-viewType-filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,6 +111,40 @@ export default function AdminHomePage() {
   const cancelDelete = () => {
     setShowDeleteModal(false);
     setPostToDelete(null);
+  };
+
+  // Flag management handlers
+  const handleUnflagPost = async (post: Post) => {
+    try {
+      const { postService } = await import('../../services/firebase/posts');
+      await postService.unflagPost(post.id);
+      showToast("success", "Post Unflagged", "Post has been unflagged successfully");
+    } catch (error: any) {
+      console.error('Failed to unflag post:', error);
+      showToast("error", "Unflag Failed", error.message || "Failed to unflag post");
+    }
+  };
+
+  const handleHidePost = async (post: Post) => {
+    try {
+      const { postService } = await import('../../services/firebase/posts');
+      await postService.hidePost(post.id);
+      showToast("success", "Post Hidden", "Post has been hidden from public view");
+    } catch (error: any) {
+      console.error('Failed to hide post:', error);
+      showToast("error", "Hide Failed", error.message || "Failed to hide post");
+    }
+  };
+
+  const handleUnhidePost = async (post: Post) => {
+    try {
+      const { postService } = await import('../../services/firebase/posts');
+      await postService.unhidePost(post.id);
+      showToast("success", "Post Unhidden", "Post is now visible to public");
+    } catch (error: any) {
+      console.error('Failed to unhide post:', error);
+      showToast("error", "Unhide Failed", error.message || "Failed to unhide post");
+    }
   };
 
   // Calculate admin statistics
@@ -440,6 +473,9 @@ export default function AdminHomePage() {
                    post.turnoverDetails && 
                    post.turnoverDetails.turnoverAction === "turnover to OSA" &&
                    post.turnoverDetails.turnoverStatus === "declared";
+    } else if (viewType === "flagged") {
+      // Show only flagged posts
+      shouldShow = post.isFlagged === true;
     } else {
       shouldShow = post.type.toLowerCase() === viewType && post.status !== 'unclaimed' && !post.movedToUnclaimed;
     }
@@ -545,8 +581,6 @@ export default function AdminHomePage() {
         </div>
       </div>
 
-
-
       {/* View Type Tabs */}
       <div className="flex flex-wrap sm:justify-center items-center gap-3 w-full px-6 lg:justify-start lg:gap-3">
         <div className="w-full lg:w-auto text-center lg:text-left mb-2 lg:mb-0">
@@ -555,6 +589,7 @@ export default function AdminHomePage() {
             {viewType === "unclaimed" ? "Unclaimed Items" :
              viewType === "completed" ? "Completed Reports" :
              viewType === "turnover" ? "Turnover Management" :
+             viewType === "flagged" ? "Flagged Posts" :
              `${viewType} Item Reports`}
           </span>
         </div>
@@ -654,8 +689,21 @@ export default function AdminHomePage() {
           Turnover Management
         </button>
 
-        
-
+        <button
+          className={`px-4 py-2 cursor-pointer lg:px-8 rounded text-[14px] lg:text-base font-medium transition-colors duration-300 ${
+            viewType === "flagged"
+              ? "bg-navyblue text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-blue-200 border-gray-300"
+          }`}
+          onClick={() => {
+            setIsLoading(true);
+            setViewType("flagged");
+            setCurrentPage(1); // Reset pagination when switching views
+            setTimeout(() => setIsLoading(false), 200);
+          }}
+        >
+          Flagged Posts
+        </button>
 
       </div>
 
@@ -701,6 +749,9 @@ export default function AdminHomePage() {
                 onActivateTicket={handleActivateTicket}
                 onRevertResolution={handleRevertResolution}
                 onConfirmTurnover={handleConfirmTurnover}
+                onUnflagPost={handleUnflagPost}
+                onHidePost={handleHidePost}
+                onUnhidePost={handleUnhidePost}
                 isDeleting={deletingPostId === post.id}
               />
             ))

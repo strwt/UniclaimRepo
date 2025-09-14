@@ -368,5 +368,22 @@ export const authService = {
             console.error('Error updating email verification status:', error);
             throw new Error('Failed to update email verification status');
         }
+    },
+
+    // Send email verification
+    async sendEmailVerification(email: string): Promise<void> {
+        try {
+            const user = auth.currentUser;
+            if (!user) {
+                throw new Error('No user is currently signed in');
+            }
+            if (user.email !== email) {
+                throw new Error('Email does not match the current user');
+            }
+            await sendEmailVerification(user);
+        } catch (error: any) {
+            console.error('Error sending email verification:', error);
+            throw new Error('Failed to send email verification');
+        }
     }
 };

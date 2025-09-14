@@ -89,7 +89,7 @@ export interface UserData {
     profilePicture?: string;
     profileImageUrl?: string; // Added to support mobile app field name
     role?: 'user' | 'admin'; // User role for access control
-    status?: 'active' | 'banned'; // User account status
+    status?: 'active' | 'deactivated'; // User account status
     banInfo?: any; // Ban information
     emailVerified?: boolean; // Email verification status
     createdAt: any;
@@ -2251,6 +2251,9 @@ export const postService = {
                 // Exclude resolved posts from active sections
                 if (post.status === 'resolved') return false;
 
+                // Exclude hidden posts (flagged posts that admin chose to hide)
+                if (post.isHidden === true) return false;
+
                 // Check if post has expired
                 if (post.expiryDate) {
                     let expiryDate: Date;
@@ -2308,8 +2311,8 @@ export const postService = {
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
 
-            // Filter out resolved posts from active sections
-            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+            // Filter out resolved posts and hidden posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved' && post.isHidden !== true);
 
             // Sort posts by createdAt in JavaScript instead
             const sortedPosts = filteredPosts.sort((a, b) => {
@@ -2382,8 +2385,8 @@ export const postService = {
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
 
-            // Filter out resolved posts from active sections
-            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+            // Filter out resolved posts and hidden posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved' && post.isHidden !== true);
 
             // Sort posts by createdAt in JavaScript instead
             const sortedPosts = filteredPosts.sort((a, b) => {
@@ -2952,10 +2955,12 @@ export const postService = {
 
             const searchTermLower = searchTerm.toLowerCase();
             return posts.filter(post =>
-                post.title.toLowerCase().includes(searchTermLower) ||
-                post.description.toLowerCase().includes(searchTermLower) ||
-                post.category.toLowerCase().includes(searchTermLower) ||
-                post.location.toLowerCase().includes(searchTermLower)
+                post.isHidden !== true && (
+                    post.title.toLowerCase().includes(searchTermLower) ||
+                    post.description.toLowerCase().includes(searchTermLower) ||
+                    post.category.toLowerCase().includes(searchTermLower) ||
+                    post.location.toLowerCase().includes(searchTermLower)
+                )
             );
         } catch (error: any) {
             console.error('Error searching posts:', error);
@@ -2978,8 +2983,8 @@ export const postService = {
                 createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
             })) as Post[];
 
-            // Filter out resolved posts from active sections
-            const filteredPosts = posts.filter(post => post.status !== 'resolved');
+            // Filter out resolved posts and hidden posts from active sections
+            const filteredPosts = posts.filter(post => post.status !== 'resolved' && post.isHidden !== true);
 
             // Sort posts by createdAt in JavaScript instead
             const sortedPosts = filteredPosts.sort((a, b) => {

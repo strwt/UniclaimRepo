@@ -12,6 +12,7 @@ import {
 import type { Post } from "../types/type";
 import ProfilePicture from "./ProfilePicture";
 import { useAdminStatus } from "../hooks/useAdminStatus";
+import FlagButton from "./FlagButton";
 
 type RootStackParamList = {
   PostDetails: { post: Post };
@@ -189,6 +190,14 @@ export default function PostCard({ post, descriptionSearch = "", adminStatuses }
                "Campus Security"}
             </Text>
           )}
+
+          {/* Flag Button */}
+          <FlagButton
+            postId={post.id}
+            isFlagged={post.isFlagged}
+            flaggedBy={post.flaggedBy}
+            className="ml-auto"
+          />
         </View>
 
         <Text className="text-2xl my-1.5 font-manrope-semibold text-black">

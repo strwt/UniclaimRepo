@@ -26,8 +26,6 @@ For free-form shapes, add more points between corners as needed.
 export interface CampusLocation {
     name: string;
     coordinates: [number, number][]; // [lng, lat] pairs forming a polygon (can be any shape!)
-    // center: [number, number]; // [lng, lat] center point - REMOVED
-    // buffer: number; // Buffer zone in meters - REMOVED
 }
 
 // TODO: Replace these placeholder coordinates with actual USTP CDO campus building locations
@@ -45,9 +43,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65682, 8.48613],  // TOP-RIGHT corner
             [124.65701, 8.48566],  // BOTTOM-RIGHT corner
             [124.65658, 8.48549]   // BOTTOM-LEFT corner
-        ],
-        center: [124.65675, 8.48575],
-        buffer: 100
+        ]
     },
     {
         name: "Cafeteria",
@@ -57,9 +53,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65702, 8.48520], // BOTTOM-RIGHT corner
             [124.65692, 8.48508], // BOTTOM-RIGHT corner
             [124.65677, 8.48502]  // BOTTOM-LEFT corner
-        ],
-        center: [124.65625, 8.48525],
-        buffer: 80
+        ]
     },
     {
         name: "Culinary Arts Building",
@@ -68,9 +62,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65718, 8.48553], // TOP-RIGHT corner
             [124.65721, 8.48527], // BOTTOM-RIGHT corner
             [124.65711, 8.48526]  // BOTTOM-LEFT corner
-        ],
-        center: [124.65725, 8.48525],
-        buffer: 90
+        ]
     },
     {
         name: "Science Complex Building",
@@ -79,9 +71,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65632, 8.48579], // TOP-RIGHT corner
             [124.65638, 8.48563], // BOTTOM-RIGHT corner
             [124.65581, 8.48543]  // BOTTOM-LEFT corner
-        ],
-        center: [124.65625, 8.48575],
-        buffer: 70
+        ]
     },
     {
         name: "Old Civil Engineering Building",
@@ -91,8 +81,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65803, 8.48571], // BOTTOM-RIGHT corner
             [124.65724, 8.48562]  // BOTTOM-LEFT corner
         ],
-        center: [124.65714, 8.48540],
-        buffer: 30
+
     },
     {
         name: "Science Centrum",
@@ -102,8 +91,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65722, 8.48497], // BOTTOM-RIGHT corner
             [124.65713, 8.48496]  // BOTTOM-LEFT corner
         ],
-        center: [124.65825, 8.48525],
-        buffer: 90
     },
     {
         name: "Engineering Complex II",
@@ -119,8 +106,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65659, 8.48486],
             [124.65662, 8.48490],
         ],
-        center: [124.65875, 8.48575],
-        buffer: 100
     },
     {
         name: "Student Lounge",
@@ -130,8 +115,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65709, 8.48570], // BOTTOM-RIGHT corner
             [124.65701, 8.48567]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48625],
-        buffer: 70
     },
     {
         name: "LRC Building",
@@ -146,8 +129,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65566, 8.48646],
 
         ],
-        center: [124.65625, 8.48625],
-        buffer: 60
     },
     {
         name: "New Clinic Building",
@@ -157,8 +138,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65573, 8.48595], // BOTTOM-RIGHT corner
             [124.65560, 8.48589]  // BOTTOM-LEFT corner
         ],
-        center: [124.65725, 8.48625],
-        buffer: 70
     },
     {
         name: "Parking Lot A",
@@ -169,8 +148,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65659, 8.48496],  // BOTTOM-LEFT corner
             [124.65656, 8.48503]
         ],
-        center: [124.65575, 8.48525],
-        buffer: 80
     },
     {
         name: "Parking Lot B",
@@ -180,8 +157,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.6595, 8.4855], // BOTTOM-RIGHT corner
             [124.6590, 8.4855]  // BOTTOM-LEFT corner
         ],
-        center: [124.65925, 8.48525],
-        buffer: 80
     },
 
     {
@@ -194,8 +169,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65579, 8.48565],
             [124.65563, 8.48559],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Engineering Complex I",
@@ -207,8 +180,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65696, 8.48481],
             [124.65694, 8.48482],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Gym Lobby",
@@ -220,8 +191,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65636, 8.48615],
             [124.65647, 8.48620],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Information and Communication Technology Center",
@@ -249,8 +218,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65711, 8.48631],
 
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "14",
@@ -262,8 +229,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65677, 8.48626],
             [124.65650, 8.48616],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Food innovation",
@@ -276,8 +241,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65564, 8.48630],
             [124.65602, 8.48645],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "53",
@@ -287,8 +250,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65756, 8.48552], // BOTTOM-RIGHT corner
             [124.65723, 8.48549]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "54",
@@ -298,8 +259,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65796, 8.48556], // BOTTOM-RIGHT corner
             [124.65763, 8.48553]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Study Shed",
@@ -309,8 +268,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65776, 8.48605], // BOTTOM-RIGHT corner
             [124.65770, 8.48603]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Study Shed 2",
@@ -320,8 +277,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65795, 8.48587], // BOTTOM-RIGHT corner
             [124.65789, 8.48586]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Guidance and Testing Center",
@@ -331,8 +286,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65839, 8.48626], // BOTTOM-RIGHT corner
             [124.65821, 8.48623]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Arts and Culture Building",
@@ -342,8 +295,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65858, 8.48620], // BOTTOM-RIGHT corner
             [124.65843, 8.48618]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Study Shed 3",
@@ -353,8 +304,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65632, 8.48624], // BOTTOM-RIGHT corner
             [124.65627, 8.48621]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Study Shed 4",
@@ -364,8 +313,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65626, 8.48638], // BOTTOM-RIGHT corner
             [124.65621, 8.48635]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Study Shed 5",
@@ -375,8 +322,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65551, 8.48641], // BOTTOM-RIGHT corner
             [124.65545, 8.48639]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Technology Building",
@@ -388,8 +333,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65508, 8.48686],
             [124.65543, 8.48699],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Study Shed 5",
@@ -399,8 +342,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65551, 8.48641], // BOTTOM-RIGHT corner
             [124.65545, 8.48639]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Student Center",
@@ -410,8 +351,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65531, 8.48597], // BOTTOM-RIGHT corner
             [124.65518, 8.48592]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "BTED",
@@ -421,8 +360,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65543, 8.48566], // BOTTOM-RIGHT corner
             [124.65531, 8.48561]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Blank",
@@ -432,8 +369,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65554, 8.48549], // BOTTOM-RIGHT corner
             [124.65535, 8.48543]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Sports Complex",
@@ -443,8 +378,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65686, 8.48662], // BOTTOM-RIGHT corner
             [124.65631, 8.48640]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
+
     },
 
     {
@@ -455,8 +389,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65716, 8.48586], // BOTTOM-RIGHT corner
             [124.65711, 8.48586]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
 
     {
@@ -469,8 +401,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65724, 8.48593],
             [124.65713, 8.48601],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Civil Technology Building (small)",
@@ -478,21 +408,18 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65489, 8.48667], // TOP-LEFT corner
             [124.65496, 8.48669], // TOP-RIGHT corner
             [124.65497, 8.48666], // BOTTOM-RIGHT corner
-            [124.65491, 8.48663]  // BOTTOM-LEFT corner
+            [124.65491, 8.48663],  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
+
     },
     {
         name: "Civil Technology Building (Big)",
         coordinates: [
-            [124.65482, 8.48659], // TOP-LEFT corner
+            [124.65483, 8.48659], // TOP-LEFT corner
             [124.65499, 8.48665], // TOP-RIGHT corner
             [124.65511, 8.48637], // BOTTOM-RIGHT corner
             [124.65493, 8.48630]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Sump Pit",
@@ -502,8 +429,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65502, 8.48677], // BOTTOM-RIGHT corner
             [124.65482, 8.48671]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Girl's Trade Building",
@@ -517,8 +442,6 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65560, 8.48612],
             [124.65542, 8.48605],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
     },
     {
         name: "Printing Press",
@@ -528,8 +451,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65619, 8.48664], // BOTTOM-RIGHT corner
             [124.65609, 8.48660]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
+
     },
     {
         name: "Study Shed 6",
@@ -540,8 +462,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65624, 8.48505],  // BOTTOM-LEFT corner
             [124.65609, 8.48517],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
+
     },
     {
         name: "ITB Building",
@@ -553,8 +474,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65804, 8.48622],
             [124.65819, 8.48623],
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
+
     },
     {
         name: "SPED Center",
@@ -564,8 +484,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
             [124.65835, 8.48588], // BOTTOM-RIGHT corner
             [124.65824, 8.48588]  // BOTTOM-LEFT corner
         ],
-        center: [124.65675, 8.48675],
-        buffer: 60
+
     },
 
 
@@ -575,7 +494,7 @@ export const USTP_CAMPUS_LOCATIONS: CampusLocation[] = [
 
 // Campus boundary (approximate)
 export const CAMPUS_BOUNDARY: [number, number][] = [
-    [124.6550, 8.4845], [124.6600, 8.4845], [124.6600, 8.4875], [124.6550, 8.4875]
+    [124.6540, 8.4850], [124.65933, 8.48416], [124.6600, 8.4875], [124.6550, 8.4875]
 ];
 
 // Instructions for updating coordinates:
