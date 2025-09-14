@@ -7,6 +7,9 @@ interface SearchBarProps {
   onClear: () => void;
   query: string;
   setQuery: (val: string) => void;
+  // ✅ New props for instant category filtering
+  selectedCategoryFilter: string;
+  setSelectedCategoryFilter: (val: string) => void;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
@@ -14,6 +17,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
   onClear,
   query,
   setQuery,
+  // ✅ New props for instant category filtering
+  selectedCategoryFilter,
+  setSelectedCategoryFilter,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -26,9 +32,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
   const handleClear = () => {
     setQuery("");
-    setSelectedCategory("all");
+    setSelectedCategory("All");
     setDescription("");
     setLocation("");
+    setSelectedCategoryFilter("All"); // ✅ Clear instant filter too
     onClear();
   };
 
@@ -100,6 +107,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
           location={location}
           setLocation={setLocation}
           onSearchSubmit={handleSearch}
+          // ✅ Pass instant category filtering props
+          selectedCategoryFilter={selectedCategoryFilter}
+          setSelectedCategoryFilter={setSelectedCategoryFilter}
         />
       </div>
     </div>
