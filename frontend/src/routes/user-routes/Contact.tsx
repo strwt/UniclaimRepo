@@ -46,7 +46,7 @@ const Contact = () => {
               <div className="">
                 <h2 className="text-xl font-semibold">Mon - Fri 9am - 5pm</h2>
                 <h2 className="text-xl font-semibold">
-                  Located at OSA Building
+                  Located at Medical Building -First Floor
                 </h2>
               </div>
               <p className="text-sm text-zinc-500">
