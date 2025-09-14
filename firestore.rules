@@ -151,6 +151,21 @@ service cloud.firestore {
       allow read, write: if request.auth != null && isAdmin();
     }
     
+    // Notification subscriptions collection rules
+    match /notifications_subscriptions/{userId} {
+      // Users can read and write their own subscription
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow creating subscriptions (for new user registration)
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow reading subscriptions for notification queries (for notification sender)
+      allow read: if request.auth != null;
+      
+      // Admins can read and manage all subscriptions
+      allow read, write: if request.auth != null && isAdmin();
+    }
+    
     // Announcements collection rules
     match /announcements/{announcementId} {
       // All authenticated users can read announcements (for banner display)

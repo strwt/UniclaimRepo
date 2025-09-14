@@ -10,7 +10,10 @@ interface FiltersProps {
   setDescription: (val: string) => void;
   location: string;
   setLocation: (val: string) => void;
-  onSearchSubmit: () => void; // ✅ Add this
+  onSearchSubmit: () => void;
+  // ✅ New props for instant category filtering
+  selectedCategoryFilter: string;
+  setSelectedCategoryFilter: (val: string) => void;
 }
 
 const Filters: React.FC<FiltersProps> = ({
@@ -21,7 +24,17 @@ const Filters: React.FC<FiltersProps> = ({
   location,
   setLocation,
   onSearchSubmit,
+  // ✅ New props for instant category filtering
+  selectedCategoryFilter,
+  setSelectedCategoryFilter,
 }) => {
+  // ✅ Handler for instant category filtering
+  const handleCategoryClick = (categoryLabel: string) => {
+    // Update both search form category and instant filter
+    setSelectedCategory(categoryLabel);
+    setSelectedCategoryFilter(categoryLabel);
+  };
+
   return (
     <>
       <form
@@ -40,9 +53,12 @@ const Filters: React.FC<FiltersProps> = ({
                   key={category.label}
                   label={category.label}
                   color={category.color}
-                  active={selectedCategory === category.label}
-                  onClick={() => setSelectedCategory(category.label)}
-                  onClear={() => setSelectedCategory("All")} // only clears the style
+                  active={selectedCategoryFilter === category.label}
+                  onClick={() => handleCategoryClick(category.label)}
+                  onClear={() => {
+                    setSelectedCategory("All");
+                    setSelectedCategoryFilter("All");
+                  }}
                 />
               ))}
             </div>

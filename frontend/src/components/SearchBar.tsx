@@ -1,5 +1,5 @@
 import Filters from "./Filters";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { IoFilter } from "react-icons/io5";
 
 interface SearchBarProps {
@@ -7,6 +7,9 @@ interface SearchBarProps {
   onClear: () => void;
   query: string;
   setQuery: (val: string) => void;
+  // ✅ New props for instant category filtering
+  selectedCategoryFilter: string;
+  setSelectedCategoryFilter: (val: string) => void;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
@@ -14,11 +17,28 @@ const SearchBar: React.FC<SearchBarProps> = ({
   onClear,
   query,
   setQuery,
+  // ✅ New props for instant category filtering
+  selectedCategoryFilter,
+  setSelectedCategoryFilter,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
+
+  // Debounced search function for real-time description filtering
+  const debouncedSearch = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout;
+      return (query: string, filters: any) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          onSearch(query, filters);
+        }, 300); // 300ms delay
+      };
+    })(),
+    [onSearch]
+  );
 
   const handleSearch = () => {
     onSearch(query, { selectedCategory, description, location });
@@ -26,9 +46,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
   const handleClear = () => {
     setQuery("");
-    setSelectedCategory("all");
+    setSelectedCategory("All");
     setDescription("");
     setLocation("");
+    setSelectedCategoryFilter("All"); // ✅ Clear instant filter too
     onClear();
   };
 
@@ -43,6 +64,16 @@ const SearchBar: React.FC<SearchBarProps> = ({
       onClear();
     }
   }, [query]);
+
+  // Real-time description filtering - triggers on every keystroke with debouncing
+  useEffect(() => {
+    if (description.trim() !== "" || selectedCategory !== "All" || location !== "") {
+      debouncedSearch(query, { selectedCategory, description, location });
+    } else if (description.trim() === "" && selectedCategory === "All" && location === "") {
+      // If all filters are cleared, clear the results
+      onClear();
+    }
+  }, [description, selectedCategory, location, query, debouncedSearch, onClear]);
 
   return (
     <div className="w-full mb-6">
@@ -100,6 +131,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
           location={location}
           setLocation={setLocation}
           onSearchSubmit={handleSearch}
+          // ✅ Pass instant category filtering props
+          selectedCategoryFilter={selectedCategoryFilter}
+          setSelectedCategoryFilter={setSelectedCategoryFilter}
         />
       </div>
     </div>
